@@ -4,12 +4,22 @@
 // so 'Team Durant' stays 'team-durant' at every age. Deterministic → no
 // persisted registry needed, and URLs never churn across rebuilds.
 import { BASE_LEAGUES, S2_LEAGUE, type League, type Player } from './leagues';
+// Live production slug registry (seo_slugs.json) — the source of truth so every
+// already-shared/indexed player URL survives the cutover byte-for-byte, including
+// the 35 name-collision slugs (…-2). Keyed "Name|Team|circuit|ageKey".
+import registry from '../data/seo_slugs.json';
+const SLUG_REGISTRY = registry as Record<string, string>;
 
 export function slugify(s: string): string {
   return String(s)
     .normalize('NFKD').replace(/[̀-ͯ]/g, '')      // strip accents
     .replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-+|-+$/g, '')
     .toLowerCase() || 'x';
+}
+// registry ageKey: 's2u15' for Session 2, else the league's age.
+function regKey(name: string, team: string, lg: League): string {
+  const ageKey = lg.key === 's2u15' ? 's2u15' : lg.age;
+  return `${name}|${team}|${lg.circuit}|${ageKey}`;
 }
 
 // One slug per player, scoped to their base league (circuit+age).
@@ -27,9 +37,13 @@ function build() {
     const nameToSlug = new Map<string, string>();
     const suffix = lg.key === 's2u15' ? '-s2' : '';
     for (const p of lg.players) {
-      const base = slugify(`${p.Player}-${lg.circuit}-${lg.age}`) + suffix;
-      let slug = base, i = 2;
-      while (used.has(slug)) { slug = `${base}-${i}`; i++; }
+      // Prefer the live registry slug (URL continuity); else deterministic.
+      let slug = SLUG_REGISTRY[regKey(p.Player, p.Team, lg)];
+      if (!slug) {
+        const base = slugify(`${p.Player}-${lg.circuit}-${lg.age}`) + suffix;
+        slug = base; let i = 2;
+        while (used.has(slug)) { slug = `${base}-${i}`; i++; }
+      }
       used.add(slug);
       nameToSlug.set(p.Player, slug);
       _bySlug.set(slug, { player: p, league: lg, slug });

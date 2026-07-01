@@ -4,5 +4,12 @@
       "source": "/bfleaderboard_backend/:path*",
       "destination": "https://bfleaderboard-backend.onrender.com/bfleaderboard_backend/:path*"
     }
+  ],
+  "redirects": [
+    {
+      "source": "/:scope*/leaders/ts-pct",
+      "destination": "/:scope*/leaders/fg-pct",
+      "permanent": true
+    }
   ]
 }
