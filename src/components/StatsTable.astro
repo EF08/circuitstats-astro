@@ -95,12 +95,14 @@ const total = rows.length;
       </tbody>
     </table>
   </div>
+  <button id="tbl-show-more" style="display:none"></button>
 </div>
 
-<script is:inline>
-  // Progressive enhancement: click-to-sort, search-filter, name expand/collapse.
-  // The server-rendered default (PPG desc, all rows) is already exact; this layers
-  // the app's interactivity on top without shipping the dataset again.
+<script is:inline define:vars={{ rjActiveInit: rjActive }}>
+  // Progressive enhancement: click-to-sort, search-filter, name expand/collapse,
+  // and pagination (100 at a time — the full dataset is already server-rendered
+  // above for SEO/no-JS, this just keeps the *visible*/interactive DOM small so
+  // sorting/scrolling stays fast on scopes with thousands of rows).
   (function () {
     var table = document.getElementById('main-table');
     if (!table) return;
@@ -112,6 +114,57 @@ const total = rows.length;
     var rows = Array.prototype.slice.call(tbody.querySelectorAll('tr'));
     var curField = 'PPG', curDir = 'desc';
     var pctBottom = { '—': 1, 'null': 1, 'null%': 1, 'N/A': 1 };
+
+    var PAGE_SIZE = 100;
+    var limit = PAGE_SIZE;
+    var query = '';
+    var rjActive = !!rjActiveInit; // rank-jump mode: show every row, no pagination
+    var srch = document.getElementById('tbl-search');
+    var clr = document.getElementById('tbl-clear');
+    var showMoreBtn = document.getElementById('tbl-show-more');
+    var wrapEl = document.querySelector('.tbl-wrap');
+    var showMoreObserver = null;
+
+    function applyVisibility() {
+      var ql = query.toLowerCase();
+      var matched = [];
+      rows.forEach(function (r) {
+        var nm = r.querySelector('.tbl-pname'), tm = r.querySelector('.tbl-pteam');
+        var name = (nm && nm.getAttribute('data-full') || '').toLowerCase();
+        var team = (tm && tm.textContent || '').toLowerCase();
+        if (!ql || name.indexOf(ql) >= 0 || team.indexOf(ql) >= 0) matched.push(r);
+        else r.style.display = 'none';
+      });
+      var total = matched.length;
+      var effLimit = rjActive ? total : Math.min(limit, total);
+      matched.forEach(function (r, i) { r.style.display = i < effLimit ? '' : 'none'; });
+      if (meta) meta.textContent = 'Showing ' + effLimit + ' of ' + total + ' player' + (total !== 1 ? 's' : '') + ' · tap column to sort';
+      if (clr) clr.classList.toggle('on', !!query);
+
+      if (showMoreObserver) { showMoreObserver.disconnect(); showMoreObserver = null; }
+      if (!showMoreBtn) return;
+      if (!rjActive && effLimit < total) {
+        showMoreBtn.textContent = 'Show next ' + Math.min(PAGE_SIZE, total - effLimit);
+        showMoreBtn.style.display = 'none'; // hidden until last visible row scrolls into view
+        var lastRow = matched[effLimit - 1];
+        if (lastRow && wrapEl) {
+          showMoreObserver = new IntersectionObserver(function (entries) {
+            if (entries[0].isIntersecting) {
+              showMoreBtn.style.display = '';
+              showMoreObserver.disconnect(); showMoreObserver = null;
+            }
+          }, { root: wrapEl, threshold: 0.5 });
+          showMoreObserver.observe(lastRow);
+        }
+      } else {
+        showMoreBtn.style.display = 'none';
+      }
+    }
+    if (showMoreBtn) showMoreBtn.addEventListener('click', function () {
+      limit += PAGE_SIZE;
+      applyVisibility();
+    });
+
     function cellNum(tr, colIdx) {
       var td = tr.children[colIdx]; if (!td) return -Infinity;
       var t = td.textContent.trim();
@@ -134,6 +187,9 @@ const total = rows.length;
         th.classList.toggle('sorted', on);
         arr.textContent = on ? (curDir === 'desc' ? '↓' : '↑') : '';
       });
+      rjActive = false; // header click exits rank-jump mode, same as the original
+      limit = PAGE_SIZE;
+      applyVisibility();
     }
     ths.forEach(function (th) {
       if (!th.id || th.id.indexOf('th-') !== 0) return;
@@ -158,24 +214,22 @@ const total = rows.length;
         else a.insertBefore(document.createTextNode(want), a.firstChild);
       });
     });
-    // search
-    var srch = document.getElementById('tbl-search');
-    var clr = document.getElementById('tbl-clear');
-    function filter(q) {
-      var ql = q.toLowerCase(); var shown = 0;
-      rows.forEach(function (r) {
-        var nm = r.querySelector('.tbl-pname'), tm = r.querySelector('.tbl-pteam');
-        var name = (nm && nm.getAttribute('data-full') || '').toLowerCase();
-        var team = (tm && tm.textContent || '').toLowerCase();
-        var match = !ql || name.indexOf(ql) >= 0 || team.indexOf(ql) >= 0;
-        r.style.display = match ? '' : 'none';
-        if (match) shown++;
-      });
-      if (meta) meta.textContent = 'Showing ' + shown + ' of ' + rows.length + ' player' + (rows.length !== 1 ? 's' : '') + ' · tap column to sort';
-      if (clr) clr.classList.toggle('on', !!q);
-    }
-    if (srch) srch.addEventListener('input', function (e) { filter(e.target.value); });
-    if (clr) clr.addEventListener('click', function () { srch.value = ''; filter(''); });
+    // search — also exits rank-jump mode and resets pagination, like the original
+    if (srch) srch.addEventListener('input', function (e) {
+      rjActive = false;
+      limit = PAGE_SIZE;
+      query = e.target.value;
+      applyVisibility();
+    });
+    if (clr) clr.addEventListener('click', function () {
+      srch.value = '';
+      rjActive = false;
+      limit = PAGE_SIZE;
+      query = '';
+      applyVisibility();
+    });
+
+    if (!rjActive) applyVisibility();
   })();
 
   // Axis-lock scroll + momentum (verbatim from the pre-SEO app): once a touch
