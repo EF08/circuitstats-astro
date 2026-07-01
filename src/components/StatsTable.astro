@@ -49,26 +49,26 @@ const total = rows.length;
         <circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path>
       </svg>
       <input class="srch-inp" id="tbl-search" type="search" placeholder="Search players or teams&hellip;"
-        autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
-      <button class="clear-x" id="tbl-clear">
+        autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-track="stats:search" />
+      <button class="clear-x" id="tbl-clear" data-track="stats:search-clear">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="15" height="15">
           <path d="M18 6 6 18M6 6l12 12"></path>
         </svg>
       </button>
     </div>
     {rjActive
-      ? <div class="tbl-meta" id="tbl-meta" set:html={`<strong style="color:var(--accent)">${rankJump!.player}</strong> &middot; <strong style="color:var(--accent)">#${rjPlayerRank}</strong> of ${total} in ${rjLabel} &nbsp;<a href="${league.urlBase}/stats" style="text-decoration:underline;color:var(--text-3)">clear</a>`} />
+      ? <div class="tbl-meta" id="tbl-meta" set:html={`<strong style="color:var(--accent)">${rankJump!.player}</strong> &middot; <strong style="color:var(--accent)">#${rjPlayerRank}</strong> of ${total} in ${rjLabel} &nbsp;<a href="${league.urlBase}/stats" data-track="stats:rank-jump-clear" style="text-decoration:underline;color:var(--text-3)">clear</a>`} />
       : <div class="tbl-meta" id="tbl-meta">Showing {total} of {total} player{total !== 1 ? 's' : ''} · tap column to sort</div>}
   </div>
   <div class="tbl-wrap">
     <table class="tbl" id="main-table">
       <thead id="main-thead">
         <tr>
-          <th class="player-th">Player <button class="name-toggle-btn" id="name-toggle-btn">+</button></th>
+          <th class="player-th">Player <button class="name-toggle-btn" id="name-toggle-btn" data-track="stats:name-toggle">+</button></th>
           {TBL_COLS.map(c => (
             <th id={`th-${c.f}`} class={(!rjActive && c.f === 'PPG') ? 'sorted' : undefined}>
               {c.h} <span class="sort-arrow" id={`arr-${c.f}`}>{(!rjActive && c.f === 'PPG') ? '↓' : ''}</span>{c.pct && (
-                <button class="pct-qual-btn" onclick="event.stopPropagation();this.classList.toggle('tip-open')">?<span class="pct-qual-tip">min. {qualMin} makes to qualify</span></button>
+                <button class="pct-qual-btn" data-track="stats:pct-tooltip" onclick="event.stopPropagation();this.classList.toggle('tip-open')">?<span class="pct-qual-tip">min. {qualMin} makes to qualify</span></button>
               )}
             </th>
           ))}
@@ -83,9 +83,9 @@ const total = rows.length;
           return (
             <tr class={hl ? 'tbl-row-hl' : undefined}>
               <td class="tbl-td player-td">
-                <a class="tbl-pname" href={playerHref} data-abbr={abbr(p.Player)} data-full={p.Player}>{abbr(p.Player)}{rnk && <span class="tbl-stat-rank">#{rnk}</span>}<Fragment set:html={tagBadge(p)} /></a>
+                <a class="tbl-pname" href={playerHref} data-abbr={abbr(p.Player)} data-full={p.Player} data-track="stats:player-link">{abbr(p.Player)}{rnk && <span class="tbl-stat-rank">#{rnk}</span>}<Fragment set:html={tagBadge(p)} /></a>
                 {teamHref
-                  ? <a class="tbl-pteam" href={teamHref}>{seed}{p.Team}</a>
+                  ? <a class="tbl-pteam" href={teamHref} data-track="stats:team-link">{seed}{p.Team}</a>
                   : <span class="tbl-pteam">{seed}{p.Team}</span>}
               </td>
               {TBL_COLS.map(c => <td class="tbl-td">{fmtColVal(p, c)}</td>)}
@@ -95,7 +95,7 @@ const total = rows.length;
       </tbody>
     </table>
   </div>
-  <button id="tbl-show-more" style="display:none"></button>
+  <button id="tbl-show-more" style="display:none" data-track="stats:show-more"></button>
 </div>
 
 <script is:inline define:vars={{ rjActiveInit: rjActive }}>
