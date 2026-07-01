@@ -48,7 +48,7 @@ a{color:inherit;text-decoration:none}
   position:fixed;top:0;left:0;right:0;height:var(--hdr-h);
   background:rgba(8,9,15,0.92);backdrop-filter:blur(20px);
   -webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--border);
-  display:flex;align-items:center;padding:0 16px;gap:10px;z-index:200;
+  display:flex;align-items:center;padding:0 16px;gap:8px;z-index:200;
 }
 .hdr-logo{
   width:30px;height:30px;border-radius:8px;flex-shrink:0;
@@ -62,10 +62,25 @@ a{color:inherit;text-decoration:none}
 .hdr-sub{font-size:11px;color:var(--text-2);margin-top:1px}
 .hdr-contact{
   font-size:10px;font-weight:600;color:var(--text-2);flex-shrink:0;
-  white-space:nowrap;transition:color .15s;line-height:1.3;text-align:right;
+  white-space:nowrap;transition:background .15s,color .15s;line-height:1.3;text-align:right;
+  /* Small screens: a compact icon (matches the share button) instead of two
+     lines of text — there's no room for both once the share button is added.
+     Widened back to the original text label once there's space (below). */
+  width:23px;height:23px;border:1px solid rgba(79,142,247,.28);border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
 }
+.hdr-contact:hover,.hdr-contact:active{background:var(--accent-dim);color:var(--text-2)}
 .hdr-contact span{color:var(--accent);font-weight:700}
-.hdr-contact:active{color:var(--text)}
+.hdr-contact-text{display:none}
+.hdr-contact-icon{display:block;width:12px;height:12px}
+@media (min-width:480px){
+  .hdr-contact{
+    width:auto;height:auto;border:none;border-radius:0;background:none!important;
+    display:block;
+  }
+  .hdr-contact-text{display:block}
+  .hdr-contact-icon{display:none}
+}
 .hdr-pill{
   background:none;border:1px solid rgba(79,142,247,.28);
   color:var(--accent);font-size:11px;font-weight:700;
@@ -75,6 +90,25 @@ a{color:inherit;text-decoration:none}
 }
 .hdr-pill:hover{background:var(--accent-dim)}
 .hdr-pill-caret{font-size:8px;opacity:.7}
+.hdr-share-btn{
+  background:none;border:1px solid rgba(79,142,247,.28);
+  color:var(--accent);width:23px;height:23px;border-radius:50%;
+  flex-shrink:0;cursor:pointer;transition:background .15s;
+  display:flex;align-items:center;justify-content:center;
+  -webkit-tap-highlight-color:transparent;padding:0;
+}
+.hdr-share-btn:hover,.hdr-share-btn:active{background:var(--accent-dim)}
+.hdr-share-btn svg{width:12px;height:12px}
+.share-toast{
+  position:fixed;left:50%;bottom:calc(var(--nav-h) + env(safe-area-inset-bottom,0px) + 16px);
+  transform:translateX(-50%) translateY(8px);
+  background:var(--surface);border:1px solid var(--border);color:var(--text);
+  font-size:12px;font-weight:600;padding:8px 16px;border-radius:20px;
+  box-shadow:0 8px 24px rgba(0,0,0,.5);z-index:500;
+  opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;
+  white-space:nowrap;
+}
+.share-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .league-dropdown{
   position:absolute;top:calc(100% + 6px);right:0;
   background:var(--card);border:1px solid var(--border);

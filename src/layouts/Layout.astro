@@ -78,8 +78,11 @@ const navIcons: Record<string, string> = {
       <div class="hdr-sub" id="hdr-sub">{subLabel}</div>
     </div>
   </a>
-  <a class="hdr-contact" href="mailto:andyfazliu@hotmail.com?subject=UAA U15 League Stats" data-track="header:contact">
-    Any questions?<br /><span>Contact</span>
+  <a class="hdr-contact" href="mailto:andyfazliu@hotmail.com?subject=UAA U15 League Stats" data-track="header:contact" aria-label="Contact us">
+    <span class="hdr-contact-text">Any questions?<br /><span>Contact</span></span>
+    <svg class="hdr-contact-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+      <rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+    </svg>
   </a>
   <div class="hdr-pill" id="league-pill" onclick="toggleLeagueDropdown(event)" title="Switch mode" data-track="header:league-pill">
     <span id="league-pill-label">{pillLabel}</span><span class="hdr-pill-caret">▼</span>
@@ -88,6 +91,12 @@ const navIcons: Record<string, string> = {
       {LEAGUES.map(l => <a class="ld-item" href={`${l.urlBase}/${activeTab === 'leaders' ? 'leaders/ppg' : activeTab === 'compare' ? 'compare' : activeTab === 'teams' ? 'teams' : 'stats'}`} data-track={`header:league-switch:${l.key}`}>{l.label}</a>)}
     </div>
   </div>
+  <button class="hdr-share-btn" id="share-btn" title="Share this page" aria-label="Share this page" data-track="header:share">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+      <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+      <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+    </svg>
+  </button>
 </header>
 
 <main class="main">
@@ -130,6 +139,47 @@ const navIcons: Record<string, string> = {
         }),
       }).catch(function () {});
     } catch (e) {}
+  })();
+
+  // Share button: native share sheet where supported, clipboard-copy fallback
+  // otherwise. Only tracked on an actual completed share/copy — a cancelled
+  // native share sheet doesn't count.
+  (function () {
+    var btn = document.getElementById('share-btn');
+    if (!btn) return;
+    function toast(msg) {
+      var el = document.getElementById('share-toast');
+      if (!el) {
+        el = document.createElement('div');
+        el.id = 'share-toast';
+        el.className = 'share-toast';
+        document.body.appendChild(el);
+      }
+      el.textContent = msg;
+      requestAnimationFrame(function () { el.classList.add('show'); });
+      clearTimeout(el._t);
+      el._t = setTimeout(function () { el.classList.remove('show'); }, 2000);
+    }
+    function trackShare(method) {
+      try {
+        fetch('/bfleaderboard_backend/track-share', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ page: location.pathname, title: trackTitleInit, url: location.href, method: method }),
+          keepalive: true,
+        }).catch(function () {});
+      } catch (e) {}
+    }
+    btn.addEventListener('click', function () {
+      var shareData = { title: document.title, url: location.href };
+      if (navigator.share) {
+        navigator.share(shareData).then(function () { trackShare('native'); }).catch(function () {});
+      } else if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(location.href).then(function () {
+          toast('Link copied!');
+          trackShare('clipboard');
+        }).catch(function () { toast('Could not copy link'); });
+      }
+    });
   })();
 
   // Site-wide click tracking (feeds the /dashboard "Clicks" section): one
