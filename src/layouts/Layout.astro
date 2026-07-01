@@ -109,6 +109,10 @@ const navIcons: Record<string, string> = {
   document.addEventListener('click', function () {
     var dd = document.getElementById('league-dropdown');
     if (dd) dd.classList.remove('open');
+    // Close any open "min. N makes to qualify" tooltip — verbatim from the app.
+    // The button's own onclick calls stopPropagation() so opening one doesn't
+    // immediately re-close it here.
+    document.querySelectorAll('.pct-qual-btn.tip-open').forEach(function (b) { b.classList.remove('tip-open'); });
   });
   // Fire-and-forget visit tracking (feeds the /dashboard analytics), verbatim from the app.
   (function () {
