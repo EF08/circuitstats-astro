@@ -3,7 +3,7 @@
 // Server-rendered sorted by PPG desc (the app's default), ALL rows present so
 // nothing is hidden behind JS/pagination. A client island (StatsTableInteractive)
 // layers the app's exact click-to-sort / search / name-expand back on top.
-import { TBL_COLS, getColVal, sortCmp, fmtColVal, abbr, RANK_LABELS, type Player } from '../lib/stats';
+import { TBL_COLS, getColVal, sortCmp, fmtColVal, abbr, RANK_LABELS, PCT_MIN_MAKES, type Player } from '../lib/stats';
 import type { League } from '../lib/leagues';
 import { rowLinks } from '../lib/links';
 
@@ -88,7 +88,11 @@ const total = rows.length;
                   ? <a class="tbl-pteam" href={teamHref} data-track="stats:team-link">{seed}{p.Team}</a>
                   : <span class="tbl-pteam">{seed}{p.Team}</span>}
               </td>
-              {TBL_COLS.map(c => <td class="tbl-td">{fmtColVal(p, c)}</td>)}
+              {TBL_COLS.map(c => {
+                const makesField = PCT_MIN_MAKES[c.f];
+                const qualifies = makesField ? ((p[makesField] || 0) >= qualMin ? '1' : '0') : undefined;
+                return <td class="tbl-td" data-qualifies={qualifies}>{fmtColVal(p, c)}</td>;
+              })}
             </tr>
           );
         })}
@@ -172,10 +176,25 @@ const total = rows.length;
       var v = parseFloat(t.replace('%', ''));
       return isNaN(v) ? -Infinity : v;
     }
+    function playerName(tr) {
+      var nm = tr.querySelector('.tbl-pname');
+      return (nm && nm.getAttribute('data-full')) || '';
+    }
     function applySort() {
       var col = cols.find(function (c) { return c.field === curField; });
       if (!col) return;
       var sorted = rows.slice().sort(function (a, b) {
+        // Qualifying-minimum columns (FG%/3P%/FT%/TS%): players below the makes
+        // threshold always sink to the bottom, regardless of sort direction —
+        // matches the server-rendered default sort (sortCmp in stats.ts).
+        var tdA = a.children[col.idx], tdB = b.children[col.idx];
+        var qaAttr = tdA && tdA.getAttribute('data-qualifies');
+        var qbAttr = tdB && tdB.getAttribute('data-qualifies');
+        if (qaAttr != null || qbAttr != null) {
+          var aQ = qaAttr !== '0', bQ = qbAttr !== '0';
+          if (aQ !== bQ) return bQ ? 1 : -1;
+          if (!aQ && !bQ) return playerName(a).localeCompare(playerName(b));
+        }
         var av = cellNum(a, col.idx), bv = cellNum(b, col.idx);
         if (av === bv) return 0;
         return curDir === 'desc' ? bv - av : av - bv;

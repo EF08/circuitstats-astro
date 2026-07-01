@@ -5,7 +5,7 @@
 // logo. Only the hrefs changed (hash -> real URLs) and the league dropdown
 // items are now <a> links (native, JS-free), the pill toggled by a 6-line script.
 import '../styles/global.css';
-import { LEAGUES } from '../lib/leagues';
+import { LEAGUES, S2_LEAGUE } from '../lib/leagues';
 import GateModal from '../components/GateModal.astro';
 
 export interface Props {
@@ -83,6 +83,7 @@ const navIcons: Record<string, string> = {
   <div class="hdr-pill" id="league-pill" onclick="toggleLeagueDropdown(event)" title="Switch mode" data-track="header:league-pill">
     <span id="league-pill-label">{pillLabel}</span><span class="hdr-pill-caret">▼</span>
     <div class="league-dropdown" id="league-dropdown">
+      <a class="ld-item" href={`${S2_LEAGUE.urlBase}/${activeTab === 'leaders' ? 'leaders/ppg' : activeTab === 'compare' ? 'compare' : activeTab === 'teams' ? 'teams' : 'stats'}`} data-track={`header:league-switch:${S2_LEAGUE.key}`}>UAA U15 S2</a>
       {LEAGUES.map(l => <a class="ld-item" href={`${l.urlBase}/${activeTab === 'leaders' ? 'leaders/ppg' : activeTab === 'compare' ? 'compare' : activeTab === 'teams' ? 'teams' : 'stats'}`} data-track={`header:league-switch:${l.key}`}>{l.label}</a>)}
     </div>
   </div>
