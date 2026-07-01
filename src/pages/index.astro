@@ -1,0 +1,20 @@
+---
+// Homepage — the pre-SEO app booted to the 'allall' (All Circuits) stats table
+// at '/', so the real home is exactly that view. Canonical points to '/'.
+import Layout from '../layouts/Layout.astro';
+import StatsTable from '../components/StatsTable.astro';
+import { byKey } from '../lib/leagues';
+const league = byKey('allall')!;
+const SITE = 'https://www.circuitstats.com';
+---
+<Layout
+  title="Circuit Stats — Official EYBL, UAA & 3SSB Player Stats & Rankings"
+  description={`Official EYBL, UAA & 3SSB Platinum player stats & national rankings. All ${league.players.length} U15, U16 & U17 players by PPG, RPG, FG% and more. 2026 season.`}
+  subLabel={league.subLabel}
+  pillLabel={league.label}
+  pageBase={league.urlBase}
+  activeTab="stats"
+  canonical={`${SITE}/`}
+>
+  <StatsTable league={league} />
+</Layout>
