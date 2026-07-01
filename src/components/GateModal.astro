@@ -1,0 +1,122 @@
+---
+// GateModal.astro — the paywall UI, ported DORMANT. The site is free so nothing
+// triggers gateOpen(); the modal exists ready to re-enable. gateVerify() still
+// runs on load so a subscriber's magic link (?auth=TOKEN) and Stripe redirect
+// (?payment=success) keep working, and the /dashboard owner-auth flow works.
+// gateUnlock() is simplified for the static site (no SPA re-render to do).
+const GATE_BACKEND = '/bfleaderboard_backend';
+---
+<div id="no-track-tip"></div>
+<div class="gate-overlay hidden" id="gate-overlay" onclick="gateOverlayClick(event)">
+  <div class="gate-card" onclick="event.stopPropagation()">
+    <div class="gate-logo-wrap">
+      <div class="gate-logo">CS</div>
+      <div class="gate-brand">Circuit Stats</div>
+    </div>
+    <div class="gate-tagline"><span style="color:var(--green);font-weight:700">Official</span> UAA &middot; EYBL &middot; 3SSB Platinum stats &middot; 2026 Season</div>
+    <ul class="gate-features">
+      <li class="gate-feat"><div class="gate-feat-check"><svg viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3"></polyline></svg></div><span><strong>Win the games that matter</strong> — Don't pay +$1,000 to travel and come in blind. Shut down their top scorers. Help off their worst shooters.</span></li>
+      <li class="gate-feat"><div class="gate-feat-check"><svg viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3"></polyline></svg></div><span><strong>Recruit smarter, travel less</strong> — Every stat on all 2,945 U15, U16 and U17 players across EYBL, UAA &amp; 3SSB. Find the hidden gem before everyone else.</span></li>
+      <li class="gate-feat"><div class="gate-feat-check"><svg viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3"></polyline></svg></div><span><strong>Know exactly where your player ranks</strong> — Is your son 3rd in USA in 3P%, regardless of age? 8th in PPG in U16 UAA? Find out.</span></li>
+      <li class="gate-feat"><div class="gate-feat-check"><svg viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3"></polyline></svg></div><span><strong>Settle any comparison</strong> — Stack any two players side-by-side across every stat. Expose hype.</span></li>
+      <li class="gate-feat"><div class="gate-feat-check"><svg viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3"></polyline></svg></div><span><strong>See who's really carrying your team</strong> — and who's getting minutes they haven't earned.</span></li>
+    </ul>
+    <div class="gate-divider"></div>
+    <div class="gate-price-row">
+      <div class="gate-tier selected" id="gate-tier-lifetime" onclick="gateSelectTier('lifetime')">
+        <div class="gate-tier-badge">BEST VALUE</div>
+        <div class="gate-tier-name">Lifetime Access</div>
+        <div class="gate-tier-price">$149<span style="font-size:12px;opacity:.6;text-decoration:line-through;margin-left:6px">$999</span></div>
+        <div class="gate-tier-desc">One-time payment</div>
+      </div>
+      <div class="gate-tier" id="gate-tier-month" onclick="gateSelectTier('month')">
+        <div class="gate-tier-name">Monthly</div>
+        <div class="gate-tier-price">$49<span>/mo</span></div>
+        <div class="gate-tier-desc">Cancel anytime</div>
+      </div>
+    </div>
+    <input class="gate-inp" id="gate-email" type="email" placeholder="Your email address" autocomplete="email" />
+    <div class="gate-err" id="gate-err"></div>
+    <button class="gate-btn" id="gate-btn" onclick="gateSubmit()">Get Access →</button>
+    <div class="gate-fine">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+      Secure checkout via Stripe
+    </div>
+    <div style="text-align:center;margin-top:14px">
+      <button onclick="gateResend()" style="background:none;border:none;color:var(--text-2);font-size:11.5px;cursor:pointer;padding:4px 0;text-decoration:underline;text-underline-offset:2px;opacity:.75">Already a subscriber? Resend access link</button>
+    </div>
+  </div>
+</div>
+
+<script is:inline define:vars={{ GATE_BACKEND }}>
+  window.GATE_BACKEND = GATE_BACKEND;
+  var _gateTier = 'lifetime', _subscriber = false;
+  window.gateSelectTier = function (t) {
+    _gateTier = t;
+    document.getElementById('gate-tier-lifetime').classList.toggle('selected', t === 'lifetime');
+    document.getElementById('gate-tier-month').classList.toggle('selected', t === 'month');
+  };
+  function gateSetErr(m) { document.getElementById('gate-err').textContent = m || ''; }
+  function gateSetLoading(on) { var b = document.getElementById('gate-btn'); b.disabled = on; b.textContent = on ? 'Please wait…' : 'Get Access →'; }
+  window.gateOpen = function () {
+    document.getElementById('gate-overlay').classList.remove('hidden');
+    var s = localStorage.getItem('cb_email'); if (s) document.getElementById('gate-email').value = s;
+    setTimeout(function () { var el = document.getElementById('gate-email'); if (el && !el.value) el.focus(); }, 80);
+  };
+  window.gateOverlayClick = function (e) { if (e.target === document.getElementById('gate-overlay')) document.getElementById('gate-overlay').classList.add('hidden'); };
+  // Static-site unlock: nothing is gated, so just record the subscriber + close.
+  function gateUnlock() { _subscriber = true; document.getElementById('gate-overlay').classList.add('hidden'); if (window.onGateUnlock) window.onGateUnlock(); }
+  window.gateSubmit = async function () {
+    var email = (document.getElementById('gate-email').value || '').trim().toLowerCase();
+    if (!email || email.indexOf('@') < 0) { gateSetErr('Please enter a valid email address.'); return; }
+    gateSetErr(''); gateSetLoading(true);
+    try {
+      var res = await fetch(GATE_BACKEND + '/auth/request-access', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: email, tier: _gateTier }) });
+      if (!res.ok) { var d = await res.json().catch(function () { return {}; }); throw new Error(d.error || 'Backend error ' + res.status); }
+      var data = await res.json();
+      if (data.status === 'email_sent') {
+        localStorage.setItem('cb_email', email);
+        document.querySelector('.gate-card').innerHTML = '<div style="text-align:center;padding:12px 0 8px"><div style="font-size:42px;margin-bottom:12px">📬</div><h3 style="margin:0 0 10px;font-size:18px;font-weight:800;color:var(--text)">Check your inbox!</h3><p style="margin:0 0 6px;font-size:13px;color:var(--text-2);line-height:1.6">We sent an email to <strong style="color:var(--text)">' + email + '</strong>.</p><p style="margin:0 0 20px;font-size:13px;color:var(--text-2);line-height:1.6">Click the link in the email to access Circuit Stats.<br><span style="font-size:11px">The link is one-time use and expires in 48 hours.</span></p><button class="gate-btn" onclick="document.getElementById(\'gate-overlay\').classList.add(\'hidden\')" style="font-size:13px;padding:11px 24px">Got it</button></div>';
+      }
+    } catch (e) { gateSetErr(e.message || 'Something went wrong. Please try again.'); gateSetLoading(false); }
+  };
+  window.gateResend = async function () {
+    var email = (document.getElementById('gate-email').value || '').trim().toLowerCase();
+    if (!email || email.indexOf('@') < 0) { gateSetErr('Enter your email above, then click Resend.'); document.getElementById('gate-email').focus(); return; }
+    gateSetErr('');
+    try {
+      var res = await fetch(GATE_BACKEND + '/auth/resend-access', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: email }) });
+      if (!res.ok) throw new Error('Backend error ' + res.status);
+      localStorage.setItem('cb_email', email);
+      document.querySelector('.gate-card').innerHTML = '<div style="text-align:center;padding:12px 0 8px"><div style="font-size:42px;margin-bottom:12px">📬</div><h3 style="margin:0 0 10px;font-size:18px;font-weight:800;color:var(--text)">Check your inbox!</h3><p style="margin:0 0 6px;font-size:13px;color:var(--text-2);line-height:1.6">If <strong style="color:var(--text)">' + email + '</strong> has an active subscription,<br>a new access link is on its way.</p><button class="gate-btn" onclick="document.getElementById(\'gate-overlay\').classList.add(\'hidden\')" style="font-size:13px;padding:11px 24px">Got it</button></div>';
+    } catch (e) { gateSetErr('Could not resend. Please try again.'); }
+  };
+  // Redeem magic links / stored tokens on every load (keeps subscriber sign-in working).
+  window.gateVerify = async function () {
+    var params = new URLSearchParams(location.search);
+    var magic = params.get('auth');
+    if (magic) {
+      history.replaceState(null, '', location.pathname + location.hash);
+      try {
+        var res = await fetch(GATE_BACKEND + '/auth/magic', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: magic }) });
+        if (res.ok) { var j = await res.json(); if (j.token) { localStorage.setItem('cb_token', j.token); if (j.email) localStorage.setItem('cb_email', j.email); gateUnlock(); return; } }
+        else { gateOpen(); gateSetErr('This access link has expired or was already used. Enter your email to get a new one.'); return; }
+      } catch (e) {}
+    }
+    if (params.get('payment') === 'success') {
+      history.replaceState(null, '', location.pathname + location.hash);
+      gateOpen();
+      document.querySelector('.gate-card').innerHTML = '<div style="text-align:center;padding:12px 0 8px"><div style="font-size:42px;margin-bottom:12px">✅</div><h3 style="margin:0 0 10px;font-size:18px;font-weight:800;color:var(--text)">Payment confirmed!</h3><p style="margin:0 0 20px;font-size:13px;color:var(--text-2);line-height:1.6">Your subscription is active. Check your inbox for the access link —<br><span style="font-size:11px">click it to sign in instantly.</span></p><button class="gate-btn" onclick="document.getElementById(\'gate-overlay\').classList.add(\'hidden\')" style="font-size:13px;padding:11px 24px">Got it</button></div>';
+      return;
+    }
+    var token = localStorage.getItem('cb_token');
+    if (!token) return;
+    try {
+      var res2 = await fetch(GATE_BACKEND + '/auth/verify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: token }) });
+      if (!res2.ok) { localStorage.removeItem('cb_token'); return; }
+      var v = await res2.json();
+      if (v.valid) gateUnlock(); else localStorage.removeItem('cb_token');
+    } catch (e) { gateUnlock(); }
+  };
+  gateVerify();
+</script>

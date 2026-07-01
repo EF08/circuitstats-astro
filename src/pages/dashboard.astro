@@ -1,0 +1,96 @@
+---
+// /dashboard — owner analytics (visits + subscribers), ported from the pre-SEO
+// app. Client-rendered after auth: the GateModal (in Layout) redeems a magic
+// link / stored token; then renderDashboard() fetches the backend. noindex.
+import Layout from '../layouts/Layout.astro';
+const SITE = 'https://www.circuitstats.com';
+---
+<Layout
+  title="Dashboard | Circuit Stats"
+  subLabel="Owner analytics"
+  pillLabel="ALL"
+  pageBase="/rankings"
+  activeTab={null}
+  canonical={`${SITE}/dashboard`}
+  robots="noindex,nofollow"
+>
+  <div style="padding:20px 16px 40px;max-width:700px;margin:0 auto">
+    <h2 style="font-size:20px;font-weight:800;margin-bottom:4px">Circuit Stats Dashboard</h2>
+    <p style="color:var(--text-2);font-size:13px;margin-bottom:24px">Visitor &amp; subscriber analytics</p>
+    <div id="db-content" style="color:var(--text-2);font-size:13px">Loading…</div>
+  </div>
+</Layout>
+
+<script is:inline>
+  (function () {
+    var GB = '/bfleaderboard_backend';
+    var cbScannerRe = /microsoft|azure|amazon|aws|google cloud|google llc|digital ?ocean|\bovh\b|hetzner|linode|akamai|fastly|cloudflare|oracle|\bm247\b|leaseweb|vultr|choopa|gcore|contabo|scaleway|alibaba|tencent|hosting|datacenter|data center|colocation/i;
+    function cbKind(v) {
+      var scanner = (v.isScanner != null) ? v.isScanner : (!!v.org && cbScannerRe.test(v.org));
+      var owner = (v.isOwner != null) ? v.isOwner : (!!v.city && /north york/i.test(v.city));
+      return scanner ? 'scanner' : owner ? 'owner' : 'human';
+    }
+    window._cbShow = { scanner: false, owner: false };
+    function applyCbVisibility() {
+      document.querySelectorAll('#db-content .cb-vrow').forEach(function (r) {
+        var k = r.dataset.kind; r.style.display = (k === 'human' || window._cbShow[k]) ? '' : 'none';
+      });
+    }
+    window.cbToggle = function (kind, btn) {
+      window._cbShow[kind] = !window._cbShow[kind]; applyCbVisibility();
+      var label = kind === 'owner' ? 'my visits' : 'scanner visits';
+      btn.textContent = (window._cbShow[kind] ? 'Hide ' : 'Show ') + label;
+    };
+    function cbVisitRow(v) {
+      var kind = cbKind(v);
+      var badge = kind === 'scanner' ? '<span style="background:#3a2a12;color:#e0a94a;padding:2px 6px;border-radius:5px;white-space:nowrap">🤖 Scanner</span>'
+        : kind === 'owner' ? '<span style="background:#2a2440;color:#b6a6ee;padding:2px 6px;border-radius:5px;white-space:nowrap">🧍 You</span>'
+        : '<span style="background:#143018;color:#5fcf7a;padding:2px 6px;border-radius:5px;white-space:nowrap">🟢 Human</span>';
+      return '<tr class="cb-vrow" data-kind="' + kind + '" style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px;font-size:11px;color:var(--text-2)">' + (v.displayTime || '') + '</td><td style="padding:6px 8px;font-size:11px">' + badge + '</td><td style="padding:6px 8px;font-size:11px">' + ([v.city, v.region, v.country].filter(Boolean).join(', ') || '—') + '</td><td style="padding:6px 8px;font-size:11px;color:var(--text-2)">' + (v.org || '—') + '</td><td style="padding:6px 8px;font-size:11px;color:var(--text-2)">' + ((v.referrer || 'Direct').replace(/^https?:\/\//, '').slice(0, 30)) + '</td><td style="padding:6px 8px;font-size:11px;color:var(--text-2)">' + ((v.userAgent || '').slice(0, 35)) + '…</td></tr>';
+    }
+    window.loadMoreCbVisits = async function () {
+      var btn = document.getElementById('cb-load-more-btn'); var token = localStorage.getItem('cb_token');
+      if (!token || !btn) return; btn.disabled = true; btn.textContent = 'Loading…';
+      try {
+        var res = await fetch(GB + '/dashboard/stats?limit=150&offset=' + (window._cbVisitOffset || 0), { headers: { 'Authorization': 'Bearer ' + token } });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        var d = await res.json(); var tbody = document.getElementById('cb-visits-body');
+        if (tbody) tbody.insertAdjacentHTML('beforeend', d.recentVisits.map(cbVisitRow).join(''));
+        window._cbVisitOffset = (window._cbVisitOffset || 0) + d.recentVisits.length; applyCbVisibility();
+        if (d.recentVisits.length < 150) { var w = document.getElementById('cb-load-more-wrap'); if (w) w.style.display = 'none'; }
+        else { btn.disabled = false; btn.textContent = 'See next 150 visits'; }
+      } catch (e) { btn.disabled = false; btn.textContent = 'Error — try again'; }
+    };
+    async function renderDashboard() {
+      var token = localStorage.getItem('cb_token');
+      if (!token) { document.getElementById('db-content').textContent = 'Not signed in. Open your access link, or use the account email that has owner access.'; return; }
+      try {
+        var res = await fetch(GB + '/dashboard/stats?limit=150', { headers: { 'Authorization': 'Bearer ' + token } });
+        if (res.status === 403) { document.getElementById('db-content').textContent = 'Owner access only.'; return; }
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        var d = await res.json();
+        var maxDay = Math.max.apply(null, d.visitsByDay.map(function (x) { return x.count; }).concat([1]));
+        var byDayBars = d.visitsByDay.slice(-14).map(function (r) {
+          var pct = Math.round((r.count / maxDay) * 100);
+          return '<div title="' + r._id + ': ' + r.count + '" style="display:flex;align-items:flex-end;gap:3px;flex-direction:column"><div style="width:24px;background:var(--accent);border-radius:3px 3px 0 0;height:' + Math.max(4, pct * 0.8) + 'px;opacity:.8"></div><div style="font-size:8px;color:var(--text-3);transform:rotate(-40deg);transform-origin:top right;white-space:nowrap">' + r._id.slice(5) + '</div></div>';
+        }).join('');
+        var recentRows = d.recentVisits.map(cbVisitRow).join('');
+        var subRows = (d.subscribers && d.subscribers.recent || []).map(function (s) {
+          return '<tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px;font-size:12px">' + s.email + '</td><td style="padding:6px 8px;font-size:11px;color:var(--accent)">' + s.plan + '</td><td style="padding:6px 8px;font-size:11px;color:var(--text-2)">' + (s.createdAt ? new Date(s.createdAt).toLocaleDateString() : '') + '</td></tr>';
+        }).join('');
+        var stats = [['Human Visits', d.humanVisits != null ? d.humanVisits : d.totalVisits], ['Unique IPs', d.uniqueIpCount], ['Subscribers', (d.subscribers && d.subscribers.total) != null ? d.subscribers.total : '—']];
+        document.getElementById('db-content').innerHTML =
+          '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:24px">' + stats.map(function (p) { return '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px"><div style="font-size:22px;font-weight:800">' + p[1] + '</div><div style="font-size:11px;color:var(--text-2);margin-top:2px">' + p[0] + '</div></div>'; }).join('') + '</div>' +
+          '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:20px"><div style="font-size:12px;font-weight:700;margin-bottom:12px">Visits — last 14 days</div><div style="display:flex;align-items:flex-end;gap:4px;height:90px">' + byDayBars + '</div></div>' +
+          (subRows ? '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:20px"><div style="padding:12px 14px;font-size:12px;font-weight:700;border-bottom:1px solid var(--border)">Subscribers</div><table style="width:100%;border-collapse:collapse"><tbody>' + subRows + '</tbody></table></div>' : '') +
+          '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden"><div style="padding:12px 14px;font-size:12px;font-weight:700;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap"><span>Recent Visitors <span style="color:var(--text-3);font-weight:500">— humans only</span></span><span style="display:flex;gap:6px"><button onclick="cbToggle(\'owner\',this)" style="background:none;border:1px solid var(--border);color:var(--text-2);padding:3px 9px;border-radius:6px;cursor:pointer;font-size:11px;white-space:nowrap">Show my visits</button><button onclick="cbToggle(\'scanner\',this)" style="background:none;border:1px solid var(--border);color:var(--text-2);padding:3px 9px;border-radius:6px;cursor:pointer;font-size:11px;white-space:nowrap">Show scanner visits</button></span></div><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr style="border-bottom:1px solid var(--border)">' + ['Time', 'Status', 'Location', 'Organization', 'Referrer', 'Device'].map(function (h) { return '<th style="padding:6px 8px;font-size:10px;color:var(--text-2);text-align:left;font-weight:600">' + h + '</th>'; }).join('') + '</tr></thead><tbody id="cb-visits-body">' + recentRows + '</tbody></table></div><div style="text-align:center;padding:10px 0" id="cb-load-more-wrap"><button onclick="loadMoreCbVisits()" id="cb-load-more-btn" style="background:none;border:1px solid var(--border);color:var(--text-2);padding:5px 16px;border-radius:6px;cursor:pointer;font-size:12px">See next 150 visits</button></div></div>';
+        window._cbVisitOffset = d.recentVisits.length; applyCbVisibility();
+        if (d.recentVisits.length < 150) { var w = document.getElementById('cb-load-more-wrap'); if (w) w.style.display = 'none'; }
+      } catch (e) { document.getElementById('db-content').textContent = 'Error loading stats: ' + e.message; }
+    }
+    // GateModal's gateVerify() (in Layout) may redeem a magic link async; re-run
+    // the dashboard once it settles, and expose a hook for immediate unlock.
+    window.onGateUnlock = renderDashboard;
+    renderDashboard();
+  })();
+</script>
