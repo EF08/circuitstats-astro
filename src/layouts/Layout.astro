@@ -19,7 +19,15 @@ export interface Props {
   ogImage?: string;
   robots?: string;
 }
-const { title, description = '', subLabel, pillLabel, pageBase, activeTab, canonical, ogImage, robots } = Astro.props;
+const { title, description = '', subLabel, pillLabel, pageBase, activeTab, canonical, robots } = Astro.props;
+
+// Share-preview image: a real screenshot of the top of THIS page (api/og-shot.js),
+// not a custom-drawn card. Self-referential — the function screenshots whatever
+// host actually receives the request, so this works unchanged on any domain
+// (preview or production) with zero hardcoding. Experimental swap-in per Andy;
+// the old drawn-card generator (api/og.js + src/lib/og.ts) is untouched.
+const shotPath = new URL(canonical || Astro.url.pathname, Astro.site || Astro.url.origin).pathname;
+const ogImage = `${(Astro.site?.href || Astro.url.origin).replace(/\/$/, '')}/api/og-shot?path=${encodeURIComponent(shotPath)}`;
 
 // Bottom-nav destinations (real pages). Leaders defaults to the PPG board.
 const tabs = [

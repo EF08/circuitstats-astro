@@ -115,6 +115,16 @@ const pickerJson = JSON.stringify(picker);
     }
     function open(slot) { active = slot; inp.value = ''; render(''); overlay.classList.add('open'); document.body.style.overflow = 'hidden'; setTimeout(function () { inp.focus(); }, 150); }
     function close() { overlay.classList.remove('open'); document.body.style.overflow = ''; }
+    // Fill the picked slot's visible box immediately (matches the app's
+    // updateCmpSlot) so players appear one at a time, not both-at-once right
+    // before navigating.
+    function fillSlot(i, slug) {
+      var entry = data.find(function (p) { return p.s === slug; });
+      var el = document.getElementById('cmp-slot-' + i);
+      if (!entry || !el) return;
+      el.innerHTML = '<div class="cmp-p-name">' + esc(entry.n) + '</div><div class="cmp-p-team">' + esc(entry.t) + '</div>';
+      el.classList.add('filled');
+    }
     function go() {
       if (picked[0] && picked[1]) {
         var pair = picked[0] < picked[1] ? picked[0] + '-vs-' + picked[1] : picked[1] + '-vs-' + picked[0];
@@ -127,7 +137,8 @@ const pickerJson = JSON.stringify(picker);
     inp.addEventListener('input', function (e) { render(e.target.value); });
     listEl.addEventListener('click', function (e) {
       var item = e.target.closest('.picker-item'); if (!item) return;
-      picked[active] = item.getAttribute('data-slug'); close(); go();
+      var slug = item.getAttribute('data-slug');
+      picked[active] = slug; close(); fillSlot(active, slug); go();
     });
   })();
 </script>
