@@ -63,7 +63,11 @@ const SITE = 'https://www.circuitstats.com';
     };
     async function renderDashboard() {
       var token = localStorage.getItem('cb_token');
-      if (!token) { document.getElementById('db-content').textContent = 'Not signed in. Open your access link, or use the account email that has owner access.'; return; }
+      if (!token) {
+        document.getElementById('db-content').textContent = 'Sign in with the owner account to view analytics.';
+        if (window.gateOpen) window.gateOpen();   // matches the pre-SEO app: pop the sign-in modal
+        return;
+      }
       try {
         var res = await fetch(GB + '/dashboard/stats?limit=150', { headers: { 'Authorization': 'Bearer ' + token } });
         if (res.status === 403) { document.getElementById('db-content').textContent = 'Owner access only.'; return; }
@@ -91,6 +95,12 @@ const SITE = 'https://www.circuitstats.com';
     // GateModal's gateVerify() (in Layout) may redeem a magic link async; re-run
     // the dashboard once it settles, and expose a hook for immediate unlock.
     window.onGateUnlock = renderDashboard;
-    renderDashboard();
+    if (new URLSearchParams(location.search).has('auth')) {
+      // magic link present — wait for GateModal.gateVerify() to redeem it, then
+      // onGateUnlock fires renderDashboard. Avoids a premature sign-in prompt.
+      document.getElementById('db-content').textContent = 'Signing you in…';
+    } else {
+      renderDashboard();
+    }
   })();
 </script>
