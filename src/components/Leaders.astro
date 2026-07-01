@@ -20,14 +20,15 @@ function tagBadge(p: Player): string {
   return '';
 }
 
-// build the active board's top-10 (verbatim: filter -> has-rank -> sort by rank -> slice 10)
+// build the active board's top-100 (filter -> has-rank -> sort by rank -> slice 100)
+const TOP_N = 100;
 const pool = active.filter ? players.filter(active.filter) : players;
 const list = [...pool]
   .filter(p => RANK[active.rkField] && RANK[active.rkField][p.Player])
   .sort((a, b) => RANK[active.rkField][a.Player] - RANK[active.rkField][b.Player])
-  .slice(0, 10);
+  .slice(0, TOP_N);
 
-const catTitle = active.lowerBetter ? `Fewest ${active.lbl} (Leaders)` : `Top 10 ${active.lbl}`;
+const catTitle = active.lowerBetter ? `Fewest ${active.fullLbl} (Leaders)` : `Top ${TOP_N} ${active.fullLbl}`;
 const catSub = `${league.label} · 2026 Season`;
 
 function extraHtml(p: Player, c: Cat): string {

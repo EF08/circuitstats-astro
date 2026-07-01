@@ -5,7 +5,7 @@
 // The picker overlay is real; a JS-free-by-default island wires slot clicks to
 // navigate to /compare/<a>-vs-<b> (a real URL), instead of the old in-app state.
 import { CMP_STATS, type CmpStat } from '../lib/catalog';
-import type { League, Player } from '../lib/leagues';
+import { S2_LEAGUE, type League, type Player } from '../lib/leagues';
 import { playerSlug, canonicalPlayerHref } from '../lib/slugs';
 
 interface Props { league: League; a?: Player | null; b?: Player | null; }
@@ -77,6 +77,16 @@ function slugFor(p: Player): string {
 // picker data for the island: {n: name, s: slug, t: team, p: ppg} for this scope.
 // Slug resolves to each player's canonical base-league page (combined scopes use tags).
 const picker = players.map(p => ({ n: p.Player, s: slugFor(p), t: p.Team, p: p.PPG }));
+// The "All Circuits" comparison pool doesn't otherwise include Session 2 —
+// add those UAA U15 players in as their own separate, separately-selectable
+// entries (not merged with their regular-season line) so their Session 2
+// numbers specifically can be compared. Suffixed in the picker so it's
+// obvious which line is which when both exist for the same player.
+if (league.key === 'allall') {
+  S2_LEAGUE.players.forEach(p => {
+    picker.push({ n: `${p.Player} (S2)`, s: playerSlug(p.Player, S2_LEAGUE), t: p.Team, p: p.PPG });
+  });
+}
 const pickerJson = JSON.stringify(picker);
 ---
 <div class="view active" id="view-compare">
