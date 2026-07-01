@@ -8,6 +8,7 @@ export const prerender = false;
 import Layout from '../../layouts/Layout.astro';
 import Compare from '../../components/Compare.astro';
 import { refBySlug } from '../../lib/slugs';
+import { compareOg } from '../../lib/og';
 
 const slug = Astro.params.slug || '';
 const parts = slug.split('-vs-');
@@ -33,6 +34,7 @@ const desc = `${a.Player} vs ${b.Player} head-to-head: PPG, rebounds, assists, s
   pageBase={league.urlBase}
   activeTab="compare"
   canonical={`${SITE}/compare/${slug}`}
+  ogImage={compareOg(a, b, league)}
 >
   <Compare league={league} a={a} b={b} />
 </Layout>

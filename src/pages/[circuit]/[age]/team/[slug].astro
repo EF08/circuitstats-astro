@@ -3,6 +3,7 @@ import Layout from '../../../../layouts/Layout.astro';
 import TeamPage from '../../../../components/TeamPage.astro';
 import { BASE_LEAGUES } from '../../../../lib/leagues';
 import { teamSlug } from '../../../../lib/slugs';
+import { teamOg } from '../../../../lib/og';
 
 export function getStaticPaths() {
   const paths: any[] = [];
@@ -20,7 +21,8 @@ export function getStaticPaths() {
 
 const { team, league } = Astro.props;
 const SITE = 'https://www.circuitstats.com';
-const n = league.players.filter((p: any) => p.Team === team).length;
+const roster = league.players.filter((p: any) => p.Team === team);
+const n = roster.length;
 ---
 <Layout
   title={`${team} ${league.scopeLabel} Roster & Stats 2026 | Circuit Stats`}
@@ -30,6 +32,7 @@ const n = league.players.filter((p: any) => p.Team === team).length;
   pageBase={league.urlBase}
   activeTab="teams"
   canonical={`${SITE}${league.urlBase}/team/${Astro.params.slug}`}
+  ogImage={teamOg(team, roster, league)}
 >
   <TeamPage team={team} league={league} />
 </Layout>
