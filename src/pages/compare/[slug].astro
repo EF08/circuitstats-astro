@@ -22,7 +22,18 @@ if (parts.length === 2) {
   if (ra && rb) { a = ra.player; b = rb.player; league = ra.league; }
 }
 if (!a || !b || !league) {
-  return new Response('Comparison not found', { status: 404 });
+  // Explicit Content-Type so this renders as a page instead of some browsers
+  // (seen on iOS Safari) offering the bare-text response as a .txt download.
+  return new Response(
+    `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8" />` +
+    `<meta name="viewport" content="width=device-width, initial-scale=1.0" />` +
+    `<title>Comparison not found | Circuit Stats</title><meta name="robots" content="noindex" />` +
+    `<style>body{background:#08090f;color:#eef2ff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;` +
+    `display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;text-align:center;padding:24px}` +
+    `a{color:#4f8ef7;font-weight:700;text-decoration:none}h1{font-size:20px;margin:0 0 10px}p{color:#7f93b5;font-size:14px;margin:0 0 20px}</style>` +
+    `</head><body><div><h1>Comparison not found</h1><p>That match-up doesn't exist or the link is broken.</p><a href="/">Back to Circuit Stats</a></div></body></html>`,
+    { status: 404, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
+  );
 }
 // Keep showing whatever scope the visitor was actually browsing (passed through
 // by Compare.astro's picker) instead of always falling back to player A's own

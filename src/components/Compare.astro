@@ -6,7 +6,7 @@
 // navigate to /compare/<a>-vs-<b> (a real URL), instead of the old in-app state.
 import { CMP_STATS, type CmpStat } from '../lib/catalog';
 import type { League, Player } from '../lib/leagues';
-import { playerSlug } from '../lib/slugs';
+import { playerSlug, canonicalPlayerHref } from '../lib/slugs';
 
 interface Props { league: League; a?: Player | null; b?: Player | null; }
 const { league, a = null, b = null } = Astro.props as Props;
@@ -62,15 +62,21 @@ const slot = (p: Player | null, i: number) => p
   ? `<div class="cmp-p-name">${p.Player}${tagBadge(p) ? ' ' + tagBadge(p) : ''}</div><div class="cmp-p-team">${p.Team}</div>`
   : `<div class="cmp-plus">+</div><div class="cmp-placeholder">Player ${i + 1}</div>`;
 
-// picker data for the island: {n: name, s: slug, t: team, p: ppg} for this scope.
-// Slug resolves to each player's canonical base-league page (combined scopes use tags).
-import { canonicalPlayerHref } from '../lib/slugs';
-const picker = players.map(p => {
+// Resolve any player's slug correctly regardless of whether `league` is a base
+// league (circuit+age both set) or a combined scope (circuit and/or age null,
+// e.g. "allall") — playerSlug() only works for the former; combined scopes
+// need canonicalPlayerHref's cross-league lookup instead, or it silently
+// produces a broken "name-null-null" slug (circuit/age interpolated as the
+// literal string "null").
+function slugFor(p: Player): string {
   const href = league.isBase || league.key === 's2u15'
     ? `/player/${playerSlug(p.Player, league)}` : (canonicalPlayerHref(p.Player) || '');
-  const s = href.replace('/player/', '');
-  return { n: p.Player, s, t: p.Team, p: p.PPG };
-});
+  return href.replace('/player/', '');
+}
+
+// picker data for the island: {n: name, s: slug, t: team, p: ppg} for this scope.
+// Slug resolves to each player's canonical base-league page (combined scopes use tags).
+const picker = players.map(p => ({ n: p.Player, s: slugFor(p), t: p.Team, p: p.PPG }));
 const pickerJson = JSON.stringify(picker);
 ---
 <div class="view active" id="view-compare">
@@ -96,7 +102,7 @@ const pickerJson = JSON.stringify(picker);
 </div>
 
 <script type="application/json" id="picker-data" set:html={pickerJson}></script>
-<script is:inline define:vars={{ slotA: a ? playerSlug(a.Player, league) : '', slotB: b ? playerSlug(b.Player, league) : '', leagueKey: league.key }}>
+<script is:inline define:vars={{ slotA: a ? slugFor(a) : '', slotB: b ? slugFor(b) : '', leagueKey: league.key }}>
   (function () {
     var data = JSON.parse(document.getElementById('picker-data').textContent);
     var picked = [slotA || null, slotB || null];
