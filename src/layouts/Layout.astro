@@ -18,8 +18,9 @@ export interface Props {
   canonical?: string;
   ogImage?: string;
   robots?: string;
+  trackTitle?: string;       // human-readable name for analytics (player/team/matchup) — not SEO title
 }
-const { title, description = '', subLabel, pillLabel, pageBase, activeTab, canonical, robots } = Astro.props;
+const { title, description = '', subLabel, pillLabel, pageBase, activeTab, canonical, robots, trackTitle } = Astro.props;
 
 // Share-preview image: a real screenshot of the top of THIS page (api/og-shot.js),
 // not a custom-drawn card. Self-referential — the function screenshots whatever
@@ -102,7 +103,7 @@ const navIcons: Record<string, string> = {
   ))}
 </nav>
 
-<script is:inline>
+<script is:inline define:vars={{ trackTitleInit: trackTitle || null }}>
   function toggleLeagueDropdown(e) {
     e.stopPropagation();
     document.getElementById('league-dropdown').classList.toggle('open');
@@ -125,6 +126,7 @@ const navIcons: Record<string, string> = {
           userAgent: navigator.userAgent,
           page: location.pathname + location.hash,
           src: new URLSearchParams(location.search).get('src') || null,
+          title: trackTitleInit,
         }),
       }).catch(function () {});
     } catch (e) {}
