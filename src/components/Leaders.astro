@@ -1,0 +1,75 @@
+---
+// Leaders.astro — one leaderboard (the pre-SEO view-leaders panel for a single
+// stat), verbatim markup. tab-row entries are real links to sibling stat pages;
+// the active stat's Top-10 panel is rendered. Paywall off → no locked tabs.
+import { makeCats, type Cat } from '../lib/catalog';
+import type { League, Player } from '../lib/leagues';
+import { rowLinks } from '../lib/links';
+
+interface Props { league: League; slug: string; }
+const { league, slug } = Astro.props as Props;
+const { players, ranks, standings, qualMin, combineKind } = league;
+const RANK = ranks.RANK;
+const cats = makeCats(qualMin);
+const active = cats.find(c => c.slug === slug)!;
+
+function tagBadge(p: Player): string {
+  if (combineKind === 'circuit' && p._age) return `<span class="age-badge">${p._age}</span>`;
+  if (combineKind === 'age' && p._src) return `<span class="age-badge">${p._src || 'Multi'}</span>`;
+  if (combineKind === 'all' && p._tag) return `<span class="age-badge">${p._tag}</span>`;
+  return '';
+}
+
+// build the active board's top-10 (verbatim: filter -> has-rank -> sort by rank -> slice 10)
+const pool = active.filter ? players.filter(active.filter) : players;
+const list = [...pool]
+  .filter(p => RANK[active.rkField] && RANK[active.rkField][p.Player])
+  .sort((a, b) => RANK[active.rkField][a.Player] - RANK[active.rkField][b.Player])
+  .slice(0, 10);
+
+const catTitle = active.lowerBetter ? `Fewest ${active.lbl} (Leaders)` : `Top 10 ${active.lbl}`;
+const catSub = `${league.label} · 2026 Season`;
+
+function extraHtml(p: Player, c: Cat): string {
+  if (c.extra.length === 2) { const att = p[c.extra[1]]; return `<div class="rank-gp">${p[c.extra[0]]}${att != null ? '-' + att : ''}</div>`; }
+  if (c.extra.length === 1) return `<div class="rank-gp">${p[c.extra[0]]} made</div>`;
+  return '';
+}
+---
+<div class="view active" id="view-leaders">
+  <div class="tab-row" id="tab-row">
+    {cats.map(c => (
+      <a class:list={["tab-btn", { active: c.slug === slug }]} href={`${league.urlBase}/leaders/${c.slug}`}>{c.lbl}</a>
+    ))}
+  </div>
+  <div class="leaders-body" id="leaders-body">
+    <div class="panel active">
+      <div class="cat-title">{catTitle}</div>
+      <div class="cat-sub">{catSub}</div>
+      <div class="rank-list">
+        {list.map(p => {
+          const rk = RANK[active.rkField][p.Player];
+          const medal = rk === 1 ? 'g1' : rk === 2 ? 'g2' : rk === 3 ? 'g3' : '';
+          const { playerHref, teamHref } = rowLinks(p, league);
+          const seed = standings[p.Team] ? `#${standings[p.Team].rank} ` : '';
+          return (
+            <div class:list={["rank-card", { r1: rk === 1 }]}>
+              <div class={`rank-num ${medal}`}>{rk}</div>
+              <div class="rank-info">
+                <a class="rank-name" href={playerHref} set:html={`${p.Player}${tagBadge(p) ? ' ' + tagBadge(p) : ''}`} />
+                {teamHref
+                  ? <a class="rank-team-link" href={teamHref}>{seed}{p.Team}</a>
+                  : <span class="rank-team-link">{seed}{p.Team}</span>}
+              </div>
+              <div class="rank-stat">
+                <div class="rank-val">{p[active.field]}</div>
+                <div class="rank-gp">{p.GP} GP</div>
+                <Fragment set:html={extraHtml(p, active)} />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  </div>
+</div>

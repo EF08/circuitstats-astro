@@ -1,0 +1,87 @@
+---
+// TeamsGrid.astro — the pre-SEO view-teams grid, verbatim. Builds unique
+// (team, grp) entries, drops 'Multi' collision artifacts, sorts by standings
+// then name, and renders t-card links to real team pages. Paywall off → no gate.
+import { type League, type Player } from '../lib/leagues';
+import { teamHrefFor } from '../lib/slugs';
+import { teamSlug } from '../lib/slugs';
+
+interface Props { league: League; }
+const { league } = Astro.props as Props;
+const { players, standings, combineKind, circuit, age } = league;
+
+// group key per the app's teamGroupKey (drives combined-view separation + link scope)
+function groupKey(p: Player): string {
+  if (combineKind === 'all') return p._tag || '';
+  if (combineKind === 'age') return p._src || '';
+  if (combineKind === 'circuit') return p._age || '';
+  return '';
+}
+function matchGrp(p: Player, grp: string): boolean {
+  if (!grp) return true;
+  return p._tag === grp || p._age === grp || p._src === grp;
+}
+const SRC_TO_CIRCUIT: Record<string, string> = { UAA: 'uaa', EYBL: 'eybl', '3SSB': '3ssb' };
+
+const seen = new Map<string, { team: string; grp: string }>();
+for (const p of players) {
+  const grp = groupKey(p);
+  const key = p.Team + '~~' + grp;
+  if (!seen.has(key)) seen.set(key, { team: p.Team, grp });
+}
+const entries = [...seen.values()].filter(e => e.grp !== 'Multi');
+entries.sort((a, b) => {
+  const ra = standings[a.team] ? standings[a.team].rank : 999;
+  const rb = standings[b.team] ? standings[b.team].rank : 999;
+  return ra !== rb ? ra - rb : a.team.localeCompare(b.team) || (a.grp || '').localeCompare(b.grp || '');
+});
+
+// resolve the real team-page href for an entry (base league direct; combined via tags)
+function teamHref(team: string, grp: string): string | null {
+  if (league.isBase || league.key === 's2u15') return `${league.urlBase}/team/${teamSlug(team, league)}`;
+  let c = circuit, a = age;
+  if (!c && grp && SRC_TO_CIRCUIT[grp]) c = SRC_TO_CIRCUIT[grp];       // age-all: grp is _src
+  if (!a && grp) a = grp.toLowerCase().startsWith('u') ? grp.toLowerCase() : a; // circuit-all: grp is _age (U15)
+  // all-all: grp is _tag like 'UAA U15' — parse
+  if (combineKind === 'all' && grp) {
+    const m = grp.match(/(UAA|EYBL|3SSB)\s*(U?1[567])/i);
+    if (m) { c = SRC_TO_CIRCUIT[m[1].toUpperCase()] || c; a = ('u' + m[2].replace(/\D/g, '')); }
+  }
+  return teamHrefFor(team, c, a);
+}
+
+const cards = entries.map(({ team, grp }) => {
+  const ps = players.filter(p => p.Team === team && matchGrp(p, grp));
+  const gp = Math.max(...ps.map(p => p.GP || 0));
+  const totPts = ps.reduce((s, p) => s + (p['Tot PTS'] || 0), 0);
+  const teamPPG = gp > 0 ? (totPts / gp).toFixed(1) : '—';
+  const st = standings[team];
+  const href = teamHref(team, grp) || '#';
+  return { team, grp, n: ps.length, teamPPG, st, href };
+});
+---
+<div class="view active" id="view-teams">
+  <div class="sticky-bar">
+    <div class="srch-wrap">
+      <svg class="srch-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path>
+      </svg>
+      <input class="srch-inp" id="t-search" type="search" placeholder="Search teams&hellip;" autocomplete="off" />
+      <button class="clear-x" id="t-clear">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="15" height="15">
+          <path d="M18 6 6 18M6 6l12 12"></path>
+        </svg>
+      </button>
+    </div>
+  </div>
+  <div class="teams-grid" id="teams-grid">
+    {cards.map(c => (
+      <a class="t-card" href={c.href}>
+        {c.st && <div class="t-rank" set:html={`#${c.st.rank} &nbsp;${c.st.w}W–${c.st.l}L`} />}
+        <div class="t-name">{c.team}</div>
+        {c.grp && <div class="t-grp">{c.grp}</div>}
+        <div class="t-meta" set:html={`${c.n} players &middot; ${c.teamPPG} PPG`} />
+      </a>
+    ))}
+  </div>
+</div>

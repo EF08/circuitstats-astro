@@ -1,0 +1,133 @@
+---
+// Compare.astro — the pre-SEO view-compare, verbatim. Two states:
+//  • hub (no pair): empty slots + hint (looks exactly like the app's default).
+//  • pair (a & b): filled slots + the CMP_STATS comparison table (renderCompare).
+// The picker overlay is real; a JS-free-by-default island wires slot clicks to
+// navigate to /compare/<a>-vs-<b> (a real URL), instead of the old in-app state.
+import { CMP_STATS, type CmpStat } from '../lib/catalog';
+import type { League, Player } from '../lib/leagues';
+import { playerSlug } from '../lib/slugs';
+
+interface Props { league: League; a?: Player | null; b?: Player | null; }
+const { league, a = null, b = null } = Astro.props as Props;
+const { players, combineKind } = league;
+
+function tagBadge(p: Player): string {
+  if (combineKind === 'circuit' && p._age) return `<span class="age-badge">${p._age}</span>`;
+  if (combineKind === 'age' && p._src) return `<span class="age-badge">${p._src || 'Multi'}</span>`;
+  if (combineKind === 'all' && p._tag) return `<span class="age-badge">${p._tag}</span>`;
+  return '';
+}
+const getVal = (p: Player, s: CmpStat) => {
+  if (s.calc) { const d = 2 * (p.FGA + 0.44 * p.FTA); return d > 0 ? p['Tot PTS'] / d * 100 : 0; }
+  if (s.fn) return s.fn(p);
+  return p[s.fa!] || 0;
+};
+const fmtVal = (p: Player, s: CmpStat): string => {
+  if (s.calc) { const d = 2 * (p.FGA + 0.44 * p.FTA); return d > 0 ? (p['Tot PTS'] / d * 100).toFixed(1) + '%' : 'N/A'; }
+  if (s.fn) return s.fn(p).toFixed(1);
+  const sv = p[s.fa!];
+  if (sv == null) return `<span class="pp-no-track">—</span>`;
+  return sv + (s.pct ? '%' : '');
+};
+
+let tableHtml = '';
+if (a && b) {
+  const rows = CMP_STATS.map(stat => {
+    if (stat.section) return `
+      <div style="padding:12px 0 4px">
+        <span style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--text-3)">${stat.section}</span>
+      </div>`;
+    const av = getVal(a, stat), bv = getVal(b, stat);
+    const aWin = stat.lowerBetter ? av < bv : av > bv;
+    const bWin = stat.lowerBetter ? bv < av : bv > av;
+    return `<div class="cmp-row">
+      <div class="cmp-cell">${stat.lbl}</div>
+      <div class="cmp-cell ${aWin ? 'win' : av === bv ? 'draw' : ''}">${fmtVal(a, stat)}</div>
+      <div class="cmp-cell ${bWin ? 'win' : av === bv ? 'draw' : ''}">${fmtVal(b, stat)}</div>
+    </div>`;
+  }).join('');
+  tableHtml = `
+    <div class="cmp-table-wrap">
+      <div class="cmp-row header">
+        <div class="cmp-cell">Stat</div>
+        <div class="cmp-cell">${a.Player.split(' ')[0]}</div>
+        <div class="cmp-cell">${b.Player.split(' ')[0]}</div>
+      </div>
+      ${rows}
+    </div>`;
+}
+
+const slot = (p: Player | null, i: number) => p
+  ? `<div class="cmp-p-name">${p.Player}${tagBadge(p) ? ' ' + tagBadge(p) : ''}</div><div class="cmp-p-team">${p.Team}</div>`
+  : `<div class="cmp-plus">+</div><div class="cmp-placeholder">Player ${i + 1}</div>`;
+
+// picker data for the island: {n: name, s: slug, t: team, p: ppg} for this scope.
+// Slug resolves to each player's canonical base-league page (combined scopes use tags).
+import { canonicalPlayerHref } from '../lib/slugs';
+const picker = players.map(p => {
+  const href = league.isBase || league.key === 's2u15'
+    ? `/player/${playerSlug(p.Player, league)}` : (canonicalPlayerHref(p.Player) || '');
+  const s = href.replace('/player/', '');
+  return { n: p.Player, s, t: p.Team, p: p.PPG };
+});
+const pickerJson = JSON.stringify(picker);
+---
+<div class="view active" id="view-compare">
+  <div class="cmp-selectors">
+    <div class:list={["cmp-slot", { filled: !!a }]} id="cmp-slot-0" set:html={slot(a, 0)}></div>
+    <div class="cmp-vs">VS</div>
+    <div class:list={["cmp-slot", { filled: !!b }]} id="cmp-slot-1" set:html={slot(b, 1)}></div>
+  </div>
+  <div id="cmp-body">
+    {tableHtml
+      ? <Fragment set:html={tableHtml} />
+      : <div class="cmp-hint">Select two players above to compare their stats.</div>}
+  </div>
+  <div class="picker-overlay" id="picker-overlay">
+    <div class="picker-modal">
+      <div class="picker-bar">
+        <input class="srch-inp" id="picker-inp" type="search" placeholder="Search players&hellip;" autocomplete="off" />
+        <button class="picker-close" id="picker-close">Cancel</button>
+      </div>
+      <div class="picker-list" id="picker-list"></div>
+    </div>
+  </div>
+</div>
+
+<script type="application/json" id="picker-data" set:html={pickerJson}></script>
+<script is:inline define:vars={{ slotA: a ? playerSlug(a.Player, league) : '', slotB: b ? playerSlug(b.Player, league) : '' }}>
+  (function () {
+    var data = JSON.parse(document.getElementById('picker-data').textContent);
+    var picked = [slotA || null, slotB || null];
+    var active = 0;
+    var overlay = document.getElementById('picker-overlay');
+    var inp = document.getElementById('picker-inp');
+    var listEl = document.getElementById('picker-list');
+    function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+    function render(q) {
+      var ql = (q || '').toLowerCase();
+      var rows = data.filter(function (p) { return p.n.toLowerCase().includes(ql) || p.t.toLowerCase().includes(ql); })
+        .sort(function (a, b) { return b.p - a.p; });
+      listEl.innerHTML = rows.map(function (p) {
+        return '<div class="picker-item" data-slug="' + p.s + '"><div class="pi-name">' + esc(p.n) + '</div><div class="pi-info">' + esc(p.t) + ' &middot; ' + p.p + ' PPG</div></div>';
+      }).join('');
+    }
+    function open(slot) { active = slot; inp.value = ''; render(''); overlay.classList.add('open'); document.body.style.overflow = 'hidden'; setTimeout(function () { inp.focus(); }, 150); }
+    function close() { overlay.classList.remove('open'); document.body.style.overflow = ''; }
+    function go() {
+      if (picked[0] && picked[1]) {
+        var pair = picked[0] < picked[1] ? picked[0] + '-vs-' + picked[1] : picked[1] + '-vs-' + picked[0];
+        location.href = '/compare/' + pair;
+      }
+    }
+    document.getElementById('cmp-slot-0').addEventListener('click', function () { open(0); });
+    document.getElementById('cmp-slot-1').addEventListener('click', function () { open(1); });
+    document.getElementById('picker-close').addEventListener('click', close);
+    inp.addEventListener('input', function (e) { render(e.target.value); });
+    listEl.addEventListener('click', function (e) {
+      var item = e.target.closest('.picker-item'); if (!item) return;
+      picked[active] = item.getAttribute('data-slug'); close(); go();
+    });
+  })();
+</script>

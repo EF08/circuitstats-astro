@@ -1,0 +1,79 @@
+---
+// StatsTable.astro — the pre-SEO stats-table view (view-stats) as a real page.
+// Server-rendered sorted by PPG desc (the app's default), ALL rows present so
+// nothing is hidden behind JS/pagination. A client island (StatsTableInteractive)
+// layers the app's exact click-to-sort / search / name-expand back on top.
+import { TBL_COLS, getColVal, sortCmp, fmtColVal, abbr, type Player } from '../lib/stats';
+import type { League } from '../lib/leagues';
+import { rowLinks } from '../lib/links';
+
+interface Props { league: League; }
+const { league } = Astro.props as Props;
+const { players, ranks, standings, qualMin, combineKind } = league;
+const RANK = ranks.RANK;
+
+// default sort: PPG desc (verbatim: getColVal + sortCmp)
+const rows = [...players].sort((a, b) => {
+  const col = TBL_COLS.find(c => c.f === 'PPG')!;
+  return sortCmp(a, b, 'PPG', getColVal(a, col), getColVal(b, col), 'desc', qualMin);
+});
+
+function tagBadge(p: Player): string {
+  if (combineKind === 'circuit' && p._age) return `<span class="age-badge">${p._age}</span>`;
+  if (combineKind === 'age' && p._src) return `<span class="age-badge">${p._src || 'Multi'}</span>`;
+  if (combineKind === 'all' && p._tag) return `<span class="age-badge">${p._tag}</span>`;
+  return '';
+}
+const total = rows.length;
+---
+<div class="view active" id="view-stats">
+  <div class="stats-top-bar">
+    <div class="srch-wrap">
+      <svg class="srch-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path>
+      </svg>
+      <input class="srch-inp" id="tbl-search" type="search" placeholder="Search players or teams&hellip;"
+        autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+      <button class="clear-x" id="tbl-clear">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="15" height="15">
+          <path d="M18 6 6 18M6 6l12 12"></path>
+        </svg>
+      </button>
+    </div>
+    <div class="tbl-meta" id="tbl-meta">Showing {total} of {total} player{total !== 1 ? 's' : ''} · tap column to sort</div>
+  </div>
+  <div class="tbl-wrap">
+    <table class="tbl" id="main-table">
+      <thead id="main-thead">
+        <tr>
+          <th class="player-th">Player <button class="name-toggle-btn" id="name-toggle-btn">+</button></th>
+          {TBL_COLS.map(c => (
+            <th id={`th-${c.f}`} class={c.f === 'PPG' ? 'sorted' : undefined}>
+              {c.h} <span class="sort-arrow" id={`arr-${c.f}`}>{c.f === 'PPG' ? '↓' : ''}</span>{c.pct && (
+                <button class="pct-qual-btn" onclick="event.stopPropagation();this.classList.toggle('tip-open')">?<span class="pct-qual-tip">min. {qualMin} makes to qualify</span></button>
+              )}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody id="main-tbody">
+        {rows.map(p => {
+          const { playerHref, teamHref } = rowLinks(p, league);
+          const rnk = RANK['PPG'] && RANK['PPG'][p.Player];
+          const seed = standings[p.Team] ? `#${standings[p.Team].rank} ` : '';
+          return (
+            <tr>
+              <td class="tbl-td player-td">
+                <a class="tbl-pname" href={playerHref} data-abbr={abbr(p.Player)} data-full={p.Player}>{abbr(p.Player)}{rnk && <span class="tbl-stat-rank">#{rnk}</span>}<Fragment set:html={tagBadge(p)} /></a>
+                {teamHref
+                  ? <a class="tbl-pteam" href={teamHref}>{seed}{p.Team}</a>
+                  : <span class="tbl-pteam">{seed}{p.Team}</span>}
+              </td>
+              {TBL_COLS.map(c => <td class="tbl-td">{fmtColVal(p, c)}</td>)}
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  </div>
+</div>

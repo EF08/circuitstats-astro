@@ -1,0 +1,118 @@
+---
+// PlayerPage.astro — verbatim reproduction of the pre-SEO renderPlayerPage()
+// DOM. Rank chips that have a matching leaderboard become real <a> links (their
+// at-rest appearance is identical to the original clickable spans); chips for
+// fields without a leaderboard render as plain spans, same as seo_render did.
+import { calcTS, type Player } from '../lib/stats';
+import type { League } from '../lib/leagues';
+
+interface Props { player: Player; league: League; }
+const { player: p, league } = Astro.props as Props;
+const { ranks, standings, qualMin, circuit, age, combineKind } = league;
+const RANK = ranks.RANK;
+const N = league.players.length;
+
+// field -> leaderboard stat slug (only these get clickable rank links)
+// The pre-SEO Leaders view has exactly these 10 boards (no TS%), so only these
+// rank chips become links; every other field's chip is a plain, non-clickable span.
+const STAT_SLUG: Record<string, string> = {
+  PPG: 'ppg', RPG: 'rpg', APG: 'apg', SPG: 'spg', BPG: 'bpg', 'TO/G': 'to-g',
+  'FG%': 'fg-pct', '3FG%': '3p-pct', '3PM/G': '3pm-per-game', 'FT%': 'ft-pct',
+};
+const leaderBase = league.urlBase; // leaderboards live at {urlBase}/leaders/{slug}
+
+const PCT_QUAL_FIELDS = new Set(['FG%', '3FG%', 'FT%', '_ts']);
+
+function tagBadge(): string {
+  if (combineKind === 'circuit' && p._age) return `<span class="age-badge">${p._age}</span>`;
+  if (combineKind === 'age' && p._src) return `<span class="age-badge">${p._src || 'Multi'}</span>`;
+  if (combineKind === 'all' && p._tag) return `<span class="age-badge">${p._tag}</span>`;
+  return '';
+}
+// rank chip for a pair-row value
+function rk(f: string | null): string {
+  if (!f) return '<span class="pp-pr-rank"></span>';
+  const r = RANK[f] && RANK[f][p.Player];
+  if (!r) return '<span class="pp-pr-rank"></span>';
+  const inner = `#${r}<br>/${N}`;
+  const slug = STAT_SLUG[f];
+  if (slug) return `<a class="pp-pr-rank clickable" href="${leaderBase}/leaders/${slug}" title="See full ranking">${inner}</a>`;
+  return `<span class="pp-pr-rank">${inner}</span>`;
+}
+function prk(f: string): string {
+  const r = RANK[f] && RANK[f][p.Player];
+  if (!r) return '';
+  const qualNote = PCT_QUAL_FIELDS.has(f) ? `<span class="pp-pct-qual" title="Minimum ${qualMin} makes to qualify">ⓘ</span>` : '';
+  const body = `#${r}/${N}${PCT_QUAL_FIELDS.has(f) ? ` (min. ${qualMin} made)` : ''}`;
+  const slug = STAT_SLUG[f];
+  const el = slug
+    ? `<a class="pp-pct-rank clickable" href="${leaderBase}/leaders/${slug}" title="See full ranking">${body}</a>`
+    : `<div class="pp-pct-rank">${body}</div>`;
+  return el + qualNote;
+}
+const nd = () => `<span class="pp-no-track">—</span>`;
+const nv = (v: any) => (v == null) ? nd() : v;
+
+function row(l1: string, v1: any, f1: string | null, l2: string, v2: any, f2: string | null, hi = false): string {
+  return `
+    <div class="pp-pair-row">
+      <div class="pp-pr-cell"><span class="pp-pr-lbl">${l1}</span><span class="pp-pr-val${hi ? ' hi' : ''}">${nv(v1)}</span>${rk(f1)}</div>
+      <div class="pp-pr-sep"></div>
+      <div class="pp-pr-cell"><span class="pp-pr-lbl">${l2}</span><span class="pp-pr-val">${nv(v2)}</span>${rk(f2)}</div>
+    </div>`;
+}
+function pct(l: string, v: string, f: string): string {
+  return `<div class="pp-pct-cell"><div class="pp-pct-lbl">${l}</div><div class="pp-pct-val">${v}</div>${prk(f)}</div>`;
+}
+
+const tov = p['TO/G'] != null ? Math.round(p['TO/G'] * p.GP) : null;
+const fgmPG = p.FGM != null ? (p.FGM / p.GP).toFixed(1) : null;
+const fgaPG = p.FGA != null ? (p.FGA / p.GP).toFixed(1) : null;
+const paPG = p['3PA'] != null ? (p['3PA'] / p.GP).toFixed(1) : null;
+const ftmPG = p.FTM != null ? (p.FTM / p.GP).toFixed(1) : null;
+const ftaPG = p.FTA != null ? (p.FTA / p.GP).toFixed(1) : null;
+const st = standings[p.Team];
+const teamLabel = st ? `#${st.rank} ${p.Team}` : p.Team;
+
+// team detail href (base league, or resolve via tags for combined — but detail
+// pages are always rendered from a base league, so a direct slug works)
+import { teamSlug } from '../lib/slugs';
+const teamHref = p.Team ? `${league.urlBase}/team/${teamSlug(p.Team, league)}` : '#';
+
+const body = `
+    <div class="pp-hero">
+      <div class="pp-name">${p.Player}${tagBadge() ? ` ${tagBadge()}` : ''}</div>
+      <a class="pp-team-link" href="${teamHref}">
+        ${teamLabel}
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </a>
+      <div class="pp-gp">${p.GP} games played</div>
+    </div>
+    ${row('PPG', p.PPG, 'PPG', 'PTS', p['Tot PTS'], 'Tot PTS', true)}
+    ${row('FGM/G', fgmPG, 'FGM/G', 'FGM', p.FGM, 'FGM')}
+    ${row('FGA/G', fgaPG, 'FGA/G', 'FGA', p.FGA, 'FGA')}
+    ${row('RPG', p.RPG, 'RPG', 'REB', p['Tot REB'], 'Tot REB')}
+    ${row('APG', p.APG, 'APG', 'AST', p['Tot AST'], 'Tot AST')}
+    ${row('SPG', p.SPG, 'SPG', 'STL', p['Tot STL'], 'Tot STL')}
+    ${row('BPG', p.BPG, 'BPG', 'BLK', p['Tot BLK'], 'Tot BLK')}
+    ${row('TO/G', p['TO/G'], 'TO/G', 'TOV', tov, 'TOV')}
+    ${row('3PM/G', p['3PM/G'], '3PM/G', '3PM', p['3PM'], '3PM')}
+    ${row('3PA/G', paPG, '3PA/G', '3PA', p['3PA'], '3PA')}
+    ${row('FTM/G', ftmPG, 'FTM/G', 'FTM', p.FTM, 'FTM')}
+    ${row('FTA/G', ftaPG, 'FTA/G', 'FTA', p.FTA, 'FTA')}
+    <div class="pp-pct-grid">
+      ${pct('FG%', p['FG%'] != null ? p['FG%'] + '%' : '—', 'FG%')}
+      ${pct('3P%', p['3FG%'] != null ? p['3FG%'] + '%' : '—', '3FG%')}
+      ${pct('FT%', p['FT%'] != null ? p['FT%'] + '%' : '—', 'FT%')}
+      ${pct('TS%', calcTS(p), '_ts')}
+    </div>
+    <div style="height:16px"></div>`;
+---
+<div class="view active" id="view-player">
+  <a class="back-btn" href={league.urlBase + '/stats'}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+      <path d="M19 12H5M12 5l-7 7 7 7"></path>
+    </svg>Back
+  </a>
+  <div id="player-page-content" set:html={body}></div>
+</div>

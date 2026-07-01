@@ -1,0 +1,38 @@
+---
+// /compare/<a>-vs-<b> — head-to-head page for ANY two players. Server-rendered
+// (prerender=false) so every pair a visitor can pick resolves to a real URL with
+// real HTML (crawlable, shareable) — no pre-building millions of pairs. Renders
+// the exact pre-SEO compare view with both slots filled.
+export const prerender = false;
+
+import Layout from '../../layouts/Layout.astro';
+import Compare from '../../components/Compare.astro';
+import { refBySlug } from '../../lib/slugs';
+
+const slug = Astro.params.slug || '';
+const parts = slug.split('-vs-');
+const SITE = 'https://www.circuitstats.com';
+
+let a = null, b = null, league = null;
+if (parts.length === 2) {
+  const ra = refBySlug(parts[0]);
+  const rb = refBySlug(parts[1]);
+  if (ra && rb) { a = ra.player; b = rb.player; league = ra.league; }
+}
+if (!a || !b || !league) {
+  return new Response('Comparison not found', { status: 404 });
+}
+const title = `${a.Player} vs ${b.Player} — Stat Comparison 2026 | Circuit Stats`;
+const desc = `${a.Player} vs ${b.Player} head-to-head: PPG, rebounds, assists, shooting and totals compared. 2026 season.`;
+---
+<Layout
+  title={title}
+  description={desc}
+  subLabel={league.subLabel}
+  pillLabel={league.label}
+  pageBase={league.urlBase}
+  activeTab="compare"
+  canonical={`${SITE}/compare/${slug}`}
+>
+  <Compare league={league} a={a} b={b} />
+</Layout>

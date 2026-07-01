@@ -1,0 +1,105 @@
+---
+// Layout.astro — the exact chrome from the pre-SEO app (header + bottom nav),
+// with every navigation turned into a real link instead of a hash toggle.
+// Appearance is byte-for-byte the original: same DOM classes, same CSS, same
+// logo. Only the hrefs changed (hash -> real URLs) and the league dropdown
+// items are now <a> links (native, JS-free), the pill toggled by a 6-line script.
+import '../styles/global.css';
+import { LEAGUES } from '../lib/leagues';
+
+export interface Props {
+  title: string;
+  description?: string;
+  subLabel: string;          // header sub line (scope)
+  pillLabel: string;         // header pill text (short league label)
+  pageBase: string;          // url base for the 4 nav tabs, e.g. '/uaa/u15'
+  activeTab: 'stats' | 'leaders' | 'compare' | 'teams' | null;
+  canonical?: string;
+  ogImage?: string;
+  robots?: string;
+}
+const { title, description = '', subLabel, pillLabel, pageBase, activeTab, canonical, ogImage, robots } = Astro.props;
+
+// Bottom-nav destinations (real pages). Leaders defaults to the PPG board.
+const tabs = [
+  { v: 'stats', label: 'Stats', href: `${pageBase}/stats` },
+  { v: 'leaders', label: 'Leaders', href: `${pageBase}/leaders/ppg` },
+  { v: 'compare', label: 'Compare', href: `${pageBase}/compare` },
+  { v: 'teams', label: 'Teams', href: `${pageBase}/teams` },
+];
+const navIcons: Record<string, string> = {
+  stats: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/>',
+  leaders: '<path d="M6 9H4.5a2.5 2.5 0 0 0 0 5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 1 0 5H18"/><path d="M8 9h8v5a4 4 0 0 1-8 0V9z"/><path d="M6 20h12M12 14v6"/>',
+  compare: '<path d="M10 3H6a2 2 0 0 0-2 2v14c0 1.1.9 2 2 2h4M14 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M12 8v8M9 11l3-3 3 3"/>',
+  teams: '<path d="M12 2 3 7v5c0 5.25 3.75 10.15 9 11.25C17.25 22.15 21 17.25 21 12V7L12 2z"/>',
+};
+---
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>{title}</title>
+  {description && <meta name="description" content={description} />}
+  {canonical && <link rel="canonical" href={canonical} />}
+  {robots && <meta name="robots" content={robots} />}
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Circuit Stats" />
+  <meta property="og:title" content={title} />
+  {description && <meta property="og:description" content={description} />}
+  {canonical && <meta property="og:url" content={canonical} />}
+  {ogImage && <meta property="og:image" content={ogImage} />}
+  {ogImage && <meta property="og:image:width" content="1200" />}
+  {ogImage && <meta property="og:image:height" content="630" />}
+  <meta name="twitter:card" content={ogImage ? 'summary_large_image' : 'summary'} />
+  <meta name="twitter:title" content={title} />
+  {description && <meta name="twitter:description" content={description} />}
+  {ogImage && <meta name="twitter:image" content={ogImage} />}
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <meta name="theme-color" content="#08090f" />
+</head>
+<body>
+<header class="hdr">
+  <a class="hdr-home" id="hdr-home" href="/">
+    <div class="hdr-logo" id="hdr-logo" role="img" aria-label="Circuit Stats logo"></div>
+    <div class="hdr-info">
+      <div class="hdr-title" id="hdr-title">Circuit Stats</div>
+      <div class="hdr-sub" id="hdr-sub">{subLabel}</div>
+    </div>
+  </a>
+  <a class="hdr-contact" href="mailto:andyfazliu@hotmail.com?subject=UAA U15 League Stats">
+    Any questions?<br /><span>Contact</span>
+  </a>
+  <div class="hdr-pill" id="league-pill" onclick="toggleLeagueDropdown(event)" title="Switch mode">
+    <span id="league-pill-label">{pillLabel}</span><span class="hdr-pill-caret">▼</span>
+    <div class="league-dropdown" id="league-dropdown">
+      {LEAGUES.map(l => <a class="ld-item" href={`${l.urlBase}/${activeTab === 'leaders' ? 'leaders/ppg' : activeTab === 'compare' ? 'compare' : activeTab === 'teams' ? 'teams' : 'stats'}`}>{l.label}</a>)}
+    </div>
+  </div>
+</header>
+
+<main class="main">
+  <slot />
+</main>
+
+<nav class="nav">
+  {tabs.map(t => (
+    <a class:list={["nav-btn", { active: t.v === activeTab }]} data-v={t.v} href={t.href}>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" set:html={navIcons[t.v]} />
+      {t.label}
+    </a>
+  ))}
+</nav>
+
+<script is:inline>
+  function toggleLeagueDropdown(e) {
+    e.stopPropagation();
+    document.getElementById('league-dropdown').classList.toggle('open');
+  }
+  document.addEventListener('click', function () {
+    var dd = document.getElementById('league-dropdown');
+    if (dd) dd.classList.remove('open');
+  });
+</script>
+</body>
+</html>

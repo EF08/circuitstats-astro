@@ -1,0 +1,35 @@
+---
+import Layout from '../../../../layouts/Layout.astro';
+import TeamPage from '../../../../components/TeamPage.astro';
+import { BASE_LEAGUES } from '../../../../lib/leagues';
+import { teamSlug } from '../../../../lib/slugs';
+
+export function getStaticPaths() {
+  const paths: any[] = [];
+  for (const lg of BASE_LEAGUES) {
+    const teams = [...new Set(lg.players.map(p => p.Team).filter(Boolean))];
+    for (const t of teams) {
+      paths.push({
+        params: { circuit: lg.circuit, age: lg.age, slug: teamSlug(t, lg) },
+        props: { team: t, league: lg },
+      });
+    }
+  }
+  return paths;
+}
+
+const { team, league } = Astro.props;
+const SITE = 'https://www.circuitstats.com';
+const n = league.players.filter((p: any) => p.Team === team).length;
+---
+<Layout
+  title={`${team} ${league.scopeLabel} Roster & Stats 2026 | Circuit Stats`}
+  description={`${team} (${league.scopeLabel}) 2026 roster with full player stats — PPG, RPG, shooting and national rankings.`}
+  subLabel={league.subLabel}
+  pillLabel={league.label}
+  pageBase={league.urlBase}
+  activeTab="teams"
+  canonical={`${SITE}${league.urlBase}/team/${Astro.params.slug}`}
+>
+  <TeamPage team={team} league={league} />
+</Layout>
