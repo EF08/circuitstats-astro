@@ -96,7 +96,7 @@ const pickerJson = JSON.stringify(picker);
 </div>
 
 <script type="application/json" id="picker-data" set:html={pickerJson}></script>
-<script is:inline define:vars={{ slotA: a ? playerSlug(a.Player, league) : '', slotB: b ? playerSlug(b.Player, league) : '' }}>
+<script is:inline define:vars={{ slotA: a ? playerSlug(a.Player, league) : '', slotB: b ? playerSlug(b.Player, league) : '', leagueKey: league.key }}>
   (function () {
     var data = JSON.parse(document.getElementById('picker-data').textContent);
     var picked = [slotA || null, slotB || null];
@@ -128,7 +128,10 @@ const pickerJson = JSON.stringify(picker);
     function go() {
       if (picked[0] && picked[1]) {
         var pair = picked[0] < picked[1] ? picked[0] + '-vs-' + picked[1] : picked[1] + '-vs-' + picked[0];
-        location.href = '/compare/' + pair;
+        // Carry the scope being browsed along so the destination page keeps
+        // showing it (instead of falling back to whichever base league the
+        // picked players themselves belong to).
+        location.href = '/compare/' + pair + '?league=' + encodeURIComponent(leagueKey);
       }
     }
     document.getElementById('cmp-slot-0').addEventListener('click', function () { open(0); });

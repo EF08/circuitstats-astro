@@ -8,6 +8,7 @@ export const prerender = false;
 import Layout from '../../layouts/Layout.astro';
 import Compare from '../../components/Compare.astro';
 import { refBySlug } from '../../lib/slugs';
+import { byKey } from '../../lib/leagues';
 import { compareOg } from '../../lib/og';
 
 const slug = Astro.params.slug || '';
@@ -23,6 +24,12 @@ if (parts.length === 2) {
 if (!a || !b || !league) {
   return new Response('Comparison not found', { status: 404 });
 }
+// Keep showing whatever scope the visitor was actually browsing (passed through
+// by Compare.astro's picker) instead of always falling back to player A's own
+// base league — e.g. comparing from a combined "All Circuits" or Session 2 view
+// shouldn't force the header back to a single base league.
+const fromLeague = byKey(Astro.url.searchParams.get('league') || '');
+if (fromLeague) league = fromLeague;
 const title = `${a.Player} vs ${b.Player} — Stat Comparison 2026 | Circuit Stats`;
 const desc = `${a.Player} vs ${b.Player} head-to-head: PPG, rebounds, assists, shooting and totals compared. 2026 season.`;
 ---
