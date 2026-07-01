@@ -93,6 +93,9 @@ const SITE = 'https://www.circuitstats.com';
         var trafficRes = await fetch(GB + '/dashboard/traffic?limit=15', { headers: { 'Authorization': 'Bearer ' + token } });
         var t = trafficRes.ok ? await trafficRes.json() : null;
 
+        var sharesRes = await fetch(GB + '/dashboard/shares?limit=15', { headers: { 'Authorization': 'Bearer ' + token } });
+        var sh = sharesRes.ok ? await sharesRes.json() : null;
+
         var maxDay = Math.max.apply(null, d.visitsByDay.map(function (x) { return x.count; }).concat([1]));
         var byDayBars = d.visitsByDay.slice(-14).map(function (r) {
           var pct = Math.round((r.count / maxDay) * 100);
@@ -160,6 +163,28 @@ const SITE = 'https://www.circuitstats.com';
                { h: 'Match-up', v: nameOf },
                { h: 'Location', v: locOf }],
               t.compare.recent
+            )
+          );
+        }
+
+        if (sh) {
+          // Shares: what's actually getting shared (native share sheet or the
+          // clipboard-copy fallback), broken into the same buckets as traffic.
+          var shareTop = [].concat(
+            sh.player.top.map(function (r) { return { label: nameOf(r), count: r.count }; }),
+            sh.team.top.map(function (r) { return { label: nameOf(r), count: r.count }; }),
+            sh.compare.top.map(function (r) { return { label: nameOf(r), count: r.count }; })
+          ).sort(function (a, b) { return b.count - a.count; }).slice(0, 15);
+          html += card(
+            'Shares',
+            sh.totalShares + ' total shares (player, team &amp; comparison pages)',
+            subHeading('Most-shared pages') + barList(shareTop, function (r) { return r.label; }, function (r) { return r.count; }) +
+            subHeading('Recent shares') + hitTable(
+              [{ h: 'Time', v: function (r) { return r.displayTime; } },
+               { h: 'Page', v: nameOf },
+               { h: 'Via', v: function (r) { return r.method === 'native' ? 'Share sheet' : 'Copied link'; } },
+               { h: 'Location', v: locOf }],
+              sh.recent
             )
           );
         }
