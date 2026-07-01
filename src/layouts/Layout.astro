@@ -88,11 +88,6 @@ const navIcons: Record<string, string> = {
       {LEAGUES.map(l => <a class="ld-item" href={`${l.urlBase}/${activeTab === 'leaders' ? 'leaders/ppg' : activeTab === 'compare' ? 'compare' : activeTab === 'teams' ? 'teams' : 'stats'}`} data-track={`header:league-switch:${l.key}`}>{l.label}</a>)}
     </div>
   </div>
-  <button class="hdr-share-btn" id="share-btn" title="Share this page" aria-label="Share this page" data-track="header:share">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-      <path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/>
-    </svg>
-  </button>
 </header>
 
 <main class="main">
@@ -100,7 +95,19 @@ const navIcons: Record<string, string> = {
 </main>
 
 <nav class="nav">
-  {tabs.map(t => (
+  {tabs.slice(0, 2).map(t => (
+    <a class:list={["nav-btn", { active: t.v === activeTab }]} data-v={t.v} href={t.href} data-track={`nav:${t.v}`}>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" set:html={navIcons[t.v]} />
+      {t.label}
+    </a>
+  ))}
+  <button class="nav-btn" id="share-btn" title="Share this page" aria-label="Share this page" data-track="header:share">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/>
+    </svg>
+    Share
+  </button>
+  {tabs.slice(2).map(t => (
     <a class:list={["nav-btn", { active: t.v === activeTab }]} data-v={t.v} href={t.href} data-track={`nav:${t.v}`}>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" set:html={navIcons[t.v]} />
       {t.label}
