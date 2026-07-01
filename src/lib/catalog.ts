@@ -3,24 +3,26 @@
 import type { Player } from './stats';
 
 export interface Cat {
-  lbl: string; field: string; rkField: string;
+  lbl: string; fullLbl: string; field: string; rkField: string;
   filter: ((p: Player) => boolean) | null; extra: string[];
   lowerBetter?: boolean; slug: string;
 }
 // order + contents match the app's CATS exactly (10 boards, no TS%).
 // filter uses a qualMin passed at call time (see makeCats) so it isn't tied to a global.
+// lbl = short tab label (unchanged); fullLbl = the spelled-out board title
+// ("Points Per Game" etc), used only in the "Top 100 ___" heading.
 export function makeCats(qualMin: number): Cat[] {
   return [
-    { lbl: 'Points', field: 'PPG', rkField: 'PPG', filter: null, extra: [], slug: 'ppg' },
-    { lbl: 'Rebounds', field: 'RPG', rkField: 'RPG', filter: null, extra: [], slug: 'rpg' },
-    { lbl: 'Assists', field: 'APG', rkField: 'APG', filter: null, extra: [], slug: 'apg' },
-    { lbl: 'Steals', field: 'SPG', rkField: 'SPG', filter: null, extra: [], slug: 'spg' },
-    { lbl: 'Blocks', field: 'BPG', rkField: 'BPG', filter: null, extra: [], slug: 'bpg' },
-    { lbl: 'TO/G', field: 'TO/G', rkField: 'TO/G', filter: null, extra: [], lowerBetter: true, slug: 'to-g' },
-    { lbl: 'FG%', field: 'FG%', rkField: 'FG%', filter: p => p.FGM >= qualMin, extra: ['FGM', 'FGA'], slug: 'fg-pct' },
-    { lbl: '3FG%', field: '3FG%', rkField: '3FG%', filter: p => p['3PM'] >= qualMin, extra: ['3PM', '3PA'], slug: '3p-pct' },
-    { lbl: '3PM/G', field: '3PM/G', rkField: '3PM/G', filter: null, extra: ['3PM'], slug: '3pm-per-game' },
-    { lbl: 'FT%', field: 'FT%', rkField: 'FT%', filter: p => p.FTM >= qualMin, extra: ['FTM', 'FTA'], slug: 'ft-pct' },
+    { lbl: 'Points', fullLbl: 'Points Per Game', field: 'PPG', rkField: 'PPG', filter: null, extra: [], slug: 'ppg' },
+    { lbl: 'Rebounds', fullLbl: 'Rebounds Per Game', field: 'RPG', rkField: 'RPG', filter: null, extra: [], slug: 'rpg' },
+    { lbl: 'Assists', fullLbl: 'Assists Per Game', field: 'APG', rkField: 'APG', filter: null, extra: [], slug: 'apg' },
+    { lbl: 'Steals', fullLbl: 'Steals Per Game', field: 'SPG', rkField: 'SPG', filter: null, extra: [], slug: 'spg' },
+    { lbl: 'Blocks', fullLbl: 'Blocks Per Game', field: 'BPG', rkField: 'BPG', filter: null, extra: [], slug: 'bpg' },
+    { lbl: 'TO/G', fullLbl: 'Turnovers Per Game', field: 'TO/G', rkField: 'TO/G', filter: null, extra: [], lowerBetter: true, slug: 'to-g' },
+    { lbl: 'FG%', fullLbl: 'Field Goal %', field: 'FG%', rkField: 'FG%', filter: p => p.FGM >= qualMin, extra: ['FGM', 'FGA'], slug: 'fg-pct' },
+    { lbl: '3FG%', fullLbl: '3-Point %', field: '3FG%', rkField: '3FG%', filter: p => p['3PM'] >= qualMin, extra: ['3PM', '3PA'], slug: '3p-pct' },
+    { lbl: '3PM/G', fullLbl: '3-Pointers Made Per Game', field: '3PM/G', rkField: '3PM/G', filter: null, extra: ['3PM'], slug: '3pm-per-game' },
+    { lbl: 'FT%', fullLbl: 'Free Throw %', field: 'FT%', rkField: 'FT%', filter: p => p.FTM >= qualMin, extra: ['FTM', 'FTA'], slug: 'ft-pct' },
   ];
 }
 export const CAT_SLUGS = ['ppg', 'rpg', 'apg', 'spg', 'bpg', 'to-g', 'fg-pct', '3p-pct', '3pm-per-game', 'ft-pct'];

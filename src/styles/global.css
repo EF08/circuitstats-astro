@@ -149,7 +149,9 @@ a{color:inherit;text-decoration:none}
 .srch-inp{
   width:100%;background:var(--card);border:1px solid var(--border);
   border-radius:12px;padding:10px 38px;
-  color:var(--text);font-size:15px;outline:none;
+  /* 16px, not 15px: iOS Safari auto-zooms the whole page on focus for any
+     input rendering below 16px — this is the threshold that avoids it. */
+  color:var(--text);font-size:16px;outline:none;
   transition:border-color .15s;-webkit-appearance:none;
 }
 .srch-inp:focus{border-color:var(--accent)}
@@ -546,7 +548,9 @@ a{color:inherit;text-decoration:none}
 .gate-tier-desc{font-size:10px;color:var(--green);margin-top:3px;font-weight:600}
 .gate-inp{
   width:100%;background:rgba(255,255,255,.05);border:1px solid var(--border);
-  border-radius:10px;padding:12px 14px;color:var(--text);font-size:14px;
+  border-radius:10px;padding:12px 14px;color:var(--text);
+  /* 16px: same iOS auto-zoom-on-focus fix as .srch-inp. */
+  font-size:16px;
   outline:none;margin-bottom:10px;transition:border-color .15s;
 }
 .gate-inp:focus{border-color:var(--accent);background:rgba(79,142,247,.06)}
