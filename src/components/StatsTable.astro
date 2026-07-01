@@ -128,20 +128,60 @@ const total = rows.length;
     var showMoreBtn = document.getElementById('tbl-show-more');
     var wrapEl = document.querySelector('.tbl-wrap');
     var showMoreObserver = null;
+    // Logical sort order (all rows, cheap in-memory array — updated by
+    // applySort()). Only the *visible window* of this ever gets physically
+    // reordered in the DOM; see applyVisibility().
+    var sortedOrder = rows;
+    // What's currently shown, so later calls only need to touch what *changed*
+    // instead of re-scanning the whole (~2900-row) dataset every time. null the
+    // first time through: the server-rendered page shows every row, so the
+    // very first applyVisibility() call still has to hide everyone past the
+    // first page once — same one-time cost the page always had.
+    var prevVisible = null;
 
     function applyVisibility() {
       var ql = query.toLowerCase();
-      var matched = [];
-      rows.forEach(function (r) {
-        var nm = r.querySelector('.tbl-pname'), tm = r.querySelector('.tbl-pteam');
-        var name = (nm && nm.getAttribute('data-full') || '').toLowerCase();
-        var team = (tm && tm.textContent || '').toLowerCase();
-        if (!ql || name.indexOf(ql) >= 0 || team.indexOf(ql) >= 0) matched.push(r);
-        else r.style.display = 'none';
-      });
+      // No active search (the common case — every sort click and "show more"
+      // click runs through here) — skip the per-row querySelector matching
+      // entirely instead of doing it and throwing the result away.
+      var matched = ql
+        ? sortedOrder.filter(function (r) {
+            var nm = r.querySelector('.tbl-pname'), tm = r.querySelector('.tbl-pteam');
+            var name = (nm && nm.getAttribute('data-full') || '').toLowerCase();
+            var team = (tm && tm.textContent || '').toLowerCase();
+            return name.indexOf(ql) >= 0 || team.indexOf(ql) >= 0;
+          })
+        : sortedOrder;
       var total = matched.length;
       var effLimit = rjActive ? total : Math.min(limit, total);
-      matched.forEach(function (r, i) { r.style.display = i < effLimit ? '' : 'none'; });
+      var visible = matched.slice(0, effLimit);
+
+      // The expensive part isn't computing the order (cheap array ops above) —
+      // it's touching/repositioning DOM nodes. On a ~2900-row scope, reordering
+      // *everything* on every sort/search call (even off-DOM in a fragment)
+      // still means the browser has to re-layout/repaint a subtree that size.
+      // So: only ever physically reposition the rows that are actually going
+      // to be visible (bounded by the page size, not the dataset), and just
+      // flip display:none on anything else that needs hiding — no reordering
+      // for rows nobody can see yet.
+      var visibleSet = new Set(visible);
+      if (prevVisible === null) {
+        // First run only: the server-rendered page shows every row, so this
+        // one-time pass has to check everyone. Same cost the page always had.
+        rows.forEach(function (r) { if (!visibleSet.has(r)) r.style.display = 'none'; });
+      } else {
+        // Every later call: only re-hide rows that *were* visible and no
+        // longer are — bounded by the page size, not the full dataset.
+        prevVisible.forEach(function (r) { if (!visibleSet.has(r)) r.style.display = 'none'; });
+      }
+      var frag = document.createDocumentFragment();
+      visible.forEach(function (r) {
+        if (r.style.display !== '') r.style.display = '';
+        frag.appendChild(r);
+      });
+      tbody.appendChild(frag);
+      prevVisible = visibleSet;
+
       if (meta) meta.textContent = 'Showing ' + effLimit + ' of ' + total + ' player' + (total !== 1 ? 's' : '') + ' · tap column to sort';
       if (clr) clr.classList.toggle('on', !!query);
 
@@ -183,23 +223,37 @@ const total = rows.length;
     function applySort() {
       var col = cols.find(function (c) { return c.field === curField; });
       if (!col) return;
-      var sorted = rows.slice().sort(function (a, b) {
+
+      // Read each row's value/qualification/name from the DOM exactly once —
+      // sort() does O(n log n) comparisons, and re-reading the DOM inside the
+      // comparator (on scopes with ~2900 rows) was most of the click-to-sort lag.
+      var entries = rows.map(function (r) {
+        var td = r.children[col.idx];
+        var qAttr = td ? td.getAttribute('data-qualifies') : null;
+        return {
+          row: r,
+          val: cellNum(r, col.idx),
+          qualifies: qAttr == null ? null : qAttr !== '0',
+          name: playerName(r),
+        };
+      });
+      entries.sort(function (a, b) {
         // Qualifying-minimum columns (FG%/3P%/FT%/TS%): players below the makes
         // threshold always sink to the bottom, regardless of sort direction —
         // matches the server-rendered default sort (sortCmp in stats.ts).
-        var tdA = a.children[col.idx], tdB = b.children[col.idx];
-        var qaAttr = tdA && tdA.getAttribute('data-qualifies');
-        var qbAttr = tdB && tdB.getAttribute('data-qualifies');
-        if (qaAttr != null || qbAttr != null) {
-          var aQ = qaAttr !== '0', bQ = qbAttr !== '0';
+        if (a.qualifies !== null || b.qualifies !== null) {
+          var aQ = a.qualifies !== false, bQ = b.qualifies !== false;
           if (aQ !== bQ) return bQ ? 1 : -1;
-          if (!aQ && !bQ) return playerName(a).localeCompare(playerName(b));
+          if (!aQ && !bQ) return a.name.localeCompare(b.name);
         }
-        var av = cellNum(a, col.idx), bv = cellNum(b, col.idx);
-        if (av === bv) return 0;
-        return curDir === 'desc' ? bv - av : av - bv;
+        if (a.val === b.val) return 0;
+        return curDir === 'desc' ? b.val - a.val : a.val - b.val;
       });
-      sorted.forEach(function (r) { tbody.appendChild(r); });
+      // Just the logical order for now — no DOM writes here. applyVisibility()
+      // (called below) is what actually repositions rows, and it only touches
+      // the visible window, not this full ~2900-row array.
+      sortedOrder = entries.map(function (e) { return e.row; });
+
       ths.forEach(function (th) {
         var arr = th.querySelector('.sort-arrow'); if (!arr) return;
         var on = th.id === 'th-' + curField;
