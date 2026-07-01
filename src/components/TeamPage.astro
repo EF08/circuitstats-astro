@@ -1,0 +1,81 @@
+---
+// TeamPage.astro — verbatim reproduction of pre-SEO renderTeamPage() + _renderTPTable().
+// NOTE: _tpCellVal renders `p[f] + suffix` with no null guard, so 3SSB makes/
+// attempts (null) show as literal "null" — matching the app exactly. Server-
+// rendered PPG-desc; a client island re-adds click-to-sort.
+import { calcTS, calcTSNum, teamAvg, sortCmp, type Player } from '../lib/stats';
+import type { League } from '../lib/leagues';
+import { playerSlug } from '../lib/slugs';
+
+interface Props { team: string; league: League; }
+const { team, league } = Astro.props as Props;
+const { standings, qualMin } = league;
+const ps: Player[] = league.players.filter(p => p.Team === team);
+
+const TP_COLS = [
+  { h: 'GP', f: 'GP' }, { h: 'PPG', f: 'PPG' }, { h: 'RPG', f: 'RPG' }, { h: 'APG', f: 'APG' },
+  { h: 'SPG', f: 'SPG' }, { h: 'BPG', f: 'BPG' }, { h: 'TO/G', f: 'TO/G' },
+  { h: 'FG%', f: 'FG%', pct: true }, { h: '3P%', f: '3FG%', pct: true }, { h: 'FT%', f: 'FT%', pct: true },
+  { h: 'TS%', f: '_ts', pct: true, calc: true }, { h: '3PM/G', f: '3PM/G' },
+  { h: 'T-PTS', f: 'Tot PTS' }, { h: 'T-REB', f: 'Tot REB' }, { h: 'T-AST', f: 'Tot AST' },
+  { h: 'T-STL', f: 'Tot STL' }, { h: 'T-BLK', f: 'Tot BLK' }, { h: 'FGM', f: 'FGM' }, { h: 'FGA', f: 'FGA' },
+  { h: '3PM', f: '3PM' }, { h: '3PA', f: '3PA' }, { h: 'FTM', f: 'FTM' }, { h: 'FTA', f: 'FTA' },
+] as { h: string; f: string; pct?: boolean; calc?: boolean }[];
+const TP_PCT = new Set(['FG%', '3FG%', 'FT%']);
+
+const _tpSortVal = (p: Player, f: string) => f === '_ts' ? calcTSNum(p) : (parseFloat(p[f]) || 0);
+const _tpCellVal = (p: Player, c: typeof TP_COLS[0]) => c.calc ? calcTS(p) : (p[c.f] + (TP_PCT.has(c.f) ? '%' : ''));
+
+const sortField = 'PPG', sortDir: 'asc' | 'desc' = 'desc';
+const sorted = [...ps].sort((a, b) => sortCmp(a, b, sortField, _tpSortVal(a, sortField), _tpSortVal(b, sortField), sortDir, qualMin));
+
+const st = standings[team];
+---
+<div class="view active" id="view-team">
+  <a class="back-btn" href={league.urlBase + '/teams'}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+      <path d="M19 12H5M12 5l-7 7 7 7"></path>
+    </svg>Back
+  </a>
+  <div id="team-page-content">
+    <div class="tp-hero">
+      {st && <div class="tp-standing" set:html={`#${st.rank} Seed &nbsp;·&nbsp; ${st.w}W–${st.l}L`} />}
+      <div class="tp-name">{team}</div>
+      <div class="tp-stats">
+        <div><div class="tp-stat-v">{ps.length}</div><div class="tp-stat-l">Players</div></div>
+        <div><div class="tp-stat-v">{teamAvg(ps, 'PPG')}</div><div class="tp-stat-l">PPG</div></div>
+        <div><div class="tp-stat-v">{teamAvg(ps, 'RPG')}</div><div class="tp-stat-l">RPG</div></div>
+        <div><div class="tp-stat-v">{teamAvg(ps, 'APG')}</div><div class="tp-stat-l">APG</div></div>
+        <div><div class="tp-stat-v">{teamAvg(ps, 'FG%')}%</div><div class="tp-stat-l">FG%</div></div>
+      </div>
+    </div>
+    <div class="box-wrap" id="tp-table-wrap">
+      <table class="box-table">
+        <thead><tr>
+          <th class="sc">Player</th>
+          {TP_COLS.map(c => (
+            <th class={sortField === c.f ? 'tp-sorted' : undefined}>
+              {c.h}<span class="tp-arr">{sortField === c.f ? (sortDir === 'desc' ? '↓' : '↑') : ''}</span>
+            </th>
+          ))}
+        </tr></thead>
+        <tbody>
+          {sorted.map(p => (
+            <tr>
+              <td class="sc"><a class="player-link" href={`/player/${playerSlug(p.Player, league)}`}>{p.Player}</a></td>
+              {TP_COLS.map(c => <td set:html={_tpCellVal(p, c)} />)}
+            </tr>
+          ))}
+          <tr class="avg-row">
+            <td class="sc">Team Avg</td>
+            {TP_COLS.map(c => {
+              const val = teamAvg(ps, c.f);
+              const suffix = (c.pct && val !== '—' && !c.calc) ? '%' : '';
+              return <td>{val}{suffix}</td>;
+            })}
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

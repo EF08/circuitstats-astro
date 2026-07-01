@@ -1,0 +1,61 @@
+---
+// Catch-all for every scope page: {urlBase}/stats, /leaders/{stat}, /teams,
+// /compare — across all 16 league scopes + Session 2. One getStaticPaths
+// enumerates them all and dispatches to the right component. Detail pages
+// (/player/..., /{c}/{a}/team/...) are more specific routes and win over this.
+import Layout from '../layouts/Layout.astro';
+import StatsTable from '../components/StatsTable.astro';
+import Leaders from '../components/Leaders.astro';
+import TeamsGrid from '../components/TeamsGrid.astro';
+import Compare from '../components/Compare.astro';
+import { LEAGUES, S2_LEAGUE, type League } from '../lib/leagues';
+import { CAT_SLUGS } from '../lib/catalog';
+
+const SITE = 'https://www.circuitstats.com';
+
+export function getStaticPaths() {
+  const all: League[] = [...LEAGUES, S2_LEAGUE];
+  const paths: any[] = [];
+  for (const lg of all) {
+    const base = lg.urlBase.replace(/^\//, '');
+    paths.push({ params: { path: `${base}/stats` }, props: { league: lg, kind: 'stats', stat: null } });
+    paths.push({ params: { path: `${base}/teams` }, props: { league: lg, kind: 'teams', stat: null } });
+    paths.push({ params: { path: `${base}/compare` }, props: { league: lg, kind: 'compare', stat: null } });
+    for (const slug of CAT_SLUGS) {
+      paths.push({ params: { path: `${base}/leaders/${slug}` }, props: { league: lg, kind: 'leaders', stat: slug } });
+    }
+  }
+  return paths;
+}
+
+const { league, kind, stat } = Astro.props as { league: League; kind: string; stat: string | null };
+const activeTab = kind === 'leaders' ? 'leaders' : (kind as 'stats' | 'teams' | 'compare');
+const canonical = `${SITE}${league.urlBase}/${kind === 'leaders' ? `leaders/${stat}` : kind}`;
+
+const titles: Record<string, string> = {
+  stats: `${league.scopeLabel} Player Stats 2026 | Circuit Stats`,
+  teams: `${league.scopeLabel} Teams 2026 | Circuit Stats`,
+  compare: `${league.scopeLabel} Player Comparison 2026 | Circuit Stats`,
+  leaders: `${league.scopeLabel} ${stat ? stat.toUpperCase() : ''} Leaders 2026 | Circuit Stats`,
+};
+const descs: Record<string, string> = {
+  stats: `Full 2026 stats for all ${league.players.length} ${league.scopeLabel} players — PPG, rebounds, assists, shooting and more.`,
+  teams: `All ${league.scopeLabel} teams for 2026 — rosters, PPG and full stats.`,
+  compare: `Compare any two ${league.scopeLabel} players head-to-head across every stat, 2026 season.`,
+  leaders: `${league.scopeLabel} statistical leaders for 2026. Top 10 by ${stat}.`,
+};
+---
+<Layout
+  title={titles[kind]}
+  description={descs[kind]}
+  subLabel={league.subLabel}
+  pillLabel={league.label}
+  pageBase={league.urlBase}
+  activeTab={activeTab}
+  canonical={canonical}
+>
+  {kind === 'stats' && <StatsTable league={league} />}
+  {kind === 'leaders' && <Leaders league={league} slug={stat!} />}
+  {kind === 'teams' && <TeamsGrid league={league} />}
+  {kind === 'compare' && <Compare league={league} />}
+</Layout>

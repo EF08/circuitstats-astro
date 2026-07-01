@@ -1,0 +1,33 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import PlayerPage from '../../components/PlayerPage.astro';
+import { allPlayerRefs } from '../../lib/slugs';
+import { calcTS } from '../../lib/stats';
+
+export function getStaticPaths() {
+  return allPlayerRefs().map(ref => ({
+    params: { slug: ref.slug },
+    props: { player: ref.player, league: ref.league },
+  }));
+}
+
+const { player: p, league } = Astro.props;
+const SITE = 'https://www.circuitstats.com';
+const scope = league.scopeLabel;
+const bits = [['PPG', 'PPG'], ['RPG', 'RPG'], ['APG', 'APG']]
+  .filter(([f]) => p[f] != null).map(([f, l]) => `${p[f]} ${l}`).join(', ');
+const desc = `${p.Player} (${p.Team}, ${scope}) 2026: ${bits} over ${p.GP} games. Full stats & national rankings on Circuit Stats.`;
+const noindex = (p.GP || 0) < 1 || league.key === 's2u15'; // s2 pages are share-only
+---
+<Layout
+  title={`${p.Player} Stats 2026 — ${scope} | ${p.Team} | Circuit Stats`}
+  description={desc}
+  subLabel={league.subLabel}
+  pillLabel={league.label}
+  pageBase={league.urlBase}
+  activeTab={null}
+  canonical={`${SITE}/player/${Astro.params.slug}`}
+  robots={noindex ? 'noindex,follow' : undefined}
+>
+  <PlayerPage player={p} league={league} />
+</Layout>
