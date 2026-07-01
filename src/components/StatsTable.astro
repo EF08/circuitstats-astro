@@ -177,4 +177,60 @@ const total = rows.length;
     if (srch) srch.addEventListener('input', function (e) { filter(e.target.value); });
     if (clr) clr.addEventListener('click', function () { srch.value = ''; filter(''); });
   })();
+
+  // Axis-lock scroll + momentum (verbatim from the pre-SEO app): once a touch
+  // gesture commits to horizontal or vertical, it stays locked to that axis
+  // instead of panning both at once.
+  (function axisLock() {
+    var startX, startY, prevX, prevY, prevT;
+    var velX = 0, velY = 0, axis = null, rafId = null;
+    var FRICTION = 0.93;
+    var wrap = document.querySelector('.tbl-wrap');
+    if (!wrap) return;
+
+    function decelerate() {
+      velX *= FRICTION;
+      velY *= FRICTION;
+      if (Math.abs(velX) + Math.abs(velY) < 0.5) return;
+      if (axis === 'x') wrap.scrollLeft -= velX;
+      else wrap.scrollTop -= velY;
+      rafId = requestAnimationFrame(decelerate);
+    }
+
+    wrap.addEventListener('touchstart', function (e) {
+      cancelAnimationFrame(rafId);
+      var t = e.touches[0];
+      startX = prevX = t.clientX;
+      startY = prevY = t.clientY;
+      prevT = performance.now();
+      velX = velY = 0;
+      axis = null;
+    }, { passive: true });
+
+    wrap.addEventListener('touchmove', function (e) {
+      var now = performance.now();
+      var x = e.touches[0].clientX;
+      var y = e.touches[0].clientY;
+      var dx = x - prevX;
+      var dy = y - prevY;
+      var dt = Math.max(1, now - prevT);
+
+      if (!axis) {
+        var tx = Math.abs(x - startX), ty = Math.abs(y - startY);
+        if (tx > 6 || ty > 6) axis = tx >= ty ? 'x' : 'y';
+      }
+
+      if (axis) {
+        e.preventDefault();
+        if (axis === 'x') { wrap.scrollLeft -= dx; velX = dx / dt * 16; }
+        else { wrap.scrollTop -= dy; velY = dy / dt * 16; }
+      }
+
+      prevX = x; prevY = y; prevT = now;
+    }, { passive: false });
+
+    wrap.addEventListener('touchend', function () {
+      rafId = requestAnimationFrame(decelerate);
+    }, { passive: true });
+  })();
 </script>
