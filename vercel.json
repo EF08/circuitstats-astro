@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/bfleaderboard_backend/:path*",
+      "destination": "https://bfleaderboard-backend.onrender.com/bfleaderboard_backend/:path*"
+    }
+  ]
+}

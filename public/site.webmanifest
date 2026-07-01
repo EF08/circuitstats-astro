@@ -1,0 +1,10 @@
+{
+  "name": "Circuit Stats",
+  "short_name": "Circuit Stats",
+  "description": "Official EYBL, UAA & 3SSB Platinum player stats & national rankings.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#08090f",
+  "theme_color": "#08090f",
+  "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}

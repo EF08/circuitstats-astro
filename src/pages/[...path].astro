@@ -14,6 +14,15 @@ import { CAT_SLUGS } from '../lib/catalog';
 const SITE = 'https://www.circuitstats.com';
 
 export function getStaticPaths() {
+  // Abri short links (must keep working — shared externally from Abri's recruiting
+  // site). Each lands on the Session-2 stats table sorted by that stat's rank with
+  // Abri Fazliu's row highlighted, exactly like the pre-SEO app. Paywall off → no
+  // unlock step. Defined inside getStaticPaths (Astro isolates its scope).
+  const ABRI_SHORT_FIELDS: Record<string, string> = {
+    ppg: 'PPG', rpg: 'RPG', apg: 'APG', spg: 'SPG', bpg: 'BPG', gp: 'GP',
+    fg: 'FG%', ft: 'FT%', ts: '_ts', '3p': '3FG%', '3pm': '3PM', '3pmg': '3PM/G',
+    pts: 'Tot PTS', reb: 'Tot REB', ast: 'Tot AST', stl: 'Tot STL', blk: 'Tot BLK',
+  };
   const all: League[] = [...LEAGUES, S2_LEAGUE];
   const paths: any[] = [];
   for (const lg of all) {
@@ -25,24 +34,35 @@ export function getStaticPaths() {
       paths.push({ params: { path: `${base}/leaders/${slug}` }, props: { league: lg, kind: 'leaders', stat: slug } });
     }
   }
+  // Abri short links → S2 stats, rank-jumped to Abri Fazliu.
+  paths.push({ params: { path: 'abri' }, props: { league: S2_LEAGUE, kind: 'abri', stat: null, rjField: 'PPG' } });
+  paths.push({ params: { path: 'session2uaastatsu15' }, props: { league: S2_LEAGUE, kind: 'stats', stat: null } });
+  for (const [key, field] of Object.entries(ABRI_SHORT_FIELDS)) {
+    paths.push({ params: { path: `abri${key}` }, props: { league: S2_LEAGUE, kind: 'abri', stat: null, rjField: field } });
+  }
   return paths;
 }
 
-const { league, kind, stat } = Astro.props as { league: League; kind: string; stat: string | null };
-const activeTab = kind === 'leaders' ? 'leaders' : (kind as 'stats' | 'teams' | 'compare');
-const canonical = `${SITE}${league.urlBase}/${kind === 'leaders' ? `leaders/${stat}` : kind}`;
+const { league, kind, stat, rjField } = Astro.props as { league: League; kind: string; stat: string | null; rjField?: string };
+const isAbri = kind === 'abri';
+const activeTab = kind === 'leaders' ? 'leaders' : isAbri ? 'stats' : (kind as 'stats' | 'teams' | 'compare');
+const canonical = isAbri
+  ? `${SITE}${league.urlBase}/stats`   // abri pages canonicalize to the real S2 stats page
+  : `${SITE}${league.urlBase}/${kind === 'leaders' ? `leaders/${stat}` : kind}`;
 
 const titles: Record<string, string> = {
   stats: `${league.scopeLabel} Player Stats 2026 | Circuit Stats`,
   teams: `${league.scopeLabel} Teams 2026 | Circuit Stats`,
   compare: `${league.scopeLabel} Player Comparison 2026 | Circuit Stats`,
   leaders: `${league.scopeLabel} ${stat ? stat.toUpperCase() : ''} Leaders 2026 | Circuit Stats`,
+  abri: `Abri Fazliu — ${league.scopeLabel} Stats | Circuit Stats`,
 };
 const descs: Record<string, string> = {
   stats: `Full 2026 stats for all ${league.players.length} ${league.scopeLabel} players — PPG, rebounds, assists, shooting and more.`,
   teams: `All ${league.scopeLabel} teams for 2026 — rosters, PPG and full stats.`,
   compare: `Compare any two ${league.scopeLabel} players head-to-head across every stat, 2026 season.`,
   leaders: `${league.scopeLabel} statistical leaders for 2026. Top 10 by ${stat}.`,
+  abri: `Abri Fazliu's ${league.scopeLabel} stats and national ranking, 2026 season.`,
 };
 ---
 <Layout
@@ -53,8 +73,10 @@ const descs: Record<string, string> = {
   pageBase={league.urlBase}
   activeTab={activeTab}
   canonical={canonical}
+  robots={isAbri ? 'noindex,follow' : undefined}
 >
   {kind === 'stats' && <StatsTable league={league} />}
+  {kind === 'abri' && <StatsTable league={league} rankJump={{ field: rjField!, player: 'Abri Fazliu' }} />}
   {kind === 'leaders' && <Leaders league={league} slug={stat!} />}
   {kind === 'teams' && <TeamsGrid league={league} />}
   {kind === 'compare' && <Compare league={league} />}

@@ -3,20 +3,36 @@
 // Server-rendered sorted by PPG desc (the app's default), ALL rows present so
 // nothing is hidden behind JS/pagination. A client island (StatsTableInteractive)
 // layers the app's exact click-to-sort / search / name-expand back on top.
-import { TBL_COLS, getColVal, sortCmp, fmtColVal, abbr, type Player } from '../lib/stats';
+import { TBL_COLS, getColVal, sortCmp, fmtColVal, abbr, RANK_LABELS, type Player } from '../lib/stats';
 import type { League } from '../lib/leagues';
 import { rowLinks } from '../lib/links';
 
-interface Props { league: League; }
-const { league } = Astro.props as Props;
+interface Props { league: League; rankJump?: { field: string; player: string } | null; }
+const { league, rankJump = null } = Astro.props as Props;
 const { players, ranks, standings, qualMin, combineKind } = league;
 const RANK = ranks.RANK;
 
-// default sort: PPG desc (verbatim: getColVal + sortCmp)
-const rows = [...players].sort((a, b) => {
-  const col = TBL_COLS.find(c => c.f === 'PPG')!;
-  return sortCmp(a, b, 'PPG', getColVal(a, col), getColVal(b, col), 'desc', qualMin);
-});
+// Rank-jump mode (Abri short links / rank-chip landings): order by RANK[field]
+// ascending, highlight one player, show the special meta line. Otherwise the
+// normal PPG-desc default.
+const rjActive = !!(rankJump && RANK[rankJump.field]);
+const rankField = rjActive ? rankJump!.field : 'PPG';
+let rows: Player[];
+if (rjActive) {
+  const rmap = RANK[rankJump!.field];
+  rows = [...players].sort((a, b) => {
+    const ra = rmap[a.Player] != null ? rmap[a.Player] : 1e9;
+    const rb = rmap[b.Player] != null ? rmap[b.Player] : 1e9;
+    return ra - rb || a.Player.localeCompare(b.Player);
+  });
+} else {
+  rows = [...players].sort((a, b) => {
+    const col = TBL_COLS.find(c => c.f === 'PPG')!;
+    return sortCmp(a, b, 'PPG', getColVal(a, col), getColVal(b, col), 'desc', qualMin);
+  });
+}
+const rjPlayerRank = rjActive ? RANK[rankJump!.field][rankJump!.player] : null;
+const rjLabel = rjActive ? (RANK_LABELS[rankJump!.field] || rankJump!.field) : '';
 
 function tagBadge(p: Player): string {
   if (combineKind === 'circuit' && p._age) return `<span class="age-badge">${p._age}</span>`;
@@ -40,7 +56,9 @@ const total = rows.length;
         </svg>
       </button>
     </div>
-    <div class="tbl-meta" id="tbl-meta">Showing {total} of {total} player{total !== 1 ? 's' : ''} · tap column to sort</div>
+    {rjActive
+      ? <div class="tbl-meta" id="tbl-meta" set:html={`<strong style="color:var(--accent)">${rankJump!.player}</strong> &middot; <strong style="color:var(--accent)">#${rjPlayerRank}</strong> of ${total} in ${rjLabel} &nbsp;<a href="${league.urlBase}/stats" style="text-decoration:underline;color:var(--text-3)">clear</a>`} />
+      : <div class="tbl-meta" id="tbl-meta">Showing {total} of {total} player{total !== 1 ? 's' : ''} · tap column to sort</div>}
   </div>
   <div class="tbl-wrap">
     <table class="tbl" id="main-table">
@@ -48,8 +66,8 @@ const total = rows.length;
         <tr>
           <th class="player-th">Player <button class="name-toggle-btn" id="name-toggle-btn">+</button></th>
           {TBL_COLS.map(c => (
-            <th id={`th-${c.f}`} class={c.f === 'PPG' ? 'sorted' : undefined}>
-              {c.h} <span class="sort-arrow" id={`arr-${c.f}`}>{c.f === 'PPG' ? '↓' : ''}</span>{c.pct && (
+            <th id={`th-${c.f}`} class={(!rjActive && c.f === 'PPG') ? 'sorted' : undefined}>
+              {c.h} <span class="sort-arrow" id={`arr-${c.f}`}>{(!rjActive && c.f === 'PPG') ? '↓' : ''}</span>{c.pct && (
                 <button class="pct-qual-btn" onclick="event.stopPropagation();this.classList.toggle('tip-open')">?<span class="pct-qual-tip">min. {qualMin} makes to qualify</span></button>
               )}
             </th>
@@ -59,10 +77,11 @@ const total = rows.length;
       <tbody id="main-tbody">
         {rows.map(p => {
           const { playerHref, teamHref } = rowLinks(p, league);
-          const rnk = RANK['PPG'] && RANK['PPG'][p.Player];
+          const rnk = RANK[rankField] && RANK[rankField][p.Player];
           const seed = standings[p.Team] ? `#${standings[p.Team].rank} ` : '';
+          const hl = rjActive && p.Player === rankJump!.player;
           return (
-            <tr>
+            <tr class={hl ? 'tbl-row-hl' : undefined}>
               <td class="tbl-td player-td">
                 <a class="tbl-pname" href={playerHref} data-abbr={abbr(p.Player)} data-full={p.Player}>{abbr(p.Player)}{rnk && <span class="tbl-stat-rank">#{rnk}</span>}<Fragment set:html={tagBadge(p)} /></a>
                 {teamHref
