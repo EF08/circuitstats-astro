@@ -112,10 +112,14 @@ const navIcons: Record<string, string> = {
 </nav>
 
 <script is:inline define:vars={{ trackTitleInit: trackTitle || null }}>
-  function toggleLeagueDropdown(e) {
+  // Explicit window assignment (not a bare function declaration): define:vars
+  // makes Astro emit this script as a module, and modules don't leak top-level
+  // function declarations onto window — the inline onclick="" attribute below
+  // needs it there.
+  window.toggleLeagueDropdown = function (e) {
     e.stopPropagation();
     document.getElementById('league-dropdown').classList.toggle('open');
-  }
+  };
   document.addEventListener('click', function () {
     var dd = document.getElementById('league-dropdown');
     if (dd) dd.classList.remove('open');
