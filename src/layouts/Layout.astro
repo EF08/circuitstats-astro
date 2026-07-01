@@ -70,20 +70,20 @@ const navIcons: Record<string, string> = {
 <body>
 <GateModal />
 <header class="hdr">
-  <a class="hdr-home" id="hdr-home" href="/">
+  <a class="hdr-home" id="hdr-home" href="/" data-track="header:logo">
     <div class="hdr-logo" id="hdr-logo" role="img" aria-label="Circuit Stats logo"></div>
     <div class="hdr-info">
       <div class="hdr-title" id="hdr-title">Circuit Stats</div>
       <div class="hdr-sub" id="hdr-sub">{subLabel}</div>
     </div>
   </a>
-  <a class="hdr-contact" href="mailto:andyfazliu@hotmail.com?subject=UAA U15 League Stats">
+  <a class="hdr-contact" href="mailto:andyfazliu@hotmail.com?subject=UAA U15 League Stats" data-track="header:contact">
     Any questions?<br /><span>Contact</span>
   </a>
-  <div class="hdr-pill" id="league-pill" onclick="toggleLeagueDropdown(event)" title="Switch mode">
+  <div class="hdr-pill" id="league-pill" onclick="toggleLeagueDropdown(event)" title="Switch mode" data-track="header:league-pill">
     <span id="league-pill-label">{pillLabel}</span><span class="hdr-pill-caret">▼</span>
     <div class="league-dropdown" id="league-dropdown">
-      {LEAGUES.map(l => <a class="ld-item" href={`${l.urlBase}/${activeTab === 'leaders' ? 'leaders/ppg' : activeTab === 'compare' ? 'compare' : activeTab === 'teams' ? 'teams' : 'stats'}`}>{l.label}</a>)}
+      {LEAGUES.map(l => <a class="ld-item" href={`${l.urlBase}/${activeTab === 'leaders' ? 'leaders/ppg' : activeTab === 'compare' ? 'compare' : activeTab === 'teams' ? 'teams' : 'stats'}`} data-track={`header:league-switch:${l.key}`}>{l.label}</a>)}
     </div>
   </div>
 </header>
@@ -94,7 +94,7 @@ const navIcons: Record<string, string> = {
 
 <nav class="nav">
   {tabs.map(t => (
-    <a class:list={["nav-btn", { active: t.v === activeTab }]} data-v={t.v} href={t.href}>
+    <a class:list={["nav-btn", { active: t.v === activeTab }]} data-v={t.v} href={t.href} data-track={`nav:${t.v}`}>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" set:html={navIcons[t.v]} />
       {t.label}
     </a>
@@ -123,6 +123,48 @@ const navIcons: Record<string, string> = {
         }),
       }).catch(function () {});
     } catch (e) {}
+  })();
+
+  // Site-wide click tracking (feeds the /dashboard "Clicks" section): one
+  // delegated listener catches every interactive element on every page, so
+  // nothing needs its own tracking wire-up. Explicit data-track="..." on an
+  // element (or ancestor) wins; otherwise a small set of known UI patterns get
+  // a clean label, falling back to a generic "link"/tag-based one so nothing
+  // clickable goes untracked. Capture phase so it still fires even when a
+  // handler further down calls stopPropagation() (e.g. the league pill).
+  (function () {
+    var SELECTOR = 'a, button, input[type="search"], th[id^="th-"], .cmp-slot, .picker-item, [data-track]';
+    function label(el) {
+      var tracked = el.closest('[data-track]');
+      if (tracked) return tracked.getAttribute('data-track');
+      if (el.matches('th[id^="th-"]')) return 'stats:sort-' + el.id.slice(3);
+      if (el.classList.contains('cmp-slot')) return 'compare:slot-open';
+      if (el.classList.contains('picker-item')) return 'compare:pick';
+      if (el.tagName === 'A') return 'link';
+      if (el.tagName === 'BUTTON') return el.id ? 'button:' + el.id : 'button';
+      return el.tagName.toLowerCase();
+    }
+    function detail(el) {
+      if (el.tagName === 'A' && el.getAttribute('href')) return el.getAttribute('href');
+      if (el.dataset && el.dataset.slug) return el.dataset.slug;
+      if (el.id === 'league-pill') {
+        var lbl = document.getElementById('league-pill-label');
+        return lbl ? lbl.textContent.trim() : null;
+      }
+      var t = (el.textContent || '').trim().replace(/\s+/g, ' ');
+      return t ? t.slice(0, 100) : null;
+    }
+    document.addEventListener('click', function (e) {
+      var el = e.target.closest(SELECTOR);
+      if (!el) return;
+      try {
+        fetch('/bfleaderboard_backend/track-click', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ label: label(el), detail: detail(el), page: location.pathname }),
+          keepalive: true,
+        }).catch(function () {});
+      } catch (err) {}
+    }, true);
   })();
 </script>
 </body>

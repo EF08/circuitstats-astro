@@ -39,7 +39,7 @@ function extraHtml(p: Player, c: Cat): string {
 <div class="view active" id="view-leaders">
   <div class="tab-row" id="tab-row">
     {cats.map(c => (
-      <a class:list={["tab-btn", { active: c.slug === slug }]} href={`${league.urlBase}/leaders/${c.slug}`}>{c.lbl}</a>
+      <a class:list={["tab-btn", { active: c.slug === slug }]} href={`${league.urlBase}/leaders/${c.slug}`} data-track="leaders:category">{c.lbl}</a>
     ))}
   </div>
   <div class="leaders-body" id="leaders-body">
@@ -56,9 +56,9 @@ function extraHtml(p: Player, c: Cat): string {
             <div class:list={["rank-card", { r1: rk === 1 }]}>
               <div class={`rank-num ${medal}`}>{rk}</div>
               <div class="rank-info">
-                <a class="rank-name" href={playerHref} set:html={`${p.Player}${tagBadge(p) ? ' ' + tagBadge(p) : ''}`} />
+                <a class="rank-name" href={playerHref} data-track="leaders:player-link" set:html={`${p.Player}${tagBadge(p) ? ' ' + tagBadge(p) : ''}`} />
                 {teamHref
-                  ? <a class="rank-team-link" href={teamHref}>{seed}{p.Team}</a>
+                  ? <a class="rank-team-link" href={teamHref} data-track="leaders:team-link">{seed}{p.Team}</a>
                   : <span class="rank-team-link">{seed}{p.Team}</span>}
               </div>
               <div class="rank-stat">

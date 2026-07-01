@@ -61,6 +61,22 @@ const SITE = 'https://www.circuitstats.com';
         else { btn.disabled = false; btn.textContent = 'See next 150 visits'; }
       } catch (e) { btn.disabled = false; btn.textContent = 'Error — try again'; }
     };
+    function cbClickRow(c) {
+      return '<tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px;font-size:11px;color:var(--text-2)">' + (c.displayTime || '') + '</td><td style="padding:6px 8px;font-size:11px;color:var(--accent);font-weight:600">' + (c.label || 'unknown') + '</td><td style="padding:6px 8px;font-size:11px;color:var(--text-2)">' + ((c.detail || '').slice(0, 60)) + '</td><td style="padding:6px 8px;font-size:11px;color:var(--text-2)">' + (c.page || '') + '</td></tr>';
+    }
+    window.loadMoreCbClicks = async function () {
+      var btn = document.getElementById('cb-load-more-clicks-btn'); var token = localStorage.getItem('cb_token');
+      if (!token || !btn) return; btn.disabled = true; btn.textContent = 'Loading…';
+      try {
+        var res = await fetch(GB + '/dashboard/interactions?limit=150&offset=' + (window._cbClickOffset || 0), { headers: { 'Authorization': 'Bearer ' + token } });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        var d = await res.json(); var tbody = document.getElementById('cb-clicks-body');
+        if (tbody) tbody.insertAdjacentHTML('beforeend', d.recentClicks.map(cbClickRow).join(''));
+        window._cbClickOffset = (window._cbClickOffset || 0) + d.recentClicks.length;
+        if (d.recentClicks.length < 150) { var w = document.getElementById('cb-load-more-clicks-wrap'); if (w) w.style.display = 'none'; }
+        else { btn.disabled = false; btn.textContent = 'See next 150 clicks'; }
+      } catch (e) { btn.disabled = false; btn.textContent = 'Error — try again'; }
+    };
     async function renderDashboard() {
       var token = localStorage.getItem('cb_token');
       if (!token) {
@@ -73,6 +89,10 @@ const SITE = 'https://www.circuitstats.com';
         if (res.status === 403) { document.getElementById('db-content').textContent = 'Owner access only.'; return; }
         if (!res.ok) throw new Error('HTTP ' + res.status);
         var d = await res.json();
+
+        var clickRes = await fetch(GB + '/dashboard/interactions?limit=150', { headers: { 'Authorization': 'Bearer ' + token } });
+        var clickData = clickRes.ok ? await clickRes.json() : null;
+
         var maxDay = Math.max.apply(null, d.visitsByDay.map(function (x) { return x.count; }).concat([1]));
         var byDayBars = d.visitsByDay.slice(-14).map(function (r) {
           var pct = Math.round((r.count / maxDay) * 100);
@@ -83,13 +103,30 @@ const SITE = 'https://www.circuitstats.com';
           return '<tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px;font-size:12px">' + s.email + '</td><td style="padding:6px 8px;font-size:11px;color:var(--accent)">' + s.plan + '</td><td style="padding:6px 8px;font-size:11px;color:var(--text-2)">' + (s.createdAt ? new Date(s.createdAt).toLocaleDateString() : '') + '</td></tr>';
         }).join('');
         var stats = [['Human Visits', d.humanVisits != null ? d.humanVisits : d.totalVisits], ['Unique IPs', d.uniqueIpCount], ['Subscribers', (d.subscribers && d.subscribers.total) != null ? d.subscribers.total : '—']];
+
+        var topLabelsHtml = '', clickRecentHtml = '';
+        if (clickData) {
+          var maxLabelCount = Math.max.apply(null, clickData.topLabels.map(function (x) { return x.count; }).concat([1]));
+          var topLabelRows = clickData.topLabels.map(function (r) {
+            var pct = Math.round((r.count / maxLabelCount) * 100);
+            return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><div style="width:130px;font-size:11px;color:var(--text-2);flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + r.label + '</div><div style="flex:1;background:var(--surface);border-radius:4px;overflow:hidden;height:14px"><div style="width:' + pct + '%;background:var(--accent);height:100%"></div></div><div style="width:36px;text-align:right;font-size:11px;font-weight:700;flex-shrink:0">' + r.count + '</div></div>';
+          }).join('');
+          topLabelsHtml = '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:20px"><div style="font-size:12px;font-weight:700;margin-bottom:2px">Most-clicked things</div><div style="font-size:11px;color:var(--text-3);margin-bottom:12px">' + clickData.totalClicks + ' total clicks tracked</div>' + (topLabelRows || '<div style="font-size:12px;color:var(--text-3)">No clicks tracked yet.</div>') + '</div>';
+
+          var clickRows = clickData.recentClicks.map(cbClickRow).join('');
+          clickRecentHtml = '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:20px"><div style="padding:12px 14px;font-size:12px;font-weight:700;border-bottom:1px solid var(--border)">Recent Clicks</div><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr style="border-bottom:1px solid var(--border)">' + ['Time', 'Label', 'Detail', 'Page'].map(function (h) { return '<th style="padding:6px 8px;font-size:10px;color:var(--text-2);text-align:left;font-weight:600">' + h + '</th>'; }).join('') + '</tr></thead><tbody id="cb-clicks-body">' + clickRows + '</tbody></table></div><div style="text-align:center;padding:10px 0" id="cb-load-more-clicks-wrap"><button onclick="loadMoreCbClicks()" id="cb-load-more-clicks-btn" style="background:none;border:1px solid var(--border);color:var(--text-2);padding:5px 16px;border-radius:6px;cursor:pointer;font-size:12px">See next 150 clicks</button></div></div>';
+          window._cbClickOffset = clickData.recentClicks.length;
+        }
+
         document.getElementById('db-content').innerHTML =
           '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:24px">' + stats.map(function (p) { return '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px"><div style="font-size:22px;font-weight:800">' + p[1] + '</div><div style="font-size:11px;color:var(--text-2);margin-top:2px">' + p[0] + '</div></div>'; }).join('') + '</div>' +
           '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:20px"><div style="font-size:12px;font-weight:700;margin-bottom:12px">Visits — last 14 days</div><div style="display:flex;align-items:flex-end;gap:4px;height:90px">' + byDayBars + '</div></div>' +
           (subRows ? '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:20px"><div style="padding:12px 14px;font-size:12px;font-weight:700;border-bottom:1px solid var(--border)">Subscribers</div><table style="width:100%;border-collapse:collapse"><tbody>' + subRows + '</tbody></table></div>' : '') +
+          topLabelsHtml + clickRecentHtml +
           '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden"><div style="padding:12px 14px;font-size:12px;font-weight:700;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap"><span>Recent Visitors <span style="color:var(--text-3);font-weight:500">— humans only</span></span><span style="display:flex;gap:6px"><button onclick="cbToggle(\'owner\',this)" style="background:none;border:1px solid var(--border);color:var(--text-2);padding:3px 9px;border-radius:6px;cursor:pointer;font-size:11px;white-space:nowrap">Show my visits</button><button onclick="cbToggle(\'scanner\',this)" style="background:none;border:1px solid var(--border);color:var(--text-2);padding:3px 9px;border-radius:6px;cursor:pointer;font-size:11px;white-space:nowrap">Show scanner visits</button></span></div><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr style="border-bottom:1px solid var(--border)">' + ['Time', 'Status', 'Location', 'Organization', 'Referrer', 'Device'].map(function (h) { return '<th style="padding:6px 8px;font-size:10px;color:var(--text-2);text-align:left;font-weight:600">' + h + '</th>'; }).join('') + '</tr></thead><tbody id="cb-visits-body">' + recentRows + '</tbody></table></div><div style="text-align:center;padding:10px 0" id="cb-load-more-wrap"><button onclick="loadMoreCbVisits()" id="cb-load-more-btn" style="background:none;border:1px solid var(--border);color:var(--text-2);padding:5px 16px;border-radius:6px;cursor:pointer;font-size:12px">See next 150 visits</button></div></div>';
         window._cbVisitOffset = d.recentVisits.length; applyCbVisibility();
         if (d.recentVisits.length < 150) { var w = document.getElementById('cb-load-more-wrap'); if (w) w.style.display = 'none'; }
+        if (clickData && clickData.recentClicks.length < 150) { var w2 = document.getElementById('cb-load-more-clicks-wrap'); if (w2) w2.style.display = 'none'; }
       } catch (e) { document.getElementById('db-content').textContent = 'Error loading stats: ' + e.message; }
     }
     // GateModal's gateVerify() (in Layout) may redeem a magic link async; re-run
