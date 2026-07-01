@@ -77,3 +77,85 @@ const total = rows.length;
     </table>
   </div>
 </div>
+
+<script is:inline>
+  // Progressive enhancement: click-to-sort, search-filter, name expand/collapse.
+  // The server-rendered default (PPG desc, all rows) is already exact; this layers
+  // the app's interactivity on top without shipping the dataset again.
+  (function () {
+    var table = document.getElementById('main-table');
+    if (!table) return;
+    var tbody = document.getElementById('main-tbody');
+    var meta = document.getElementById('tbl-meta');
+    var ths = table.querySelectorAll('thead th');
+    var cols = []; // {field, thIndex}
+    ths.forEach(function (th, i) { if (th.id && th.id.indexOf('th-') === 0) cols.push({ field: th.id.slice(3), idx: i }); });
+    var rows = Array.prototype.slice.call(tbody.querySelectorAll('tr'));
+    var curField = 'PPG', curDir = 'desc';
+    var pctBottom = { '—': 1, 'null': 1, 'null%': 1, 'N/A': 1 };
+    function cellNum(tr, colIdx) {
+      var td = tr.children[colIdx]; if (!td) return -Infinity;
+      var t = td.textContent.trim();
+      if (pctBottom[t] || t === '') return -Infinity;
+      var v = parseFloat(t.replace('%', ''));
+      return isNaN(v) ? -Infinity : v;
+    }
+    function applySort() {
+      var col = cols.find(function (c) { return c.field === curField; });
+      if (!col) return;
+      var sorted = rows.slice().sort(function (a, b) {
+        var av = cellNum(a, col.idx), bv = cellNum(b, col.idx);
+        if (av === bv) return 0;
+        return curDir === 'desc' ? bv - av : av - bv;
+      });
+      sorted.forEach(function (r) { tbody.appendChild(r); });
+      ths.forEach(function (th) {
+        var arr = th.querySelector('.sort-arrow'); if (!arr) return;
+        var on = th.id === 'th-' + curField;
+        th.classList.toggle('sorted', on);
+        arr.textContent = on ? (curDir === 'desc' ? '↓' : '↑') : '';
+      });
+    }
+    ths.forEach(function (th) {
+      if (!th.id || th.id.indexOf('th-') !== 0) return;
+      th.style.cursor = 'pointer';
+      th.addEventListener('click', function (e) {
+        if (e.target.closest('.pct-qual-btn')) return;
+        var f = th.id.slice(3);
+        if (f === curField) curDir = curDir === 'desc' ? 'asc' : 'desc';
+        else { curField = f; curDir = 'desc'; }
+        applySort();
+      });
+    });
+    // name expand/collapse
+    var toggleBtn = document.getElementById('name-toggle-btn');
+    var expanded = false;
+    if (toggleBtn) toggleBtn.addEventListener('click', function () {
+      expanded = !expanded;
+      toggleBtn.textContent = expanded ? '−' : '+';
+      tbody.querySelectorAll('.tbl-pname').forEach(function (a) {
+        var want = expanded ? a.getAttribute('data-full') : a.getAttribute('data-abbr');
+        if (a.firstChild && a.firstChild.nodeType === 3) a.firstChild.nodeValue = want;
+        else a.insertBefore(document.createTextNode(want), a.firstChild);
+      });
+    });
+    // search
+    var srch = document.getElementById('tbl-search');
+    var clr = document.getElementById('tbl-clear');
+    function filter(q) {
+      var ql = q.toLowerCase(); var shown = 0;
+      rows.forEach(function (r) {
+        var nm = r.querySelector('.tbl-pname'), tm = r.querySelector('.tbl-pteam');
+        var name = (nm && nm.getAttribute('data-full') || '').toLowerCase();
+        var team = (tm && tm.textContent || '').toLowerCase();
+        var match = !ql || name.indexOf(ql) >= 0 || team.indexOf(ql) >= 0;
+        r.style.display = match ? '' : 'none';
+        if (match) shown++;
+      });
+      if (meta) meta.textContent = 'Showing ' + shown + ' of ' + rows.length + ' player' + (rows.length !== 1 ? 's' : '') + ' · tap column to sort';
+      if (clr) clr.classList.toggle('on', !!q);
+    }
+    if (srch) srch.addEventListener('input', function (e) { filter(e.target.value); });
+    if (clr) clr.addEventListener('click', function () { srch.value = ''; filter(''); });
+  })();
+</script>

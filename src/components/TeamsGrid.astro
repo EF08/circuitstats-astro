@@ -85,3 +85,21 @@ const cards = entries.map(({ team, grp }) => {
     ))}
   </div>
 </div>
+
+<script is:inline>
+  (function () {
+    var s = document.getElementById('t-search'), c = document.getElementById('t-clear');
+    if (!s) return;
+    var cards = Array.prototype.slice.call(document.querySelectorAll('.t-card'));
+    function filter(q) {
+      var ql = q.toLowerCase();
+      cards.forEach(function (card) {
+        var nm = card.querySelector('.t-name');
+        card.style.display = (nm && nm.textContent.toLowerCase().indexOf(ql) >= 0) ? '' : 'none';
+      });
+      if (c) c.classList.toggle('on', !!q);
+    }
+    s.addEventListener('input', function (e) { filter(e.target.value); });
+    if (c) c.addEventListener('click', function () { s.value = ''; filter(''); });
+  })();
+</script>

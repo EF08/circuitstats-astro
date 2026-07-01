@@ -79,3 +79,26 @@ const st = standings[team];
     </div>
   </div>
 </div>
+
+<script is:inline>
+  // Team box-table click-to-sort (excludes the pinned Team Avg row).
+  (function () {
+    var tbl = document.querySelector('.box-table'); if (!tbl) return;
+    var tbody = tbl.querySelector('tbody');
+    var ths = Array.prototype.slice.call(tbl.querySelectorAll('thead th'));
+    var avg = tbody.querySelector('.avg-row');
+    var rows = Array.prototype.slice.call(tbody.querySelectorAll('tr')).filter(function (r) { return r !== avg; });
+    var curIdx = 2, curDir = 'desc'; // PPG column (0=Player,1=GP,2=PPG)
+    var bottom = { '—': 1, 'null': 1, 'null%': 1, 'N/A': 1, '': 1 };
+    function num(tr, i) { var td = tr.children[i]; if (!td) return -Infinity; var t = td.textContent.trim(); if (bottom[t]) return -Infinity; var v = parseFloat(t.replace('%', '')); return isNaN(v) ? -Infinity : v; }
+    function sortBy(i) {
+      var s = rows.slice().sort(function (a, b) { var av = num(a, i), bv = num(b, i); return av === bv ? 0 : (curDir === 'desc' ? bv - av : av - bv); });
+      s.forEach(function (r) { tbody.insertBefore(r, avg); });
+      ths.forEach(function (th, j) { var arr = th.querySelector('.tp-arr'); th.classList.toggle('tp-sorted', j === i); if (arr) arr.textContent = j === i ? (curDir === 'desc' ? '↓' : '↑') : ''; });
+    }
+    ths.forEach(function (th, i) {
+      if (i === 0) return; th.style.cursor = 'pointer';
+      th.addEventListener('click', function () { if (i === curIdx) curDir = curDir === 'desc' ? 'asc' : 'desc'; else { curIdx = i; curDir = 'desc'; } sortBy(i); });
+    });
+  })();
+</script>
