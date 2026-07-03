@@ -16,17 +16,16 @@ export interface Props {
   pageBase: string;          // url base for the 4 nav tabs, e.g. '/uaa/u15'
   activeTab: 'stats' | 'leaders' | 'compare' | 'teams' | null;
   canonical?: string;
-  ogImage?: string;
   robots?: string;
   trackTitle?: string;       // human-readable name for analytics (player/team/matchup) — not SEO title
 }
 const { title, description = '', subLabel, pillLabel, pageBase, activeTab, canonical, robots, trackTitle } = Astro.props;
 
-// Share-preview image: a real screenshot of the top of THIS page (api/og-shot.js),
-// not a custom-drawn card. Self-referential — the function screenshots whatever
-// host actually receives the request, so this works unchanged on any domain
-// (preview or production) with zero hardcoding. Experimental swap-in per Andy;
-// the old drawn-card generator (api/og.js + src/lib/og.ts) is untouched.
+// Share-preview image: a real full-page screenshot of THIS page (api/og-shot.js)
+// at phone width, so link previews show the whole content — Andy's pick over the
+// old top-1200x630 crop and the drawn-card generator, both since removed.
+// Self-referential — the function screenshots whatever host actually receives
+// the request, so this works unchanged on any domain (preview or production).
 const shotPath = new URL(canonical || Astro.url.pathname, Astro.site || Astro.url.origin).pathname;
 const ogImage = `${(Astro.site?.href || Astro.url.origin).replace(/\/$/, '')}/api/og-shot?path=${encodeURIComponent(shotPath)}`;
 
@@ -58,13 +57,11 @@ const navIcons: Record<string, string> = {
   <meta property="og:title" content={title} />
   {description && <meta property="og:description" content={description} />}
   {canonical && <meta property="og:url" content={canonical} />}
-  {ogImage && <meta property="og:image" content={ogImage} />}
-  {ogImage && <meta property="og:image:width" content="1200" />}
-  {ogImage && <meta property="og:image:height" content="630" />}
-  <meta name="twitter:card" content={ogImage ? 'summary_large_image' : 'summary'} />
+  <meta property="og:image" content={ogImage} />
+  <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content={title} />
   {description && <meta name="twitter:description" content={description} />}
-  {ogImage && <meta name="twitter:image" content={ogImage} />}
+  <meta name="twitter:image" content={ogImage} />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <meta name="theme-color" content="#08090f" />
 </head>
