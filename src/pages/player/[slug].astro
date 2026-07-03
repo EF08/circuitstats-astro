@@ -2,8 +2,6 @@
 import Layout from '../../layouts/Layout.astro';
 import PlayerPage from '../../components/PlayerPage.astro';
 import { allPlayerRefs } from '../../lib/slugs';
-import { calcTS } from '../../lib/stats';
-import { playerOg } from '../../lib/og';
 
 export function getStaticPaths() {
   return allPlayerRefs().map(ref => ({
@@ -30,7 +28,6 @@ const noindex = (p.GP || 0) < 1 || league.key === 's2u15'; // s2 pages are share
   activeTab={null}
   canonical={`${SITE}/player/${Astro.params.slug}`}
   robots={noindex ? 'noindex,follow' : undefined}
-  ogImage={playerOg(p, league)}
 >
   <PlayerPage player={p} league={league} />
 </Layout>

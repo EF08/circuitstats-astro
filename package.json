@@ -14,7 +14,6 @@
   "dependencies": {
     "@astrojs/vercel": "^11.0.0",
     "@sparticuz/chromium": "^149.0.0",
-    "@vercel/og": "^0.6.8",
     "astro": "^7.0.4",
     "puppeteer-core": "^25.3.0"
   }

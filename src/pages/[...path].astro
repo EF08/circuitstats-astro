@@ -9,8 +9,7 @@ import Leaders from '../components/Leaders.astro';
 import TeamsGrid from '../components/TeamsGrid.astro';
 import Compare from '../components/Compare.astro';
 import { LEAGUES, S2_LEAGUE, type League } from '../lib/leagues';
-import { CAT_SLUGS, makeCats } from '../lib/catalog';
-import { leadersOg, hubOg } from '../lib/og';
+import { CAT_SLUGS } from '../lib/catalog';
 
 const SITE = 'https://www.circuitstats.com';
 
@@ -65,24 +64,6 @@ const descs: Record<string, string> = {
   leaders: `${league.scopeLabel} statistical leaders for 2026. Top 10 by ${stat}.`,
   abri: `Abri Fazliu's ${league.scopeLabel} stats and national ranking, 2026 season.`,
 };
-
-// OG share image per page type.
-let ogImage: string | undefined;
-if (kind === 'leaders' && stat) {
-  const cat = makeCats(league.qualMin).find(c => c.slug === stat)!;
-  const RANK = league.ranks.RANK;
-  const pool = cat.filter ? league.players.filter(cat.filter) : league.players;
-  const top3 = [...pool].filter(p => RANK[cat.rkField] && RANK[cat.rkField][p.Player])
-    .sort((a, b) => RANK[cat.rkField][a.Player] - RANK[cat.rkField][b.Player]).slice(0, 3);
-  const h1 = cat.lowerBetter ? `Fewest ${cat.lbl} (Leaders)` : `Top 10 ${cat.lbl}`;
-  ogImage = leadersOg(`${league.scopeLabel} — ${h1}`, top3, cat.field, /%/.test(cat.field) || cat.field === '_ts');
-} else if (kind === 'stats') {
-  ogImage = hubOg(`${league.scopeLabel} Player Stats`, `${league.players.length} players · sortable`);
-} else if (kind === 'teams') {
-  ogImage = hubOg(`${league.scopeLabel} Teams`, 'Rosters · standings · team stats');
-} else if (kind === 'compare') {
-  ogImage = hubOg(`${league.scopeLabel} Compare`, 'Any two players, head-to-head');
-}
 ---
 <Layout
   title={titles[kind]}
@@ -93,7 +74,6 @@ if (kind === 'leaders' && stat) {
   activeTab={activeTab}
   canonical={canonical}
   robots={isAbri ? 'noindex,follow' : undefined}
-  ogImage={ogImage}
 >
   {kind === 'stats' && <StatsTable league={league} />}
   {kind === 'abri' && <StatsTable league={league} rankJump={{ field: rjField!, player: 'Abri Fazliu' }} />}
