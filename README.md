@@ -16,16 +16,14 @@ Used by AAU coaches scouting opponents, college recruiters shortlisting without 
 ## Architecture
 
 ```mermaid
-flowchart LR
-    subgraph pipeline [Data pipeline - separate repo]
-        A[Circuit sources<br/>EYBL API / 3SSB AJAX / UAA HTML] --> B[Scrapers + normalization]
-    end
-    B --> C[Versioned JSON datasets<br/>private data repo, fetched at build]
-    C --> D[Astro build<br/>3,400+ static pages]
-    D --> E[Vercel CDN]
-    E --> F[SSR: /compare/any-pair]
-    E --> G[Edge: /api/og share cards]
-    E -->|/bfleaderboard_backend/* proxy| H[Node/Express on Render<br/>analytics + magic-link auth]
+flowchart TD
+    A["Circuit sources<br/>EYBL API · 3SSB AJAX · UAA HTML"] --> B["Scrapers + normalization<br/>(private repo)"]
+    B --> C["Versioned JSON datasets<br/>(private data repo, fetched at build)"]
+    C --> D["Astro build<br/>3,400+ static pages"]
+    D --> E["Vercel CDN"]
+    E --> F["SSR<br/>/compare/any-pair"]
+    E --> G["Edge<br/>/api/og share cards"]
+    E --> H["Node/Express on Render<br/>analytics + magic-link auth<br/>(via /bfleaderboard_backend/* proxy)"]
 ```
 
 - **Static-first:** every player, team, and leaderboard page is prebuilt at deploy time — fast, cheap, and fully indexable.
