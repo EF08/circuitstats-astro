@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/a1a2-command-center/:path*",
-      "destination": "https://bfleaderboard-backend.onrender.com/a1a2-command-center/:path*"
+      "destination": "https://a1a2-command-center.onrender.com/a1a2-command-center/:path*"
     }
   ],
   "redirects": [
