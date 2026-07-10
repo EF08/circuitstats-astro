@@ -1,8 +1,8 @@
 {
   "rewrites": [
     {
-      "source": "/bfleaderboard_backend/:path*",
-      "destination": "https://bfleaderboard-backend.onrender.com/bfleaderboard_backend/:path*"
+      "source": "/a1a2-command-center/:path*",
+      "destination": "https://bfleaderboard-backend.onrender.com/a1a2-command-center/:path*"
     }
   ],
   "redirects": [

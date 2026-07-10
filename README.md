@@ -23,13 +23,13 @@ flowchart TD
     D --> E["Vercel CDN"]
     E --> F["SSR<br/>/compare/any-pair"]
     E --> G["Edge<br/>/api/og share cards"]
-    E --> H["Node/Express on Render<br/>analytics + magic-link auth<br/>(via /bfleaderboard_backend/* proxy)"]
+    E --> H["Node/Express on Render<br/>analytics + magic-link auth<br/>(via /a1a2-command-center/* proxy)"]
 ```
 
 - **Static-first:** every player, team, and leaderboard page is prebuilt at deploy time — fast, cheap, and fully indexable.
 - **SSR where static can't go:** `/compare/[slug]` renders any of ~5.6M possible player pairs on demand; curated pairs are prebuilt.
 - **Edge OG cards:** share a player link in iMessage/Slack and get a branded stat card PNG generated at the edge.
-- **Backend proxy:** `vercel.json` routes `/bfleaderboard_backend/*` to a Node/Express backend on Render for visit analytics and dashboard auth — one origin, no CORS.
+- **Backend proxy:** `vercel.json` routes `/a1a2-command-center/*` to a Node/Express backend on Render for visit analytics and dashboard auth — one origin, no CORS.
 
 ## Programmatic SEO
 

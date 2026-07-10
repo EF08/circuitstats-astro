@@ -7,7 +7,7 @@ is moving the domain back.
 ## What this repo is
 Astro + `@astrojs/vercel`. Mostly static pages; two things run server-side:
 `/compare/[slug]` (SSR — any player pair) and `/api/og` (edge — share-card PNGs).
-`vercel.json` proxies `/bfleaderboard_backend/*` to Render (dashboard + tracking).
+`vercel.json` proxies `/a1a2-command-center/*` to Render (dashboard + tracking).
 
 ---
 

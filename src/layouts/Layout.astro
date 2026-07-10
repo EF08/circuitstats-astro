@@ -132,7 +132,7 @@ const navIcons: Record<string, string> = {
   // Fire-and-forget visit tracking (feeds the /dashboard analytics), verbatim from the app.
   (function () {
     try {
-      fetch('/bfleaderboard_backend/track', {
+      fetch('/a1a2-command-center/track', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           referrer: document.referrer || null,
@@ -166,7 +166,7 @@ const navIcons: Record<string, string> = {
     }
     function trackShare(method) {
       try {
-        fetch('/bfleaderboard_backend/track-share', {
+        fetch('/a1a2-command-center/track-share', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ page: location.pathname, title: trackTitleInit, url: location.href, method: method }),
           keepalive: true,
@@ -219,7 +219,7 @@ const navIcons: Record<string, string> = {
       var el = e.target.closest(SELECTOR);
       if (!el) return;
       try {
-        fetch('/bfleaderboard_backend/track-click', {
+        fetch('/a1a2-command-center/track-click', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ label: label(el), detail: detail(el), page: location.pathname }),
           keepalive: true,
