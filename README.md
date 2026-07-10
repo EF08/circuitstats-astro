@@ -23,7 +23,7 @@ flowchart TD
     D --> E["Vercel CDN"]
     E --> F["SSR<br/>/compare/any-pair"]
     E --> G["Edge<br/>/api/og share cards"]
-    E --> H["Node/Express on Render<br/>analytics + magic-link auth<br/>(via /a1a2-command-center/* proxy)"]
+    E --> H["a1a2-command-center<br/>(Node/Express on Render)<br/>analytics + magic-link auth<br/>via /a1a2-command-center/* proxy"]
 ```
 
 - **Static-first:** every player, team, and leaderboard page is prebuilt at deploy time — fast, cheap, and fully indexable.
