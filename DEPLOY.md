@@ -15,9 +15,11 @@ Astro + `@astrojs/vercel`. Mostly static pages; two things run server-side:
 1. Push this repo to GitHub (e.g. `EF08/circuitstats-astro`).
 2. Vercel → **Add New Project** → import that repo. It auto-detects Astro
    (build runs `npm run build` = fetch data + `astro build`, no output dir to set).
-   **One env var required:** `DATA_REPO_TOKEN` = fine-grained GitHub PAT with
-   read-only **Contents** access to the private `EF08/circuitstats-data` repo
-   (the stats JSONs are fetched at build time by `scripts/fetch-data.mjs`).
+   **One env var required** — the stats JSONs are fetched at build time by
+   `scripts/fetch-data.mjs` from the private `EF08/circuitstats-data` repo, via either:
+   - `DATA_REPO_DEPLOY_KEY_B64` — base64 ed25519 private key of a read-only deploy
+     key on the data repo (**already set on this project**, Production + Preview), or
+   - `DATA_REPO_TOKEN` — fine-grained GitHub PAT with read-only Contents access.
 3. Deploy → note the preview URL, e.g. `https://circuitstats-astro-xxxx.vercel.app`.
 
 ## Phase 3 — Verify on the preview URL
