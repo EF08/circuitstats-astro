@@ -5,3 +5,6 @@ dist/
 reference/
 
 .vercel
+
+# Stats datasets (private — EF08/circuitstats-data, fetched at build)
+src/data/*.json

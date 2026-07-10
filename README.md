@@ -20,7 +20,7 @@ flowchart LR
     subgraph pipeline [Data pipeline - separate repo]
         A[Circuit sources<br/>EYBL API / 3SSB AJAX / UAA HTML] --> B[Scrapers + normalization]
     end
-    B --> C[Versioned JSON datasets<br/>src/data/]
+    B --> C[Versioned JSON datasets<br/>private data repo, fetched at build]
     C --> D[Astro build<br/>3,400+ static pages]
     D --> E[Vercel CDN]
     E --> F[SSR: /compare/any-pair]
@@ -42,7 +42,7 @@ flowchart LR
 
 ## Data notes
 
-Stats are official per-circuit box scores, scraped per source (EYBL via its API, 3SSB via Playwright + AJAX capture, UAA via HTML), normalized into one schema. 3SSB does not publish shooting attempts (only percentages), so derived metrics degrade gracefully per circuit. The scraping pipeline lives in a separate private repo alongside the backend.
+Stats are official per-circuit box scores, scraped per source (EYBL via its API, 3SSB via Playwright + AJAX capture, UAA via HTML), normalized into one schema. 3SSB does not publish shooting attempts (only percentages), so derived metrics degrade gracefully per circuit. The scraping pipeline and the datasets themselves live in separate private repos — this repo is the full site code; `scripts/fetch-data.mjs` pulls the data at build time.
 
 ## Stack
 
@@ -55,4 +55,4 @@ npm install
 npm run dev
 ```
 
-Data ships in-repo under `src/data/`, so the full site builds with no external services.
+The stats datasets are not in this repo — the build fetches them from a private data repo (`DATA_REPO_TOKEN` required). Site code is fully browsable here; the data powering [circuitstats.com](https://circuitstats.com) stays private.
