@@ -5,7 +5,7 @@
 // The picker overlay is real; a JS-free-by-default island wires slot clicks to
 // navigate to /compare/<a>-vs-<b> (a real URL), instead of the old in-app state.
 import { CMP_STATS, type CmpStat } from '../lib/catalog';
-import { S2_LEAGUE, type League, type Player } from '../lib/leagues';
+import { S2_LEAGUE, S3_LEAGUE, type League, type Player } from '../lib/leagues';
 import { playerSlug, canonicalPlayerHref } from '../lib/slugs';
 
 interface Props { league: League; a?: Player | null; b?: Player | null; }
@@ -69,7 +69,7 @@ const slot = (p: Player | null, i: number) => p
 // produces a broken "name-null-null" slug (circuit/age interpolated as the
 // literal string "null").
 function slugFor(p: Player): string {
-  const href = league.isBase || league.key === 's2u15'
+  const href = league.isBase || league.key === 's2u15' || league.key === 's3u15'
     ? `/player/${playerSlug(p.Player, league)}` : (canonicalPlayerHref(p.Player) || '');
   return href.replace('/player/', '');
 }
@@ -85,6 +85,9 @@ const picker = players.map(p => ({ n: p.Player, s: slugFor(p), t: p.Team, p: p.P
 if (league.key === 'allall') {
   S2_LEAGUE.players.forEach(p => {
     picker.push({ n: `${p.Player} (S2)`, s: playerSlug(p.Player, S2_LEAGUE), t: p.Team, p: p.PPG });
+  });
+  S3_LEAGUE.players.forEach(p => {
+    picker.push({ n: `${p.Player} (S3)`, s: playerSlug(p.Player, S3_LEAGUE), t: p.Team, p: p.PPG });
   });
 }
 const pickerJson = JSON.stringify(picker);

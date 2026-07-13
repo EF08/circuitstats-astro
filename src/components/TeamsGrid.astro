@@ -38,7 +38,7 @@ entries.sort((a, b) => {
 
 // resolve the real team-page href for an entry (base league direct; combined via tags)
 function teamHref(team: string, grp: string): string | null {
-  if (league.isBase || league.key === 's2u15') return `${league.urlBase}/team/${teamSlug(team, league)}`;
+  if (league.isBase || league.key === 's2u15' || league.key === 's3u15') return `${league.urlBase}/team/${teamSlug(team, league)}`;
   let c = circuit, a = age;
   if (!c && grp && SRC_TO_CIRCUIT[grp]) c = SRC_TO_CIRCUIT[grp];       // age-all: grp is _src
   if (!a && grp) a = grp.toLowerCase().startsWith('u') ? grp.toLowerCase() : a; // circuit-all: grp is _age (U15)

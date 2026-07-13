@@ -14,6 +14,7 @@ import ssbU15 from '../data/3ssb-u15.json';
 import ssbU16 from '../data/3ssb-u16.json';
 import ssbU17 from '../data/3ssb-u17.json';
 import s2u15 from '../data/uaa-u15-s2.json';
+import s3u15 from '../data/uaa-u15-s3.json';
 import standingsData from '../data/standings.json';
 
 const D15 = (uaaU15 as any).players as Player[];
@@ -26,6 +27,7 @@ const D_3SSB15 = (ssbU15 as any).players as Player[];
 const D_3SSB16 = (ssbU16 as any).players as Player[];
 const D_3SSB17 = (ssbU17 as any).players as Player[];
 const D_S2U15 = (s2u15 as any).players as Player[];
+const D_S3U15 = (s3u15 as any).players as Player[];
 
 const standings = standingsData as Record<string, Record<string, { rank: number; w: number; l: number }>>;
 
@@ -93,15 +95,23 @@ export const LEAGUES: League[] = [
   mk({ key: 'allall', label: 'ALL', scopeLabel: 'All Circuits', subLabel: sub('All Circuits · All Ages'), urlBase: '/rankings', players: D_ALLALL, standings: {}, circuit: null, age: null, isBase: false, combineKind: 'all' }),
 ];
 
-// Session 2 — its own base league; url base is a real page, not a hash.
+// Sessions — each its own base-like league; url base is a real page, not a hash.
 export const S2_LEAGUE: League = mk({
   key: 's2u15', label: 'UAA U15 · Session 2', scopeLabel: 'UAA U15 Session 2',
   subLabel: 'UAA U15 · Session 2 (May 15–17, 2026)', urlBase: '/uaa/u15/session2',
   players: D_S2U15, standings: {}, circuit: 'uaa', age: 'u15', isBase: false, combineKind: null, qualMin: 9,
 });
+export const S3_LEAGUE: League = mk({
+  key: 's3u15', label: 'UAA U15 · Session 3', scopeLabel: 'UAA U15 Session 3',
+  subLabel: 'UAA U15 · Session 3 (July 9–11, 2026)', urlBase: '/uaa/u15/session3',
+  players: D_S3U15, standings: {}, circuit: 'uaa', age: 'u15', isBase: false, combineKind: null, qualMin: 9,
+});
+export const SESSION_LEAGUES = [S2_LEAGUE, S3_LEAGUE];
+export const isSessionKey = (k: string) => SESSION_LEAGUES.some(l => l.key === k);
 
 export const BASE_LEAGUES = LEAGUES.filter(l => l.isBase);
-export const byKey = (k: string) => LEAGUES.find(l => l.key === k) || (k === 's2u15' ? S2_LEAGUE : undefined);
+export const byKey = (k: string) =>
+  LEAGUES.find(l => l.key === k) || SESSION_LEAGUES.find(l => l.key === k);
 
 // The 16 scope tabs shown in the header switcher / scope chips (order matches the app).
 export const SCOPE_ORDER = LEAGUES;

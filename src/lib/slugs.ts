@@ -3,7 +3,7 @@
 // gets a -2/-3 suffix. Team slug is scoped to its own /{circuit}/{age}/team/ dir
 // so 'Team Durant' stays 'team-durant' at every age. Deterministic → no
 // persisted registry needed, and URLs never churn across rebuilds.
-import { BASE_LEAGUES, S2_LEAGUE, type League, type Player } from './leagues';
+import { BASE_LEAGUES, SESSION_LEAGUES, isSessionKey, type League, type Player } from './leagues';
 // Live production slug registry (seo_slugs.json) — the source of truth so every
 // already-shared/indexed player URL survives the cutover byte-for-byte, including
 // the 35 name-collision slugs (…-2). Keyed "Name|Team|circuit|ageKey".
@@ -16,9 +16,9 @@ export function slugify(s: string): string {
     .replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-+|-+$/g, '')
     .toLowerCase() || 'x';
 }
-// registry ageKey: 's2u15' for Session 2, else the league's age.
+// registry ageKey: the session key ('s2u15'/'s3u15') for sessions, else the league's age.
 function regKey(name: string, team: string, lg: League): string {
-  const ageKey = lg.key === 's2u15' ? 's2u15' : lg.age;
+  const ageKey = isSessionKey(lg.key) ? lg.key : lg.age;
   return `${name}|${team}|${lg.circuit}|${ageKey}`;
 }
 
@@ -31,11 +31,11 @@ const _bySlug = new Map<string, PlayerRef>();
 
 function build() {
   if (_bySlug.size) return;
-  const leagues = [...BASE_LEAGUES, S2_LEAGUE];
+  const leagues = [...BASE_LEAGUES, ...SESSION_LEAGUES];
   for (const lg of leagues) {
     const used = new Set<string>();
     const nameToSlug = new Map<string, string>();
-    const suffix = lg.key === 's2u15' ? '-s2' : '';
+    const suffix = lg.key === 's2u15' ? '-s2' : lg.key === 's3u15' ? '-s3' : '';
     for (const p of lg.players) {
       // Prefer the live registry slug (URL continuity); else deterministic.
       let slug = SLUG_REGISTRY[regKey(p.Player, p.Team, lg)];
@@ -65,7 +65,7 @@ const _teamBySlug = new Map<string, { team: string; league: League }>(); // `${l
 
 function buildTeams() {
   if (_teamSlugs.size) return;
-  for (const lg of [...BASE_LEAGUES, S2_LEAGUE]) {
+  for (const lg of [...BASE_LEAGUES, ...SESSION_LEAGUES]) {
     const teams = [...new Set(lg.players.map(p => p.Team).filter(Boolean))].sort();
     const used = new Set<string>();
     const map = new Map<string, string>();

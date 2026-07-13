@@ -19,7 +19,7 @@ export const GET: APIRoute = () => {
     for (const t of teams) urls.push(`${lg.urlBase}/team/${teamSlug(t, lg)}`);
   }
   for (const ref of allPlayerRefs()) {
-    if (ref.league.key === 's2u15') continue;         // s2 pages are noindex
+    if (ref.league.key === 's2u15' || ref.league.key === 's3u15') continue;  // session pages are noindex
     if ((ref.player.GP || 0) < 1) continue;
     urls.push(`/player/${ref.slug}`);
   }

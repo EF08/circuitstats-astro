@@ -8,7 +8,7 @@ import StatsTable from '../components/StatsTable.astro';
 import Leaders from '../components/Leaders.astro';
 import TeamsGrid from '../components/TeamsGrid.astro';
 import Compare from '../components/Compare.astro';
-import { LEAGUES, S2_LEAGUE, type League } from '../lib/leagues';
+import { LEAGUES, S2_LEAGUE, SESSION_LEAGUES, type League } from '../lib/leagues';
 import { CAT_SLUGS } from '../lib/catalog';
 
 const SITE = 'https://www.circuitstats.com';
@@ -23,7 +23,7 @@ export function getStaticPaths() {
     fg: 'FG%', ft: 'FT%', ts: '_ts', '3p': '3FG%', '3pm': '3PM', '3pmg': '3PM/G',
     pts: 'Tot PTS', reb: 'Tot REB', ast: 'Tot AST', stl: 'Tot STL', blk: 'Tot BLK',
   };
-  const all: League[] = [...LEAGUES, S2_LEAGUE];
+  const all: League[] = [...LEAGUES, ...SESSION_LEAGUES];
   const paths: any[] = [];
   for (const lg of all) {
     const base = lg.urlBase.replace(/^\//, '');

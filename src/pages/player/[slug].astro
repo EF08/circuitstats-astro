@@ -16,7 +16,7 @@ const scope = league.scopeLabel;
 const bits = [['PPG', 'PPG'], ['RPG', 'RPG'], ['APG', 'APG']]
   .filter(([f]) => p[f] != null).map(([f, l]) => `${p[f]} ${l}`).join(', ');
 const desc = `${p.Player} (${p.Team}, ${scope}) 2026: ${bits} over ${p.GP} games. Full stats & national rankings on Circuit Stats.`;
-const noindex = (p.GP || 0) < 1 || league.key === 's2u15'; // s2 pages are share-only
+const noindex = (p.GP || 0) < 1 || league.key === 's2u15' || league.key === 's3u15'; // session pages are share-only
 ---
 <Layout
   title={`${p.Player} Stats 2026 — ${scope} | ${p.Team} | Circuit Stats`}

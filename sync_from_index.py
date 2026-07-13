@@ -27,6 +27,7 @@ DATASETS = {
     "D_EYBL15": "eybl-u15", "D_EYBL16": "eybl-u16", "D_EYBL17": "eybl-u17",
     "D_3SSB15": "3ssb-u15", "D_3SSB16": "3ssb-u16", "D_3SSB17": "3ssb-u17",
     "D_S2U15": "uaa-u15-s2",
+    "D_S3U15": "uaa-u15-s3",
 }
 STANDINGS = {
     "STANDINGS_U15": "uaa-u15", "STANDINGS_U16": "uaa-u16", "STANDINGS_U17": "uaa-u17",
