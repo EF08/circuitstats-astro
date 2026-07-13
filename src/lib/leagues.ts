@@ -106,7 +106,13 @@ export const S3_LEAGUE: League = mk({
   subLabel: 'UAA U15 · Session 3 (July 9–11, 2026)', urlBase: '/uaa/u15/session3',
   players: D_S3U15, standings: {}, circuit: 'uaa', age: 'u15', isBase: false, combineKind: null, qualMin: 9,
 });
-export const SESSION_LEAGUES = [S2_LEAGUE, S3_LEAGUE];
+// Session 3 is hidden until UA Next publishes its box scores (only 8 of 53
+// games were up as of Jul 13, 2026 — players showed 1 GP). When the data is
+// complete (re-run circuitstats-data/collect/collect_session.py to top up),
+// flip S3_LIVE to true and it relaunches everywhere: league switcher, all
+// /uaa/u15/session3/* pages, -s3 player pages, and the compare picker.
+export const S3_LIVE = false;
+export const SESSION_LEAGUES = S3_LIVE ? [S2_LEAGUE, S3_LEAGUE] : [S2_LEAGUE];
 export const isSessionKey = (k: string) => SESSION_LEAGUES.some(l => l.key === k);
 
 export const BASE_LEAGUES = LEAGUES.filter(l => l.isBase);

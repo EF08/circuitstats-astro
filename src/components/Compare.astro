@@ -5,7 +5,7 @@
 // The picker overlay is real; a JS-free-by-default island wires slot clicks to
 // navigate to /compare/<a>-vs-<b> (a real URL), instead of the old in-app state.
 import { CMP_STATS, type CmpStat } from '../lib/catalog';
-import { S2_LEAGUE, S3_LEAGUE, type League, type Player } from '../lib/leagues';
+import { SESSION_LEAGUES, type League, type Player } from '../lib/leagues';
 import { playerSlug, canonicalPlayerHref } from '../lib/slugs';
 
 interface Props { league: League; a?: Player | null; b?: Player | null; }
@@ -83,12 +83,12 @@ const picker = players.map(p => ({ n: p.Player, s: slugFor(p), t: p.Team, p: p.P
 // numbers specifically can be compared. Suffixed in the picker so it's
 // obvious which line is which when both exist for the same player.
 if (league.key === 'allall') {
-  S2_LEAGUE.players.forEach(p => {
-    picker.push({ n: `${p.Player} (S2)`, s: playerSlug(p.Player, S2_LEAGUE), t: p.Team, p: p.PPG });
-  });
-  S3_LEAGUE.players.forEach(p => {
-    picker.push({ n: `${p.Player} (S3)`, s: playerSlug(p.Player, S3_LEAGUE), t: p.Team, p: p.PPG });
-  });
+  for (const sl of SESSION_LEAGUES) {
+    const tag = sl.key === 's2u15' ? 'S2' : 'S3';
+    sl.players.forEach(p => {
+      picker.push({ n: `${p.Player} (${tag})`, s: playerSlug(p.Player, sl), t: p.Team, p: p.PPG });
+    });
+  }
 }
 const pickerJson = JSON.stringify(picker);
 ---
