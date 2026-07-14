@@ -48,6 +48,73 @@ const navIcons: Record<string, string> = {
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <script is:inline>
+  // Legacy-URL shim. The pre-SEO app was one page routed by location.hash
+  // (#u15/player/Name, #s2u15/stats, plus ?ref=abri&field=PPG&player=Name for
+  // rank-jumps). Fragments never reach the server, so links shared before the
+  // Astro cutover land on a real page with the old hash still attached —
+  // translate them to the equivalent real URL before first paint. No-op unless
+  // the URL carries legacy signals.
+  (function () {
+    var h = '';
+    try { h = decodeURIComponent(location.hash.slice(1)); } catch (e) { h = location.hash.slice(1); }
+    var q = new URLSearchParams(location.search);
+    var hasRJ = q.has('field') && q.has('player');
+    if (!h && !hasRJ) return;
+    // key -> [urlBase, circuit, age, playerSlugSuffix]; combined scopes have no
+    // player detail pages (circuit/age null -> fall back to the scope's /stats).
+    var KEYS = {
+      u15: ['/uaa/u15', 'uaa', 'u15', ''], u16: ['/uaa/u16', 'uaa', 'u16', ''], u17: ['/uaa/u17', 'uaa', 'u17', ''],
+      eybl15: ['/eybl/u15', 'eybl', 'u15', ''], eybl16: ['/eybl/u16', 'eybl', 'u16', ''], eybl17: ['/eybl/u17', 'eybl', 'u17', ''],
+      '3ssb15': ['/3ssb/u15', '3ssb', 'u15', ''], '3ssb16': ['/3ssb/u16', '3ssb', 'u16', ''], '3ssb17': ['/3ssb/u17', '3ssb', 'u17', ''],
+      all: ['/uaa', null, null, ''], eyblall: ['/eybl', null, null, ''], '3ssball': ['/3ssb', null, null, ''],
+      u15all: ['/rankings/u15', null, null, ''], u16all: ['/rankings/u16', null, null, ''], u17all: ['/rankings/u17', null, null, ''],
+      allall: ['/rankings', null, null, ''],
+      s2u15: ['/uaa/u15/session2', 'uaa', 'u15', '-s2'], s3u15: ['/uaa/u15/session3', 'uaa', 'u15', '-s3'],
+    };
+    var key = null, rest = h;
+    var names = Object.keys(KEYS).sort(function (a, b) { return b.length - a.length; }); // s2u15 before u15 etc.
+    for (var i = 0; i < names.length; i++) {
+      if (h === names[i] || h.indexOf(names[i] + '/') === 0) { key = names[i]; rest = h.slice(names[i].length).replace(/^\//, ''); break; }
+    }
+    // The old ?ref=abri links could also hit /session2uaastatsu15 with no hash.
+    if (!key && location.pathname === '/session2uaastatsu15') key = 's2u15';
+    var TABS = { stats: 1, teams: 1, compare: 1, leaders: 1 };
+    var head = rest.split('/')[0];
+    var isLegacy = !!key || TABS[head] || rest.indexOf('player/') === 0 || rest.indexOf('team/') === 0;
+    if (!isLegacy && !hasRJ) return;
+    var m = KEYS[key || 'allall'], base = m[0], circuit = m[1], age = m[2], suffix = m[3];
+    // Mirrors slugs.ts slugify() — deterministic slugs, so old #player/Name links
+    // resolve without shipping the registry (rare -2 collision slugs excepted).
+    function slugify(s) {
+      return String(s).normalize('NFKD').replace(/[̀-ͯ]/g, '')
+        .replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'x';
+    }
+    // Old-app rank field -> /abri* short-link key ([...path].astro ABRI_SHORT_FIELDS).
+    var FIELD_SHORT = { PPG: 'ppg', RPG: 'rpg', APG: 'apg', SPG: 'spg', BPG: 'bpg', GP: 'gp',
+      'FG%': 'fg', 'FT%': 'ft', _ts: 'ts', '3FG%': '3p', '3PM': '3pm', '3PM/G': '3pmg',
+      'Tot PTS': 'pts', 'Tot REB': 'reb', 'Tot AST': 'ast', 'Tot STL': 'stl', 'Tot BLK': 'blk' };
+    var dest = null;
+    if (rest.indexOf('player/') === 0) {
+      var nm = rest.slice(7);
+      dest = (circuit && age) ? '/player/' + slugify(nm) + '-' + circuit + '-' + age + suffix : base + '/stats';
+    } else if (rest.indexOf('team/') === 0) {
+      var tm = rest.slice(5).split('~')[0]; // combined scopes encoded "Team~Group"
+      dest = (circuit && age && !suffix) ? base + '/team/' + slugify(tm) : base + '/teams';
+    } else if (hasRJ && (!rest || head === 'stats')) {
+      // Rank-jump deep link — only ever issued for Abri (?ref=abri unlock).
+      var short = FIELD_SHORT[q.get('field')];
+      if (short && slugify(q.get('player')) === 'abri-fazliu' && key === 's2u15') dest = '/abri' + short;
+      else if (short && slugify(q.get('player')) === 'abri-fazliu') dest = '/abriu15' + short;
+      else dest = base + '/stats';
+    } else if (TABS[head]) {
+      dest = head === 'leaders' ? base + '/leaders/ppg' : base + '/' + head;
+    } else if (key) {
+      dest = base + '/stats';
+    }
+    if (dest && dest !== location.pathname) location.replace(dest);
+  })();
+  </script>
   <title>{title}</title>
   {description && <meta name="description" content={description} />}
   {canonical && <link rel="canonical" href={canonical} />}

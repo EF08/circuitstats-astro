@@ -40,6 +40,15 @@ export function getStaticPaths() {
   for (const [key, field] of Object.entries(ABRI_SHORT_FIELDS)) {
     paths.push({ params: { path: `abri${key}` }, props: { league: S2_LEAGUE, kind: 'abri', stat: null, rjField: field } });
   }
+  // Full-season variants (/abriu15, /abriu15ppg, …) — same rank-jump landing on
+  // the UAA U15 full-season table. abrifazliu.com's stat panel alternates between
+  // a Session 2 set and a Full Season set; the S2-only links above covered just
+  // the first. Like the S2 set, these are noindex and canonicalize to /stats.
+  const U15_LEAGUE = LEAGUES.find(l => l.key === 'u15')!;
+  paths.push({ params: { path: 'abriu15' }, props: { league: U15_LEAGUE, kind: 'abri', stat: null, rjField: 'PPG' } });
+  for (const [key, field] of Object.entries(ABRI_SHORT_FIELDS)) {
+    paths.push({ params: { path: `abriu15${key}` }, props: { league: U15_LEAGUE, kind: 'abri', stat: null, rjField: field } });
+  }
   return paths;
 }
 
