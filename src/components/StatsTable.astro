@@ -317,14 +317,19 @@ const total = rows.length;
         if (!wrapEl || !row) return;
         var wrapRect = wrapEl.getBoundingClientRect();
         var rowRect = row.getBoundingClientRect();
-        var top = Math.max(0, wrapEl.scrollTop + (rowRect.top - wrapRect.top) - (wrapEl.clientHeight / 2) + (rowRect.height / 2));
+        // Rect coords are scaled by the desktop html{zoom:1.3} while scrollTop /
+        // clientHeight are not, so rect deltas must be divided by the effective
+        // zoom or the target overshoots ~30% on desktop and the row lands above
+        // the visible rows.
+        var zoom = wrapEl.offsetHeight ? (wrapRect.height / wrapEl.offsetHeight) : 1;
+        var top = Math.max(0, wrapEl.scrollTop + (rowRect.top - wrapRect.top) / zoom - (wrapEl.clientHeight / 2) + (rowRect.height / zoom / 2));
         var left = wrapEl.scrollLeft;
         var th = document.getElementById('th-' + rjFieldInit);
         if (window.innerWidth < 900 && th) {
           var thRect = th.getBoundingClientRect();
           var playerTh = document.querySelector('.player-th');
           var playerW = (playerTh && playerTh.offsetWidth) || 120;
-          left = Math.max(0, wrapEl.scrollLeft + thRect.left - wrapRect.left - playerW);
+          left = Math.max(0, wrapEl.scrollLeft + (thRect.left - wrapRect.left) / zoom - playerW);
         }
         wrapEl.scrollTo({ top: top, left: left, behavior: 'smooth' });
       };
