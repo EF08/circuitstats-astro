@@ -102,7 +102,7 @@ const total = rows.length;
   <button id="tbl-show-more" style="display:none" data-track="stats:show-more"></button>
 </div>
 
-<script is:inline define:vars={{ rjActiveInit: rjActive }}>
+<script is:inline define:vars={{ rjActiveInit: rjActive, rjFieldInit: rjActive ? rankJump!.field : null }}>
   // Progressive enhancement: click-to-sort, search-filter, name expand/collapse,
   // and pagination (100 at a time — the full dataset is already server-rendered
   // above for SEO/no-JS, this just keeps the *visible*/interactive DOM small so
@@ -303,6 +303,35 @@ const total = rows.length;
     });
 
     if (!rjActive) applyVisibility();
+
+    // Rank-jump landing: replicate the pre-SEO app's snap-scroll (applyRankJump's
+    // center()) — center the highlighted row vertically in the table's own scroll
+    // container and, on mobile, pan horizontally so the jumped stat's column sits
+    // right next to the sticky player column. Retried across frames + delayed
+    // passes because on a cold / mobile load the flex layout (and the table's
+    // final height) isn't settled on the first frame. Both axes are always
+    // specified so the horizontal pan can't reset the vertical position.
+    if (rjActive && rjFieldInit) {
+      var centerJump = function () {
+        var row = tbody.querySelector('.tbl-row-hl');
+        if (!wrapEl || !row) return;
+        var wrapRect = wrapEl.getBoundingClientRect();
+        var rowRect = row.getBoundingClientRect();
+        var top = Math.max(0, wrapEl.scrollTop + (rowRect.top - wrapRect.top) - (wrapEl.clientHeight / 2) + (rowRect.height / 2));
+        var left = wrapEl.scrollLeft;
+        var th = document.getElementById('th-' + rjFieldInit);
+        if (window.innerWidth < 900 && th) {
+          var thRect = th.getBoundingClientRect();
+          var playerTh = document.querySelector('.player-th');
+          var playerW = (playerTh && playerTh.offsetWidth) || 120;
+          left = Math.max(0, wrapEl.scrollLeft + thRect.left - wrapRect.left - playerW);
+        }
+        wrapEl.scrollTo({ top: top, left: left, behavior: 'smooth' });
+      };
+      requestAnimationFrame(function () { requestAnimationFrame(centerJump); });
+      setTimeout(centerJump, 80);   // fallback when rAF is throttled (just-loaded tab)
+      setTimeout(centerJump, 300);  // second pass once flex layout / fonts have settled
+    }
   })();
 
   // Axis-lock scroll + momentum (verbatim from the pre-SEO app): once a touch
