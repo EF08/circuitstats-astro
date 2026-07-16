@@ -6,6 +6,7 @@
 import { TBL_COLS, getColVal, sortCmp, fmtColVal, abbr, RANK_LABELS, PCT_MIN_MAKES, type Player } from '../lib/stats';
 import type { League } from '../lib/leagues';
 import { rowLinks } from '../lib/links';
+import { teamAlias } from '../lib/teamAliases';
 
 interface Props { league: League; rankJump?: { field: string; player: string } | null; }
 const { league, rankJump = null } = Astro.props as Props;
@@ -85,8 +86,8 @@ const total = rows.length;
               <td class="tbl-td player-td">
                 <a class="tbl-pname" href={playerHref} data-abbr={abbr(p.Player)} data-full={p.Player} data-track="stats:player-link">{abbr(p.Player)}{rnk && <span class="tbl-stat-rank">#{rnk}</span>}<Fragment set:html={tagBadge(p)} /></a>
                 {teamHref
-                  ? <a class="tbl-pteam" href={teamHref} data-track="stats:team-link">{seed}{p.Team}</a>
-                  : <span class="tbl-pteam">{seed}{p.Team}</span>}
+                  ? <a class="tbl-pteam" href={teamHref} data-alias={teamAlias(p.Team) || undefined} data-track="stats:team-link">{seed}{p.Team}</a>
+                  : <span class="tbl-pteam" data-alias={teamAlias(p.Team) || undefined}>{seed}{p.Team}</span>}
               </td>
               {TBL_COLS.map(c => {
                 const makesField = PCT_MIN_MAKES[c.f];
@@ -149,7 +150,9 @@ const total = rows.length;
             var nm = r.querySelector('.tbl-pname'), tm = r.querySelector('.tbl-pteam');
             var name = (nm && nm.getAttribute('data-full') || '').toLowerCase();
             var team = (tm && tm.textContent || '').toLowerCase();
-            return name.indexOf(ql) >= 0 || team.indexOf(ql) >= 0;
+            // data-alias: extra search keywords (e.g. "canada" on Toronto Alliance)
+            var alias = (tm && tm.getAttribute('data-alias') || '').toLowerCase();
+            return name.indexOf(ql) >= 0 || team.indexOf(ql) >= 0 || alias.indexOf(ql) >= 0;
           })
         : sortedOrder;
       var total = matched.length;

@@ -7,6 +7,7 @@
 import { CMP_STATS, type CmpStat } from '../lib/catalog';
 import { SESSION_LEAGUES, type League, type Player } from '../lib/leagues';
 import { playerSlug, canonicalPlayerHref } from '../lib/slugs';
+import { teamAlias } from '../lib/teamAliases';
 
 interface Props { league: League; a?: Player | null; b?: Player | null; }
 const { league, a = null, b = null } = Astro.props as Props;
@@ -74,9 +75,10 @@ function slugFor(p: Player): string {
   return href.replace('/player/', '');
 }
 
-// picker data for the island: {n: name, s: slug, t: team, p: ppg} for this scope.
-// Slug resolves to each player's canonical base-league page (combined scopes use tags).
-const picker = players.map(p => ({ n: p.Player, s: slugFor(p), t: p.Team, p: p.PPG }));
+// picker data for the island: {n: name, s: slug, t: team, p: ppg, a?: search
+// alias} for this scope. Slug resolves to each player's canonical base-league
+// page (combined scopes use tags).
+const picker = players.map(p => ({ n: p.Player, s: slugFor(p), t: p.Team, p: p.PPG, a: teamAlias(p.Team) || undefined }));
 // The "All Circuits" comparison pool doesn't otherwise include Session 2 —
 // add those UAA U15 players in as their own separate, separately-selectable
 // entries (not merged with their regular-season line) so their Session 2
@@ -86,7 +88,7 @@ if (league.key === 'allall') {
   for (const sl of SESSION_LEAGUES) {
     const tag = sl.key === 's2u15' ? 'S2' : 'S3';
     sl.players.forEach(p => {
-      picker.push({ n: `${p.Player} (${tag})`, s: playerSlug(p.Player, sl), t: p.Team, p: p.PPG });
+      picker.push({ n: `${p.Player} (${tag})`, s: playerSlug(p.Player, sl), t: p.Team, p: p.PPG, a: teamAlias(p.Team) || undefined });
     });
   }
 }
@@ -126,7 +128,7 @@ const pickerJson = JSON.stringify(picker);
     function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
     function render(q) {
       var ql = (q || '').toLowerCase();
-      var rows = data.filter(function (p) { return p.n.toLowerCase().includes(ql) || p.t.toLowerCase().includes(ql); })
+      var rows = data.filter(function (p) { return p.n.toLowerCase().includes(ql) || p.t.toLowerCase().includes(ql) || (p.a && p.a.indexOf(ql) >= 0); })
         .sort(function (a, b) { return b.p - a.p; });
       listEl.innerHTML = rows.map(function (p) {
         return '<div class="picker-item" data-slug="' + p.s + '"><div class="pi-name">' + esc(p.n) + '</div><div class="pi-info">' + esc(p.t) + ' &middot; ' + p.p + ' PPG</div></div>';

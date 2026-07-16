@@ -5,6 +5,7 @@
 import { type League, type Player } from '../lib/leagues';
 import { teamHrefFor } from '../lib/slugs';
 import { teamSlug } from '../lib/slugs';
+import { teamAlias } from '../lib/teamAliases';
 
 interface Props { league: League; }
 const { league } = Astro.props as Props;
@@ -76,7 +77,7 @@ const cards = entries.map(({ team, grp }) => {
   </div>
   <div class="teams-grid" id="teams-grid">
     {cards.map(c => (
-      <a class="t-card" href={c.href}>
+      <a class="t-card" href={c.href} data-alias={teamAlias(c.team) || undefined}>
         {c.st && <div class="t-rank" set:html={`#${c.st.rank} &nbsp;${c.st.w}W–${c.st.l}L`} />}
         <div class="t-name">{c.team}</div>
         {c.grp && <div class="t-grp">{c.grp}</div>}
@@ -95,7 +96,9 @@ const cards = entries.map(({ team, grp }) => {
       var ql = q.toLowerCase();
       cards.forEach(function (card) {
         var nm = card.querySelector('.t-name');
-        card.style.display = (nm && nm.textContent.toLowerCase().indexOf(ql) >= 0) ? '' : 'none';
+        // data-alias: extra search keywords (e.g. "canada" on Toronto Alliance)
+        var alias = (card.getAttribute('data-alias') || '').toLowerCase();
+        card.style.display = ((nm && nm.textContent.toLowerCase().indexOf(ql) >= 0) || alias.indexOf(ql) >= 0) ? '' : 'none';
       });
       if (c) c.classList.toggle('on', !!q);
     }
