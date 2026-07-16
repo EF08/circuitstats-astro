@@ -5,6 +5,7 @@
 // fields without a leaderboard render as plain spans, same as seo_render did.
 import { calcTS, type Player } from '../lib/stats';
 import type { League } from '../lib/leagues';
+import { liveLabel } from '../lib/liveLabel.js';
 
 interface Props { player: Player; league: League; }
 const { player: p, league } = Astro.props as Props;
@@ -105,7 +106,7 @@ const body = `
         </a>
       </div>
       <div class="pp-cta">
-        <div class="pp-cta-live">July live period</div>
+        <div class="pp-cta-live" data-live-label>${liveLabel()}</div>
         <div class="pp-cta-t">Is this your player?</div>
         <p class="pp-cta-d">Get him a professional recruiting website while coaches are watching — players have landed <strong>multiple offers</strong> off theirs.</p>
         <div class="pp-cta-row">
@@ -134,6 +135,12 @@ const body = `
     </div>
     <div style="height:16px"></div>`;
 ---
+<script>
+  // Correct the badge to the visitor's actual date — this static page may have
+  // been built in a different month than it's being viewed in.
+  import { liveLabel } from '../lib/liveLabel.js';
+  document.querySelectorAll('[data-live-label]').forEach(el => { el.textContent = liveLabel(); });
+</script>
 <div class="view active" id="view-player">
   <a class="back-btn" href={league.urlBase + '/stats'}>
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">

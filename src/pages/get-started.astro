@@ -6,6 +6,7 @@
 // POSTs to the circuitboard backend (/website-request), which stores the lead
 // and emails Andy.
 import Layout from '../layouts/Layout.astro';
+import { liveLabel } from '../lib/liveLabel.js';
 const SITE = 'https://www.circuitstats.com';
 ---
 <Layout
@@ -23,7 +24,7 @@ const SITE = 'https://www.circuitstats.com';
 
     <!-- HERO -->
     <section class="gs-hero">
-      <div class="gs-live">July live period</div>
+      <div class="gs-live" data-live-label>{liveLabel()}</div>
       <h1 class="gs-h1" id="gs-title">Get your player seen by college coaches.</h1>
       <p class="gs-hero-sub">A professional recruiting website on his own domain, <span class="gs-domain">www.hisrealname.com</span>: film, verified stats, accolades. One link any coach can open.</p>
       <a class="gs-btn gs-hero-btn" href="#request" data-track="get-started:hero-cta">Request my website</a>
@@ -128,6 +129,12 @@ const SITE = 'https://www.circuitstats.com';
 
   </div>
 
+  <script>
+    // Correct the badge to the visitor's actual date — this static page may
+    // have been built in a different month than it's being viewed in.
+    import { liveLabel } from '../lib/liveLabel.js';
+    document.querySelectorAll('[data-live-label]').forEach(el => { el.textContent = liveLabel(); });
+  </script>
   <script is:inline>
     // Prefill from the player page that linked here (?p=&t=&l=).
     (function () {
