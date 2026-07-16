@@ -106,7 +106,7 @@ const pickerJson = JSON.stringify(picker);
   <div class="picker-overlay" id="picker-overlay">
     <div class="picker-modal">
       <div class="picker-bar">
-        <input class="srch-inp" id="picker-inp" type="search" placeholder="Search players&hellip;" autocomplete="off" />
+        <input class="srch-inp" id="picker-inp" type="search" placeholder="Search players to compare&hellip;" autocomplete="off" />
         <button class="picker-close" id="picker-close" data-track="compare:picker-cancel">Cancel</button>
       </div>
       <div class="picker-list" id="picker-list"></div>
@@ -149,8 +149,9 @@ const pickerJson = JSON.stringify(picker);
         var pair = picked[0] < picked[1] ? picked[0] + '-vs-' + picked[1] : picked[1] + '-vs-' + picked[0];
         // Carry the scope being browsed along so the destination page keeps
         // showing it (instead of falling back to whichever base league the
-        // picked players themselves belong to).
-        location.href = '/compare/' + pair + '?league=' + encodeURIComponent(leagueKey);
+        // picked players themselves belong to). &first= keeps slot 1's player
+        // in the left column even though the pair URL is alphabetical.
+        location.href = '/compare/' + pair + '?league=' + encodeURIComponent(leagueKey) + '&first=' + encodeURIComponent(picked[0]);
       }
     }
     document.getElementById('cmp-slot-0').addEventListener('click', function () { open(0); });
@@ -162,5 +163,11 @@ const pickerJson = JSON.stringify(picker);
       var slug = item.getAttribute('data-slug');
       picked[active] = slug; close(); fillSlot(active, slug); go();
     });
+    // Deep-link: ?a=<slug> preselects slot 0 (the player-page "Compare vs
+    // anyone" button lands here) and opens the picker for the opponent.
+    var pre = new URLSearchParams(location.search).get('a');
+    if (pre && !picked[0] && data.some(function (p) { return p.s === pre; })) {
+      picked[0] = pre; fillSlot(0, pre); open(1);
+    }
   })();
 </script>

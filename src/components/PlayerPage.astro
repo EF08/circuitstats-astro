@@ -76,17 +76,43 @@ const teamLabel = st ? `#${st.rank} ${p.Team}` : p.Team;
 
 // team detail href (base league, or resolve via tags for combined — but detail
 // pages are always rendered from a base league, so a direct slug works)
-import { teamSlug } from '../lib/slugs';
+import { teamSlug, canonicalPlayerHref } from '../lib/slugs';
 const teamHref = p.Team ? `${league.urlBase}/team/${teamSlug(p.Team, league)}` : '#';
+
+// "Is this your player?" hero CTA — leads to the /get-started request form,
+// prefilled with this player via query params.
+const ctaHref = `/get-started?p=${encodeURIComponent(p.Player)}&t=${encodeURIComponent(p.Team || '')}&l=${encodeURIComponent(league.scopeLabel)}`;
+const first = (p.Player || '').trim().split(/\s+/)[0];
+
+// Compare button → All-Circuits compare hub with this player preselected
+// (?a= is picked up by Compare.astro's island). Canonical slug: the ALL pool
+// merges duplicate players onto their canonical base-league line.
+const cmpSlug = (canonicalPlayerHref(p.Player) || '').replace('/player/', '');
+const compareHref = cmpSlug ? `/rankings/compare?a=${cmpSlug}` : '/rankings/compare';
 
 const body = `
     <div class="pp-hero">
-      <div class="pp-name">${p.Player}${tagBadge() ? ` ${tagBadge()}` : ''}</div>
-      <a class="pp-team-link" href="${teamHref}">
-        ${teamLabel}
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-      </a>
-      <div class="pp-gp">${p.GP} games played</div>
+      <div class="pp-hero-main">
+        <div class="pp-name">${p.Player}${tagBadge() ? ` ${tagBadge()}` : ''}</div>
+        <a class="pp-team-link" href="${teamHref}">
+          ${teamLabel}
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </a>
+        <div class="pp-gp">${p.GP} games played</div>
+        <a class="pp-compare-btn" href="${compareHref}" data-track="player-page:compare">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M10 3H6a2 2 0 0 0-2 2v14c0 1.1.9 2 2 2h4M14 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M12 8v8M9 11l3-3 3 3"/></svg>
+          Compare ${first} vs anyone
+        </a>
+      </div>
+      <div class="pp-cta">
+        <div class="pp-cta-live">July live period</div>
+        <div class="pp-cta-t">Is this your player?</div>
+        <p class="pp-cta-d">Get him a professional recruiting website while coaches are watching — players have landed <strong>multiple offers</strong> off theirs.</p>
+        <div class="pp-cta-row">
+          <a class="pp-cta-btn" href="${ctaHref}" data-track="player-site:get-offers">Get D1 offers now</a>
+          <a class="pp-cta-ex" href="https://abrifazliu.com" target="_blank" rel="noopener" data-track="player-site:live-example">See live example →</a>
+        </div>
+      </div>
     </div>
     ${row('PPG', p.PPG, 'PPG', 'PTS', p['Tot PTS'], 'Tot PTS', true)}
     ${row('FGM/G', fgmPG, 'FGM/G', 'FGM', p.FGM, 'FGM')}

@@ -40,6 +40,10 @@ if (!a || !b || !league) {
 // shouldn't force the header back to a single base league.
 const fromLeague = byKey(Astro.url.searchParams.get('league') || '');
 if (fromLeague) league = fromLeague;
+// Display orientation: ?first=<slug> puts that player in the LEFT column. The
+// pair slug itself stays alphabetical (a-vs-b and b-vs-a share one canonical
+// URL), so this only swaps how the two are rendered.
+if (Astro.url.searchParams.get('first') === parts[1]) { const t = a; a = b; b = t; }
 const title = `${a.Player} vs ${b.Player} — Stat Comparison 2026 | Circuit Stats`;
 const desc = `${a.Player} vs ${b.Player} head-to-head: PPG, rebounds, assists, shooting and totals compared. 2026 season.`;
 ---
