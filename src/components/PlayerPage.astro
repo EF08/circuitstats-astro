@@ -106,7 +106,7 @@ const body = `
         </a>
       </div>
       <div class="pp-cta">
-        <div class="pp-cta-live" data-live-label>${liveLabel()}</div>
+        <div class="pp-cta-live" data-live-label${liveLabel() ? '' : ' style="display:none"'}>${liveLabel()}</div>
         <div class="pp-cta-t">Is this your player?</div>
         <p class="pp-cta-d">Get him a professional recruiting website while coaches are watching — players have landed <strong>multiple offers</strong> off theirs.</p>
         <div class="pp-cta-row">
@@ -137,9 +137,15 @@ const body = `
 ---
 <script>
   // Correct the badge to the visitor's actual date — this static page may have
-  // been built in a different month than it's being viewed in.
+  // been built in a different month than it's being viewed in. Outside live
+  // periods the badge hides entirely (inline style: the class's display:flex
+  // would override the hidden attribute).
   import { liveLabel } from '../lib/liveLabel.js';
-  document.querySelectorAll('[data-live-label]').forEach(el => { el.textContent = liveLabel(); });
+  const t = liveLabel();
+  document.querySelectorAll('[data-live-label]').forEach(el => {
+    el.textContent = t;
+    el.style.display = t ? '' : 'none';
+  });
 </script>
 <div class="view active" id="view-player">
   <a class="back-btn" href={league.urlBase + '/stats'}>
