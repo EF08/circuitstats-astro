@@ -9,7 +9,7 @@ import { allPlayerRefs, teamSlug } from '../lib/slugs';
 const SITE = 'https://www.circuitstats.com';
 
 export const GET: APIRoute = () => {
-  const urls: string[] = ['/'];
+  const urls: string[] = ['/', '/get-started'];
   for (const lg of LEAGUES) {
     urls.push(`${lg.urlBase}/stats`, `${lg.urlBase}/teams`, `${lg.urlBase}/compare`);
     for (const s of CAT_SLUGS) urls.push(`${lg.urlBase}/leaders/${s}`);

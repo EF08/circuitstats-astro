@@ -18,8 +18,9 @@ export interface Props {
   canonical?: string;
   robots?: string;
   trackTitle?: string;       // human-readable name for analytics (player/team/matchup) — not SEO title
+  hideNav?: boolean;         // drop the bottom nav (conversion pages: no exits off the page)
 }
-const { title, description = '', subLabel, pillLabel, pageBase, activeTab, canonical, robots, trackTitle } = Astro.props;
+const { title, description = '', subLabel, pillLabel, pageBase, activeTab, canonical, robots, trackTitle, hideNav = false } = Astro.props;
 
 // Share-preview image: a real full-page screenshot of THIS page (api/og-shot.js)
 // at phone width, so link previews show the whole content — Andy's pick over the
@@ -154,11 +155,11 @@ const navIcons: Record<string, string> = {
   </div>
 </header>
 
-<main class="main">
+<main class:list={["main", { "main-no-nav": hideNav }]}>
   <slot />
 </main>
 
-<nav class="nav">
+{!hideNav && <nav class="nav">
   {tabs.slice(0, 2).map(t => (
     <a class:list={["nav-btn", { active: t.v === activeTab }]} data-v={t.v} href={t.href} data-track={`nav:${t.v}`}>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" set:html={navIcons[t.v]} />
@@ -177,7 +178,7 @@ const navIcons: Record<string, string> = {
       {t.label}
     </a>
   ))}
-</nav>
+</nav>}
 
 <script is:inline define:vars={{ trackTitleInit: trackTitle || null }}>
   // Explicit window assignment (not a bare function declaration): define:vars

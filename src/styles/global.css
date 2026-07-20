@@ -110,6 +110,8 @@ a{color:inherit;text-decoration:none}
   padding-top:var(--hdr-h);
   padding-bottom:calc(var(--nav-h) + env(safe-area-inset-bottom,0px) + 8px);
 }
+/* Conversion pages render without the bottom nav — reclaim its reserved space. */
+.main-no-nav{padding-bottom:env(safe-area-inset-bottom,0px)}
 .view{display:none}
 .view.active{display:block;animation:fadeUp .18s ease}
 @keyframes fadeUp{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}

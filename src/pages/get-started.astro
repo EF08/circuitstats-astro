@@ -12,13 +12,13 @@ const SITE = 'https://www.circuitstats.com';
 <Layout
   title="Get Your Player's Website | Circuit Stats"
   trackTitle="Get Started — Player Website"
-  description="A professional recruiting website for your player: his own domain, highlight film and live stats. $399 to build, then $39/month to host."
+  description="A professional recruiting website for your player: his own domain, highlight film and verified stats that update after every session. $399 to build, $39/month to keep it current."
   subLabel="Player Websites"
   pillLabel="ALL"
   pageBase="/rankings"
   activeTab={null}
   canonical={`${SITE}/get-started`}
-  robots="noindex,follow"
+  hideNav
 >
   <div class="gs-page">
 
@@ -79,9 +79,9 @@ const SITE = 'https://www.circuitstats.com';
           <div class="gs-price-row">
             <span class="gs-price-main">$399<span class="gs-per">to build</span></span>
             <span class="gs-or">+</span>
-            <span class="gs-price-alt">$39/month to host</span>
+            <span class="gs-price-alt">$39/month to keep it current</span>
           </div>
-          <div class="gs-price-desc">The $399 builds his site: design, his domain, film editing, verified stats. The $39/month covers the real recurring costs of keeping it live, like his URL, hosting, and stat updates every session.</div>
+          <div class="gs-price-desc">The $399 builds his site: custom design, his own domain, his film edited and organized, his verified stats. The $39/month keeps it working for him all season — stats refreshed after every session, new film added as he sends it, so a coach who opens his link is always seeing his best.</div>
           <div class="gs-price-note">Website, domain, URL and hosting included</div>
         </div>
 
@@ -205,6 +205,30 @@ const SITE = 'https://www.circuitstats.com';
       // rewrite, so hit the locally-running backend directly.
       var API = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
         ? 'http://localhost:4000/a1a2-command-center' : '/a1a2-command-center';
+
+      // Funnel instrumentation. The site-wide click listener in Layout already
+      // records the submit *press*, but that fires before validation and says
+      // nothing about people who filled fields in and gave up. These three
+      // events are what make the pitch→lead drop-off diagnosable: without
+      // form-start, "they didn't want it" and "the form lost them" look
+      // identical on the dashboard.
+      function track(label, detail) {
+        try {
+          fetch(API + '/track-click', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            keepalive: true,
+            body: JSON.stringify({ label: label, detail: detail || null, page: location.pathname }),
+          }).catch(function () {});
+        } catch (e) {}
+      }
+      // One-shot: the first time any field is touched, this visitor has started.
+      var started = false;
+      form.addEventListener('focusin', function () {
+        if (started) return;
+        started = true;
+        track('get-started:form-start');
+      });
+
       form.addEventListener('submit', function (e) {
         e.preventDefault();
         var btn = document.getElementById('gs-submit');
@@ -225,10 +249,14 @@ const SITE = 'https://www.circuitstats.com';
           }),
         }).then(function (r) {
           if (!r.ok) throw new Error('status ' + r.status);
+          track('get-started:submit-success');
           form.hidden = true;
           document.getElementById('gs-price').hidden = true;
           document.getElementById('gs-done').hidden = false;
-        }).catch(function () {
+        }).catch(function (e) {
+          // A failed submit is a lost lead that looks like a non-attempt unless
+          // it's recorded — worth knowing separately from "never tried".
+          track('get-started:submit-error', e && e.message);
           btn.disabled = false; btn.textContent = 'Request my website';
           err.textContent = "Couldn't send. Please try again, or email andyfazliu@hotmail.com";
         });
@@ -291,7 +319,14 @@ const SITE = 'https://www.circuitstats.com';
   .gs-bopen:hover{text-decoration:underline;text-underline-offset:3px}
   .gs-frame-wrap{position:relative;height:560px;overflow:hidden;background:#0a0a0b}
   .gs-frame-wrap iframe{border:0;transform-origin:top left;display:block}
-  @media (max-width:640px){.gs-frame-wrap{height:480px}}
+  /* The embedded site has its own fixed bottom nav, which pins to the bottom of
+     the iframe viewport and reads as a rendering glitch. Fade the preview out
+     over it — the cut looks deliberate and the floating bar disappears. */
+  .gs-frame-wrap::after{
+    content:'';position:absolute;left:0;right:0;bottom:0;height:130px;pointer-events:none;
+    background:linear-gradient(to bottom,rgba(10,10,11,0) 0%,rgba(10,10,11,.82) 55%,#0a0a0b 100%);
+  }
+  @media (max-width:640px){.gs-frame-wrap{height:480px}.gs-frame-wrap::after{height:110px}}
 
   /* ── WHAT'S INCLUDED ── */
   .gs-feat{padding:6px 0 34px}
