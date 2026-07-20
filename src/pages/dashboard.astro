@@ -1,9 +1,18 @@
 ---
-// /dashboard — owner analytics, ported from the pre-SEO app then simplified per
-// Andy's request: real page-view traffic (who's actually looking at which
-// player/team/comparison), not raw click-event labels. Client-rendered after
-// auth: the GateModal (in Layout) redeems a magic link / stored token; then
-// renderDashboard() fetches the backend. noindex.
+// /dashboard — owner analytics.
+//
+// Rebuilt around one question: is the recruiting-website offer working?
+// The old version led with raw visit counts (which double-counted internal
+// page-to-page navigation and mixed bot-inclusive "Unique IPs" next to
+// bot-excluded "Human Visits"), and never showed the funnel at all — every CTA
+// click was written to Mongo and displayed nowhere.
+//
+// Shape now: verdict → funnel → audience → detail, with everything below the
+// funnel collapsed by default. One range filter scopes the whole page, and one
+// request (/dashboard/overview) serves it, so every number reconciles.
+//
+// Client-rendered after auth: GateModal (in Layout) redeems a magic link /
+// stored token, then render() fetches the backend. noindex.
 import Layout from '../layouts/Layout.astro';
 const SITE = 'https://www.circuitstats.com';
 ---
@@ -16,193 +25,744 @@ const SITE = 'https://www.circuitstats.com';
   canonical={`${SITE}/dashboard`}
   robots="noindex,nofollow"
 >
-  <div style="padding:20px 16px 40px;max-width:700px;margin:0 auto">
-    <h2 style="font-size:20px;font-weight:800;margin-bottom:4px">Circuit Stats Dashboard</h2>
-    <p style="color:var(--text-2);font-size:13px;margin-bottom:24px">Visitor &amp; subscriber analytics &middot; human traffic only (bots are still recorded, just hidden here)</p>
-    <div id="db-content" style="color:var(--text-2);font-size:13px">Loading…</div>
+  <div class="db">
+    <div class="db-head">
+      <div>
+        <h1 class="db-title">Dashboard</h1>
+        <p class="db-sub" id="db-range-label">Last 30 days</p>
+      </div>
+      <div class="db-ranges" role="group" aria-label="Date range">
+        <button class="db-range" data-days="7">7d</button>
+        <button class="db-range is-on" data-days="30">30d</button>
+        <button class="db-range" data-days="90">90d</button>
+      </div>
+    </div>
+    <div id="db-content" class="db-loading">Loading…</div>
   </div>
 </Layout>
 
+<style is:global>
+  /* Scoped under .db — Astro's scoped styles don't reach innerHTML-injected
+     nodes, and this page builds its entire body in JS. */
+  .db { max-width: 1080px; margin: 0 auto; padding: 16px 16px 56px; }
+
+  /* ── Chart tokens ──────────────────────────────────────────────────────────
+     A blue ordinal ramp for the funnel (ordered stages) and the accent for
+     single-series magnitude bars. Validated with the dataviz palette checker
+     against this page's card surface (#12182a): monotone lightness, all
+     adjacent gaps >= 0.06 L, light end clears 2:1, hue spread 4 degrees.
+     The funnel runs dark -> light down the stages so the narrow end (the money)
+     is the brightest thing on a dark surface. */
+  .db {
+    --f1: #184f95; --f2: #256abf; --f3: #3987e5;
+    --f4: #6da7ec; --f5: #9ec5f4; --f6: #cde2fb;
+    --grid: #1c2b44;
+    --ink-mute: #7f93b5;
+    --good: #34d399;
+    --bad: #f87171;
+  }
+
+  .db-head {
+    display: flex; align-items: flex-end; justify-content: space-between;
+    gap: 16px; flex-wrap: wrap; margin-bottom: 22px;
+  }
+  .db-title { font-size: 26px; font-weight: 900; letter-spacing: -.6px; line-height: 1.1; }
+  .db-sub { font-size: 13px; color: var(--text-2); margin-top: 3px; }
+  .db-loading { color: var(--text-2); font-size: 13px; padding: 40px 0; text-align: center; }
+
+  .db-ranges { display: flex; gap: 4px; background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 3px; }
+  .db-range {
+    border: none; background: none; color: var(--text-2);
+    font-size: 12.5px; font-weight: 700; padding: 6px 13px; border-radius: 7px;
+    transition: background .14s, color .14s;
+  }
+  .db-range:hover { color: var(--text); }
+  .db-range.is-on { background: var(--accent); color: #fff; }
+
+  /* ── Verdict: the one thing to read first ──────────────────────────────── */
+  .db-verdict {
+    background: linear-gradient(150deg, rgba(79,142,247,.10), transparent 60%), var(--card);
+    border: 1px solid var(--border); border-radius: 16px;
+    padding: 22px 22px 20px; margin-bottom: 18px;
+    display: grid; grid-template-columns: auto 1fr; gap: 26px; align-items: center;
+  }
+  .db-hero-n {
+    font-size: 60px; font-weight: 800; line-height: .9; letter-spacing: -2.5px;
+    /* proportional figures: tabular-nums makes a display-size number look loose */
+  }
+  .db-hero-l { font-size: 12.5px; color: var(--text-2); margin-top: 7px; font-weight: 600; }
+  .db-verdict-txt { font-size: 15px; line-height: 1.6; color: var(--text); }
+  .db-verdict-txt strong { color: var(--accent); font-weight: 800; }
+  .db-verdict-txt .lo { color: var(--bad); font-weight: 800; }
+  .db-verdict-sub { font-size: 12.5px; color: var(--text-2); margin-top: 8px; line-height: 1.55; }
+
+  /* ── Cards ─────────────────────────────────────────────────────────────── */
+  .db-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 16px; margin-bottom: 18px; overflow: hidden;
+  }
+  .db-card-h { padding: 16px 20px 0; }
+  .db-card-t { font-size: 15px; font-weight: 800; letter-spacing: -.2px; }
+  .db-card-s { font-size: 12.5px; color: var(--text-2); margin-top: 3px; line-height: 1.5; }
+  .db-card-b { padding: 18px 20px 20px; }
+
+  /* ── Stat tiles ────────────────────────────────────────────────────────── */
+  .db-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 18px; }
+  .db-kpi { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 15px 16px; }
+  .db-kpi-l { font-size: 11.5px; color: var(--text-2); font-weight: 600; display: flex; align-items: center; gap: 5px; }
+  .db-kpi-v { font-size: 30px; font-weight: 800; letter-spacing: -1px; margin-top: 6px; line-height: 1; }
+  .db-kpi-d { font-size: 11.5px; font-weight: 700; margin-top: 6px; display: flex; align-items: center; gap: 4px; }
+  .db-kpi-d.up { color: var(--good); }
+  .db-kpi-d.down { color: var(--bad); }
+  .db-kpi-d.flat { color: var(--text-3); }
+  .db-kpi-note { font-size: 11px; color: var(--text-3); margin-top: 5px; line-height: 1.45; }
+
+  /* ── Funnel ────────────────────────────────────────────────────────────── */
+  .db-funnel { padding: 4px 0 0; }
+  .db-stage { margin-bottom: 2px; }
+  .db-stage-row {
+    display: grid; grid-template-columns: 1fr minmax(0, 2.2fr) auto;
+    align-items: center; gap: 14px;
+    padding: 9px 0; border-radius: 10px;
+    transition: background .14s;
+  }
+  .db-stage-row:hover, .db-stage-row:focus-visible { background: rgba(79,142,247,.07); outline: none; }
+  .db-stage-name { font-size: 13.5px; font-weight: 700; }
+  .db-stage-hint { font-size: 11.5px; color: var(--text-3); margin-top: 2px; line-height: 1.4; }
+  .db-stage-track { display: flex; justify-content: center; }
+  .db-stage-bar {
+    height: 30px; border-radius: 5px; min-width: 3px;
+    width: 0; transition: width .75s cubic-bezier(.22,.9,.3,1);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .db-stage-bar span { font-size: 12px; font-weight: 800; color: rgba(0,0,0,.62); padding: 0 8px; white-space: nowrap; }
+  .db-stage-bar.is-dark span { color: rgba(255,255,255,.92); }
+  .db-stage-val { text-align: right; min-width: 74px; }
+  .db-stage-people { font-size: 17px; font-weight: 800; letter-spacing: -.3px; }
+  .db-stage-pct { font-size: 11.5px; color: var(--text-2); font-weight: 600; margin-top: 1px; }
+  .db-drop {
+    display: flex; align-items: center; gap: 7px;
+    font-size: 11.5px; color: var(--text-3);
+    padding: 3px 0 3px 0; margin-left: 2px;
+  }
+  .db-drop::before {
+    content: ''; width: 1px; height: 16px; background: var(--grid); margin-left: 8px; flex-shrink: 0;
+  }
+  .db-drop.is-leak { color: var(--bad); font-weight: 700; }
+
+  /* ── Charts ────────────────────────────────────────────────────────────── */
+  .db-chart { position: relative; width: 100%; }
+  .db-chart svg { display: block; width: 100%; height: 128px; overflow: visible; }
+
+  /* Small multiples: two single-series panels sharing an x-axis. */
+  .db-trends { position: relative; display: flex; flex-direction: column; gap: 4px; }
+  .db-panel-h { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding: 0 0 2px 38px; }
+  .db-panel-t { font-size: 11.5px; font-weight: 700; color: var(--text-2); letter-spacing: .2px; }
+  .db-panel-v { font-size: 12.5px; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums; }
+  /* Transparent hover layer aligned to the plot area of both panels. */
+  .db-hitwrap { position: absolute; left: 38px; right: 10px; top: 0; bottom: 22px; cursor: crosshair; }
+  .db-tip {
+    position: absolute; pointer-events: none; opacity: 0;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 9px;
+    padding: 8px 11px; font-size: 12px; white-space: nowrap; z-index: 40;
+    box-shadow: 0 8px 26px rgba(0,0,0,.55); transition: opacity .1s;
+  }
+  .db-tip-d { font-size: 10.5px; color: var(--text-3); margin-bottom: 4px; font-weight: 600; }
+  .db-tip-r { display: flex; align-items: center; gap: 7px; line-height: 1.7; }
+  .db-tip-k { width: 11px; height: 2px; border-radius: 2px; flex-shrink: 0; }
+  .db-tip-v { font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums; }
+  .db-tip-n { color: var(--text-2); font-size: 11.5px; }
+  .db-legend { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 12px; }
+  .db-leg { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-2); }
+  .db-leg i { width: 13px; height: 2.5px; border-radius: 2px; display: block; }
+  .db-leg i.sq { height: 11px; width: 11px; border-radius: 3px; }
+
+  /* ── Bar list (single-series magnitude) ────────────────────────────────── */
+  .db-bars { display: flex; flex-direction: column; gap: 9px; }
+  .db-bar-row { display: grid; grid-template-columns: minmax(84px, 132px) 1fr auto; align-items: center; gap: 11px; }
+  .db-bar-l { font-size: 12.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .db-bar-t { background: rgba(255,255,255,.04); border-radius: 4px; height: 15px; overflow: hidden; }
+  .db-bar-f { height: 100%; background: var(--accent); border-radius: 4px; width: 0; transition: width .6s cubic-bezier(.22,.9,.3,1); }
+  .db-bar-v { font-size: 12.5px; font-weight: 800; min-width: 58px; text-align: right; font-variant-numeric: tabular-nums; }
+  .db-bar-v small { color: var(--text-3); font-weight: 600; font-size: 11px; margin-left: 3px; }
+
+  /* ── Tables ────────────────────────────────────────────────────────────── */
+  .db-tw { overflow-x: auto; margin: 0 -20px; padding: 0 20px; }
+  .db-t { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .db-t th {
+    text-align: left; font-size: 10.5px; font-weight: 700; color: var(--text-3);
+    text-transform: uppercase; letter-spacing: .5px; padding: 0 12px 8px 0; white-space: nowrap;
+  }
+  .db-t td { padding: 9px 12px 9px 0; border-top: 1px solid var(--border); color: var(--text-2); vertical-align: top; }
+  .db-t td.k { color: var(--text); font-weight: 600; }
+  .db-t tr:hover td { color: var(--text); }
+  .db-t .num { font-variant-numeric: tabular-nums; }
+
+  /* ── Disclosure ────────────────────────────────────────────────────────── */
+  .db-more { border-top: 1px solid var(--border); }
+  .db-more > summary {
+    list-style: none; cursor: pointer; padding: 13px 20px;
+    font-size: 12.5px; font-weight: 700; color: var(--accent);
+    display: flex; align-items: center; gap: 7px; user-select: none;
+  }
+  .db-more > summary::-webkit-details-marker { display: none; }
+  .db-more > summary::after {
+    content: ''; width: 6px; height: 6px; flex-shrink: 0;
+    border-right: 1.8px solid currentColor; border-bottom: 1.8px solid currentColor;
+    transform: rotate(45deg) translateY(-2px); transition: transform .18s;
+  }
+  .db-more[open] > summary::after { transform: rotate(-135deg) translateY(-1px); }
+  .db-more > summary:hover { background: rgba(79,142,247,.06); }
+  .db-more-b { padding: 4px 20px 20px; }
+
+  .db-sec { display: flex; align-items: baseline; gap: 9px; margin: 30px 0 13px; }
+  .db-sec h2 { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.1px; color: var(--text-3); }
+  .db-sec p { font-size: 12px; color: var(--text-3); }
+
+  .db-empty { font-size: 12.5px; color: var(--text-3); padding: 6px 0; }
+  .db-note { font-size: 12px; color: var(--text-3); line-height: 1.6; }
+  .db-note strong { color: var(--text-2); }
+  .db-note code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; color: var(--text-2); }
+
+  .db-pills { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 14px; }
+  .db-pill { font-size: 11.5px; font-weight: 700; padding: 4px 10px; border-radius: 20px; background: rgba(255,255,255,.05); color: var(--text-2); }
+
+  /* ── Responsive ────────────────────────────────────────────────────────── */
+  @media (max-width: 720px) {
+    .db { padding: 14px 13px 48px; }
+    .db-verdict { grid-template-columns: 1fr; gap: 16px; padding: 18px; }
+    .db-hero-n { font-size: 48px; letter-spacing: -1.8px; }
+    .db-title { font-size: 22px; }
+    .db-kpis { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .db-kpi-v { font-size: 25px; }
+    .db-card-h { padding: 15px 16px 0; }
+    .db-card-b { padding: 15px 16px 17px; }
+    .db-more > summary, .db-more-b { padding-left: 16px; padding-right: 16px; }
+    .db-tw { margin: 0 -16px; padding: 0 16px; }
+    /* Funnel drops the hint and stacks the bar under the label so it keeps
+       usable width on a phone instead of squeezing to a nub. Explicit row/column
+       placement: with auto-placement the full-width bar pushes the value onto a
+       third row, detaching it from the stage it belongs to. */
+    .db-stage-row { grid-template-columns: 1fr auto; gap: 6px 12px; align-items: baseline; }
+    .db-stage-nm { grid-column: 1; grid-row: 1; }
+    .db-stage-val { grid-column: 2; grid-row: 1; text-align: right; min-width: 0; }
+    .db-stage-track { grid-column: 1 / -1; grid-row: 2; justify-content: flex-start; }
+    .db-stage-bar { height: 24px; }
+    .db-stage-hint { display: none; }
+    /* Count and rate share one line on mobile to keep each stage compact. */
+    .db-stage-people { display: inline; font-size: 16px; }
+    .db-stage-pct { display: inline; margin-left: 6px; }
+    .db-bar-row { grid-template-columns: minmax(72px, 104px) 1fr auto; gap: 9px; }
+    /* Taller panels on a phone: at 390px wide the desktop aspect ratio would
+       squash each plot to ~60px and the shape would be unreadable. */
+    .db-chart svg { height: 150px; }
+    .db-hitwrap { bottom: 26px; }
+
+    /* The leads table has five columns and no useful way to shrink — turn each
+       row into a stacked card instead of a 5-way horizontal squeeze. */
+    .db-leads .db-t, .db-leads .db-t tbody, .db-leads .db-t tr, .db-leads .db-t td { display: block; width: 100%; }
+    .db-leads .db-t thead { display: none; }
+    .db-leads .db-t tr { border-top: 1px solid var(--border); padding: 12px 0 4px; }
+    .db-leads .db-t td { border: none; padding: 1px 0; }
+    .db-leads .db-t td::before {
+      content: attr(data-l) ' '; color: var(--text-3); font-size: 11px;
+      text-transform: uppercase; letter-spacing: .4px; font-weight: 700;
+    }
+    .db-leads .db-t td.k { font-size: 14.5px; font-weight: 800; color: var(--text); padding-bottom: 4px; }
+    .db-leads .db-t td.k::before { display: none; }
+    .db-leads .db-tw { overflow-x: visible; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .db-stage-bar, .db-bar-f { transition: none; }
+  }
+</style>
+
 <script is:inline>
   (function () {
-    var GB = '/a1a2-command-center';
+    var API = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+      ? 'http://localhost:4000/a1a2-command-center' : '/a1a2-command-center';
 
-    function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+    var FUNNEL_COLORS = ['var(--f1)', 'var(--f2)', 'var(--f3)', 'var(--f4)', 'var(--f5)', 'var(--f6)'];
+    // Which stage fills need dark text on top of them (the light end of the ramp).
+    var LIGHT_FILL_FROM = 3;
 
-    function statCard(label, value) {
-      return '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px">' +
-        '<div style="font-size:22px;font-weight:800">' + esc(value) + '</div>' +
-        '<div style="font-size:11px;color:var(--text-2);margin-top:2px">' + esc(label) + '</div></div>';
+    var days = 30;
+    var el = function (id) { return document.getElementById(id); };
+
+    // ── helpers ──────────────────────────────────────────────────────────────
+    function esc(s) {
+      return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+    function n(v) { return (v == null ? 0 : v).toLocaleString('en-US'); }
+    function compact(v) {
+      v = v || 0;
+      if (v >= 1e6) return (v / 1e6).toFixed(v >= 1e7 ? 0 : 1).replace(/\.0$/, '') + 'M';
+      if (v >= 1e4) return (v / 1e3).toFixed(0) + 'K';
+      return v.toLocaleString('en-US');
+    }
+    function pct(x, dp) {
+      if (x == null) return '—';
+      var v = x * 100;
+      return (v < 1 && v > 0 ? v.toFixed(dp == null ? 2 : dp) : v.toFixed(v < 10 ? 1 : 0)) + '%';
+    }
+    function shortDate(iso) {
+      var p = String(iso).split('-');
+      return p.length === 3 ? (+p[1]) + '/' + (+p[2]) : iso;
+    }
+    function longDate(iso) {
+      var d = new Date(iso + 'T12:00:00');
+      return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
     }
 
-    // A labeled horizontal bar per item, sized relative to the largest count.
-    function barList(items, labelFn, countFn) {
-      if (!items || !items.length) return '<div style="padding:12px 14px;font-size:12px;color:var(--text-3)">No data yet.</div>';
-      var max = Math.max.apply(null, items.map(countFn).concat([1]));
-      var rows = items.map(function (it) {
-        var label = labelFn(it), count = countFn(it);
-        var pct = Math.max(2, Math.round((count / max) * 100));
-        return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">' +
-          '<div style="width:150px;font-size:12px;color:var(--text);flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(label) + '</div>' +
-          '<div style="flex:1;background:var(--surface);border-radius:4px;overflow:hidden;height:16px"><div style="width:' + pct + '%;background:var(--accent);height:100%"></div></div>' +
-          '<div style="width:34px;text-align:right;font-size:12px;font-weight:700;flex-shrink:0">' + count + '</div></div>';
+    // Delta chip. `goodUp` lets a metric where down-is-good render correctly.
+    function delta(d, goodUp) {
+      if (d == null) return '<div class="db-kpi-d flat">no prior period</div>';
+      if (d === 0) return '<div class="db-kpi-d flat">no change</div>';
+      var up = d > 0;
+      var cls = (up === (goodUp !== false)) ? 'up' : 'down';
+      return '<div class="db-kpi-d ' + cls + '">' + (up ? '▲' : '▼') + ' ' +
+        Math.abs(d).toFixed(Math.abs(d) < 10 ? 1 : 0) + '% <span style="color:var(--text-3);font-weight:600">vs prev ' + days + 'd</span></div>';
+    }
+
+    function kpi(label, value, deltaHtml, note) {
+      return '<div class="db-kpi">' +
+        '<div class="db-kpi-l">' + esc(label) + '</div>' +
+        '<div class="db-kpi-v">' + value + '</div>' +
+        (deltaHtml || '') +
+        (note ? '<div class="db-kpi-note">' + note + '</div>' : '') +
+        '</div>';
+    }
+
+    function card(title, sub, body, more) {
+      return '<div class="db-card">' +
+        '<div class="db-card-h"><div class="db-card-t">' + title + '</div>' +
+        (sub ? '<div class="db-card-s">' + sub + '</div>' : '') + '</div>' +
+        '<div class="db-card-b">' + body + '</div>' +
+        (more || '') + '</div>';
+    }
+    function disclosure(label, body) {
+      return '<details class="db-more"><summary>' + esc(label) + '</summary>' +
+        '<div class="db-more-b">' + body + '</div></details>';
+    }
+    function section(title, note) {
+      return '<div class="db-sec"><h2>' + esc(title) + '</h2>' + (note ? '<p>' + esc(note) + '</p>' : '') + '</div>';
+    }
+
+    // Single-series magnitude bars: one colour for every bar (the length is the
+    // encoding; colouring by rank would double-encode it).
+    function barList(items, opts) {
+      opts = opts || {};
+      if (!items || !items.length) return '<div class="db-empty">' + (opts.empty || 'Nothing yet.') + '</div>';
+      var max = items.reduce(function (m, it) { return Math.max(m, it.count || 0); }, 0) || 1;
+      return '<div class="db-bars">' + items.map(function (it) {
+        var w = Math.max(1.5, ((it.count || 0) / max) * 100);
+        return '<div class="db-bar-row">' +
+          '<div class="db-bar-l" title="' + esc(it.label) + '">' + esc(it.label) + '</div>' +
+          '<div class="db-bar-t"><div class="db-bar-f" data-w="' + w.toFixed(2) + '"></div></div>' +
+          '<div class="db-bar-v">' + n(it.count) +
+            (it.share != null ? '<small>' + pct(it.share, 1) + '</small>' : '') +
+          '</div></div>';
+      }).join('') + '</div>';
+    }
+
+    function table(cols, rows, empty) {
+      if (!rows || !rows.length) return '<div class="db-empty">' + (empty || 'Nothing yet.') + '</div>';
+      return '<div class="db-tw"><table class="db-t"><thead><tr>' +
+        cols.map(function (c) { return '<th>' + esc(c.h) + '</th>'; }).join('') +
+        '</tr></thead><tbody>' +
+        rows.map(function (r) {
+          return '<tr>' + cols.map(function (c, i) {
+            var v = c.v(r);
+            // data-l lets the mobile stylesheet re-label each cell once the
+            // table collapses into stacked cards and the header row is hidden.
+            return '<td data-l="' + esc(c.h) + '" class="' + (i === 0 ? 'k ' : '') + (c.num ? 'num' : '') + '">' +
+              (c.raw ? v : esc(v)) + '</td>';
+          }).join('') + '</tr>';
+        }).join('') +
+        '</tbody></table></div>';
+    }
+
+    // ── The funnel ───────────────────────────────────────────────────────────
+    // Centred bars so the silhouette narrows like a funnel, each stage direct-
+    // labelled with its absolute count and step conversion (so a tiny tail bar
+    // is still fully readable), and the drop between stages named in the gap.
+    function funnelHtml(f) {
+      var stages = f.stages || [];
+      var top = stages.length ? stages[0].people : 0;
+      var leakKey = f.leak && f.leak.key;
+
+      return '<div class="db-funnel">' + stages.map(function (s, i) {
+        var w = top ? Math.max(2.5, (s.people / top) * 100) : 2.5;
+        var color = FUNNEL_COLORS[Math.min(i, FUNNEL_COLORS.length - 1)];
+        var isLight = i >= LIGHT_FILL_FROM;
+        // Only put the label inside the bar when it comfortably fits; below
+        // ~22% width it would be clipped, so it lives in the right-hand column
+        // (which always shows it anyway).
+        var inside = w > 22 ? '<span>' + pct(s.totalRate, 1) + ' of all visitors</span>' : '';
+        var drop = '';
+        if (i > 0 && s.dropped > 0) {
+          var isLeak = leakKey === s.key;
+          drop = '<div class="db-drop' + (isLeak ? ' is-leak' : '') + '">' +
+            n(s.dropped) + ' dropped off here' +
+            (isLeak ? ' — biggest leak' : '') + '</div>';
+        }
+        return drop +
+          '<div class="db-stage"><div class="db-stage-row" tabindex="0" title="' + esc(s.hint || '') + '">' +
+            '<div class="db-stage-nm"><div class="db-stage-name">' + esc(s.label) + '</div>' +
+              (s.hint ? '<div class="db-stage-hint">' + esc(s.hint) + '</div>' : '') + '</div>' +
+            '<div class="db-stage-track">' +
+              '<div class="db-stage-bar' + (isLight ? '' : ' is-dark') + '" data-w="' + w.toFixed(2) + '" style="background:' + color + '">' + inside + '</div>' +
+            '</div>' +
+            '<div class="db-stage-val">' +
+              '<div class="db-stage-people">' + n(s.people) + '</div>' +
+              '<div class="db-stage-pct">' + (i === 0 ? 'people' : pct(s.stepRate, 1) + ' of prev') + '</div>' +
+            '</div>' +
+          '</div></div>';
+      }).join('') + '</div>';
+    }
+
+    // ── Trend: small multiples ───────────────────────────────────────────────
+    // Arrivals and pageviews are the same unit but wildly different magnitudes
+    // (pageviews run ~7x arrivals). Plotted together on one axis the arrivals
+    // line — the one that actually matters — flattens against the baseline;
+    // plotted on two axes the chart would invent a correlation. So: two charts,
+    // each scaled to its own data, sharing an x-axis. Each is a single series,
+    // so neither needs a legend — the panel title names it.
+    var TREND_W = 720, TREND_PL = 38, TREND_PR = 10;
+
+    function trendPanel(byDay, key, title, hue, idx) {
+      var W = TREND_W, H = 128, PL = TREND_PL, PR = TREND_PR, PT = 12, PB = 22;
+      var iw = W - PL - PR, ih = H - PT - PB;
+      var max = byDay.reduce(function (m, d) { return Math.max(m, d[key] || 0); }, 0) || 1;
+      var mag = Math.pow(10, Math.floor(Math.log10(max)));
+      var top = Math.ceil(max / (mag / 2 || 1)) * (mag / 2 || 1);
+      var x = function (i) { return PL + (byDay.length === 1 ? iw / 2 : (i / (byDay.length - 1)) * iw); };
+      var y = function (v) { return PT + ih - (v / top) * ih; };
+      var line = byDay.map(function (d, i) { return (i ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(d[key] || 0).toFixed(1); }).join(' ');
+      var area = line + ' L' + x(byDay.length - 1).toFixed(1) + ' ' + (PT + ih) + ' L' + x(0).toFixed(1) + ' ' + (PT + ih) + ' Z';
+
+      var ticks = [0, top].map(function (v) {
+        return '<line x1="' + PL + '" x2="' + (W - PR) + '" y1="' + y(v).toFixed(1) + '" y2="' + y(v).toFixed(1) + '" stroke="var(--grid)" stroke-width="1"/>' +
+          '<text x="' + (PL - 8) + '" y="' + (y(v) + 3.5).toFixed(1) + '" text-anchor="end" font-size="10" fill="var(--text-3)">' + compact(Math.round(v)) + '</text>';
       }).join('');
-      return '<div style="padding:12px 14px">' + rows + '</div>';
+
+      // Only the bottom panel carries date labels — they're shared.
+      var xlabels = '';
+      if (idx === 1) {
+        var every = Math.max(1, Math.round(byDay.length / 6));
+        xlabels = byDay.map(function (d, i) {
+          if (i % every !== 0 && i !== byDay.length - 1) return '';
+          return '<text x="' + x(i).toFixed(1) + '" y="' + (H - 6) + '" text-anchor="middle" font-size="10" fill="var(--text-3)">' + esc(shortDate(d.date)) + '</text>';
+        }).join('');
+      }
+      var last = byDay.length - 1;
+      var total = byDay.reduce(function (s, d) { return s + (d[key] || 0); }, 0);
+
+      return '<div class="db-panel">' +
+        '<div class="db-panel-h"><span class="db-panel-t">' + esc(title) + '</span>' +
+        '<span class="db-panel-v">' + n(total) + '</span></div>' +
+        '<div class="db-chart">' +
+        '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" role="img" aria-label="Daily ' + esc(title.toLowerCase()) + '">' +
+          ticks + xlabels +
+          '<path d="' + area + '" fill="' + hue.fill + '"/>' +
+          '<path d="' + line + '" fill="none" stroke="' + hue.line + '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>' +
+          '<circle cx="' + x(last).toFixed(1) + '" cy="' + y(byDay[last][key] || 0).toFixed(1) + '" r="4" fill="' + hue.line + '" stroke="var(--card)" stroke-width="2"/>' +
+          '<line class="db-cross" x1="0" x2="0" y1="' + PT + '" y2="' + (PT + ih) + '" stroke="' + hue.line + '" stroke-width="1" opacity="0"/>' +
+        '</svg></div></div>';
     }
 
-    // Raw per-hit log — the "(per hit too)" drill-down under each aggregate.
-    function hitTable(columns, rows) {
-      if (!rows || !rows.length) return '<div style="padding:12px 14px;font-size:12px;color:var(--text-3)">No hits yet.</div>';
-      var head = columns.map(function (c) { return '<th style="padding:6px 8px;font-size:10px;color:var(--text-2);text-align:left;font-weight:600;white-space:nowrap">' + esc(c.h) + '</th>'; }).join('');
-      var body = rows.map(function (r) {
-        return '<tr style="border-bottom:1px solid var(--border)">' + columns.map(function (c) {
-          return '<td style="padding:6px 8px;font-size:11px;color:var(--text-2);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(c.v(r)) + '</td>';
-        }).join('') + '</tr>';
-      }).join('');
-      return '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr style="border-bottom:1px solid var(--border)">' + head + '</tr></thead><tbody>' + body + '</tbody></table></div>';
+    function trendChart(byDay) {
+      if (!byDay || byDay.length < 2) return '<div class="db-empty">Not enough days yet to draw a trend.</div>';
+      return '<div class="db-trends" id="db-trend">' +
+        trendPanel(byDay, 'arrivals', 'Arrivals', { line: 'var(--accent)', fill: 'rgba(79,142,247,.15)' }, 0) +
+        trendPanel(byDay, 'pageviews', 'Pageviews', { line: 'rgba(126,166,232,.75)', fill: 'rgba(126,166,232,.10)' }, 1) +
+        '<div class="db-tip" id="db-trend-tip"></div>' +
+        '<div class="db-hitwrap" id="db-hit"></div>' +
+        '</div>';
     }
 
-    function card(title, sub, bodyHtml) {
-      return '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:20px">' +
-        '<div style="padding:12px 14px;border-bottom:1px solid var(--border)"><div style="font-size:13px;font-weight:700">' + title + '</div>' +
-        (sub ? '<div style="font-size:11px;color:var(--text-3);margin-top:1px">' + sub + '</div>' : '') + '</div>' +
-        bodyHtml + '</div>';
-    }
-    function subHeading(text) {
-      return '<div style="padding:10px 14px 2px;font-size:11px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.4px">' + esc(text) + '</div>';
+    // One hit layer over both panels: the reader aims at a date, and both
+    // crosshairs plus a single readout follow. The pointer never has to land on
+    // a 2px line.
+    function wireTrend(byDay) {
+      var wrap = el('db-trend'); if (!wrap) return;
+      var hit = el('db-hit'), tip = el('db-trend-tip');
+      var crosses = wrap.querySelectorAll('.db-cross');
+      if (!hit || !byDay.length) return;
+      var W = TREND_W, PL = TREND_PL, iw = W - PL - TREND_PR;
+
+      function show(evt) {
+        var r = hit.getBoundingClientRect();
+        var cx = evt.clientX != null ? evt.clientX : (evt.touches && evt.touches[0] && evt.touches[0].clientX);
+        if (cx == null || !r.width) return;
+        // The hit layer spans the same box as the plots, so fraction-of-width
+        // maps straight onto the data index.
+        var frac = (cx - r.left) / r.width;
+        var i = Math.round(frac * (byDay.length - 1));
+        i = Math.max(0, Math.min(byDay.length - 1, i));
+        var d = byDay[i];
+        var px = PL + (byDay.length === 1 ? iw / 2 : (i / (byDay.length - 1)) * iw);
+        crosses.forEach(function (c) {
+          c.setAttribute('x1', px); c.setAttribute('x2', px); c.setAttribute('opacity', '.45');
+        });
+
+        tip.innerHTML = '<div class="db-tip-d"></div>' +
+          '<div class="db-tip-r"><i class="db-tip-k" style="background:var(--accent)"></i>' +
+            '<span class="db-tip-v">' + n(d.arrivals) + '</span><span class="db-tip-n">arrivals</span></div>' +
+          '<div class="db-tip-r"><i class="db-tip-k" style="background:rgba(126,166,232,.75)"></i>' +
+            '<span class="db-tip-v">' + n(d.pageviews) + '</span><span class="db-tip-n">pageviews</span></div>' +
+          '<div class="db-tip-r"><i class="db-tip-k" style="background:transparent"></i>' +
+            '<span class="db-tip-v">' + n(d.people) + '</span><span class="db-tip-n">people</span></div>';
+        // Dates come from our own aggregation, but keep the habit of not
+        // concatenating data into innerHTML.
+        tip.firstChild.textContent = longDate(d.date);
+        tip.style.opacity = '1';
+
+        var relX = ((px - PL) / iw) * r.width;
+        var tw = tip.offsetWidth || 150;
+        tip.style.left = Math.max(0, Math.min(r.width - tw, relX - tw / 2)) + 'px';
+      }
+      function hide() {
+        tip.style.opacity = '0';
+        crosses.forEach(function (c) { c.setAttribute('opacity', '0'); });
+      }
+      hit.addEventListener('pointermove', show);
+      hit.addEventListener('pointerdown', show);
+      hit.addEventListener('pointerleave', hide);
+      hit.addEventListener('touchmove', function (e) { show(e); }, { passive: true });
+      hit.addEventListener('touchend', hide);
     }
 
-    // page/title fallback: show the friendly name if we have it (visits tracked
-    // after this feature shipped), else the raw path (older visits).
-    function nameOf(row) { return row.title || row.page || '—'; }
-    function locOf(row) { return row.location || '—'; }
+    // Grow bars in after paint so the funnel reads as a funnel filling up.
+    function animate() {
+      requestAnimationFrame(function () {
+        requestAnimationFrame(function () {
+          document.querySelectorAll('[data-w]').forEach(function (b) {
+            b.style.width = b.getAttribute('data-w') + '%';
+          });
+        });
+      });
+    }
 
-    async function renderDashboard() {
+    // ── Render ───────────────────────────────────────────────────────────────
+    function render(data) {
+      var a = data.audience, f = data.funnel;
+      var html = '';
+
+      // ── 1. The verdict: leads, and the plain-English state of the funnel ──
+      var leadN = f.leads.count;
+      var conv = f.conversion.rate;
+      var verdict, sub;
+      if (leadN === 0) {
+        var reached = (f.stages[3] || {}).people || 0;
+        if (reached === 0) {
+          verdict = 'No one reached the offer page. <span class="lo">The pitch isn\'t being found</span> — the problem is upstream, not the offer itself.';
+        } else {
+          verdict = n(reached) + ' people read the pitch and <span class="lo">none requested a website</span>. The offer page is where this is failing.';
+        }
+        sub = 'Fix the step with the biggest drop-off before spending anything on more traffic.';
+      } else {
+        verdict = '<strong>' + n(leadN) + ' ' + (leadN === 1 ? 'lead' : 'leads') + '</strong> from ' +
+          n(f.stages[0].people) + ' visitors — a ' + pct(conv, 2) + ' conversion rate.';
+        sub = f.leak
+          ? 'Biggest leak: <strong>' + esc(f.leak.label) + '</strong> lost ' + n(f.leak.dropped) + ' people.'
+          : 'No single dominant drop-off.';
+      }
+      html += '<div class="db-verdict">' +
+        '<div><div class="db-hero-n">' + n(leadN) + '</div>' +
+        '<div class="db-hero-l">website ' + (leadN === 1 ? 'request' : 'requests') + ' · last ' + days + ' days</div></div>' +
+        '<div><div class="db-verdict-txt">' + verdict + '</div>' +
+        '<div class="db-verdict-sub">' + sub + '</div></div></div>';
+
+      // ── 2. Funnel ──
+      var leadsDelta = delta(f.leads.delta, true);
+      html += card(
+        'Where the money is leaking',
+        'Every step from landing on the site to asking for a website. Counted in <strong>people</strong>, not clicks — so each row is a human who reached that step.',
+        funnelHtml(f),
+        disclosure('What these steps mean, and how they\'re counted',
+          '<div class="db-note">' +
+          '<p style="margin-bottom:10px">Each stage counts <strong>unique people</strong> (by IP) who reached it in the selected range, and counts anyone who got further as having reached every step before it. That is why the funnel only ever narrows.</p>' +
+          '<p style="margin-bottom:10px"><strong>"Clicked the offer" is partly inferred.</strong> ' + n(f.ctaClicks) + ' ' +
+          (f.ctaClicks === 1 ? 'person was' : 'people were') + ' actually recorded clicking the button; ' + n(f.reachedDirectly) +
+          ' more reached the pitch page some other way (a shared link, a bookmark, or the URL directly) and are counted at that step too. If you want the button\'s true click-through rate, use the recorded number.</p>' +
+          '<p style="margin-bottom:10px"><strong>IP is a stand-in for a person.</strong> A family sharing one home connection reads as one person; a phone switching towers can read as several. Treat these as close, not exact.</p>' +
+          '<p><strong>Form abandonment:</strong> ' + (f.form.starts > 0
+            ? n(f.form.starts) + ' started filling the form, ' + n(f.form.completed) + ' finished — ' +
+              pct(f.form.abandonRate, 0) + ' abandoned. ' + n(f.form.attempts) + ' submit presses, ' +
+              n(f.form.errors) + ' failed with an error.'
+            : 'Form-start tracking is new, so there is no abandonment data yet. Once visitors start touching the form, this will show how many fill fields in and leave without submitting.') + '</p>' +
+          '</div>')
+      );
+
+      // ── 3. The offer page in particular ──
+      var pitchReaders = (f.stages[3] || {}).people || 0;
+      // Form-start tracking shipped with this dashboard, so before any visitor
+      // has touched the form there is genuinely no data — which is a different
+      // statement from "nobody started the form", and the tile must not print
+      // a confident 0% for it.
+      var formStartNote = f.form.starts > 0
+        ? pct(pitchReaders ? f.form.starts / pitchReaders : 0, 0) + ' of pitch readers'
+        : 'No form-starts recorded yet';
+      html += '<div class="db-kpis">' +
+        kpi('Read the pitch', n(pitchReaders), '', 'Landed on /get-started and saw the price') +
+        kpi('Started the form', n(f.form.starts), '', formStartNote) +
+        kpi('Requested a site', n(leadN), leadsDelta, '') +
+        kpi('Viewed the example', n(f.example.people), '',
+          f.example.people
+            ? pct(f.example.ofPitchReaders, 0) + ' of pitch readers clicked through to abrifazliu.com' +
+              (f.example.converted ? ' · ' + n(f.example.converted) + ' of them converted' : '')
+            : 'Nobody clicked through to abrifazliu.com') +
+        '</div>';
+
+      // ── 4. Audience ──
+      html += section('Audience', 'who is actually showing up');
+      html += '<div class="db-kpis">' +
+        kpi('People', compact(a.people), delta(a.delta.people, true), 'Unique humans. Bots and your own visits excluded.') +
+        kpi('Arrivals', compact(a.arrivals), delta(a.delta.arrivals, true), 'Times someone showed up from outside the site.') +
+        kpi('Pageviews', compact(a.pageviews), delta(a.delta.pageviews, true), 'Every page load, including clicking around inside the site.') +
+        kpi('Pages per visit', (a.engagement.pagesPerArrival || 0).toFixed(1), '', 'How deep people browse once they arrive.') +
+        '</div>';
+
+      html += card('Traffic over time', 'Arrivals is the number to watch — pageviews rise just from people clicking around.',
+        trendChart(a.byDay));
+
+      var groups = (a.sourceGroups || []).map(function (g) {
+        return { label: g.group, count: g.count, share: g.share };
+      });
+      html += card('Where arrivals come from',
+        'Grouped by kind, counted from <strong>arrivals only</strong> — clicks between pages of your own site are browsing, not a traffic source, so they are not in this list.',
+        barList(groups, { empty: 'No arrivals in this range.' }),
+        disclosure('Break down by exact site',
+          barList((a.sourceHosts || []).map(function (h) { return { label: h.host, count: h.count }; }),
+            { empty: 'No referring sites yet — all arrivals were direct.' }) +
+          '<div class="db-note" style="margin-top:14px"><strong>Direct</strong> (' + n(a.direct) + ') means no referrer was sent: typed the URL, a bookmark, a link from an app, or a browser that strips referrers.</div>')
+      );
+
+      // ── 5. What's pulling the traffic ──
+      // The headline list is every page; the per-type breakdowns (teams,
+      // comparisons, shares) sit behind disclosures — real detail, but not
+      // what you open the dashboard to find out.
+      var c = data.content || {};
+      var pl = c.player || { views: 0, top: [] }, tm = c.team || { views: 0, top: [] };
+      var cm = c.compare || { views: 0, top: [], topPlayers: [] }, sh = c.shares || { total: 0, top: [], recent: [] };
+      function pageBars(rows) {
+        return barList((rows || []).map(function (r) {
+          return { label: r.title || r.page, count: r.count };
+        }), { empty: 'Nothing in this range.' });
+      }
+
+      html += section('Content', 'what people are looking at');
+      html += card('Most-viewed pages', 'Player pages are the ones that carry the offer.',
+        barList((a.topPages || []).slice(0, 10).map(function (p) {
+          return { label: p.title || p.page, count: p.count };
+        }), { empty: 'No pageviews in this range.' }),
+        disclosure('Break down by page type',
+          '<div class="db-note" style="margin-bottom:14px">' +
+            n(pl.views) + ' player-page views from ' + n(pl.people) + ' people · ' +
+            n(tm.views) + ' team-page views · ' + n(cm.views) + ' comparisons</div>' +
+          '<div style="font-size:11.5px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">Players</div>' +
+          pageBars(pl.top) +
+          '<div style="font-size:11.5px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.4px;margin:18px 0 8px">Teams</div>' +
+          pageBars(tm.top) +
+          '<div style="font-size:11.5px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.4px;margin:18px 0 8px">Most-compared players</div>' +
+          barList((cm.topPlayers || []).map(function (r) { return { label: r.name, count: r.count }; }),
+            { empty: 'No comparisons in this range.' }) +
+          '<div class="db-note" style="margin-top:8px">A view of “A vs B” counts once for each player, so these add up to about twice the comparison views.</div>'));
+
+      html += card('Shares', n(sh.total) + ' ' + (sh.total === 1 ? 'share' : 'shares') + ' in the last ' + days + ' days',
+        pageBars(sh.top),
+        disclosure('Recent shares',
+          table([
+            { h: 'When', v: function (r) { return r.displayTime || '—'; } },
+            { h: 'Page', v: function (r) { return r.title || r.page || '—'; } },
+            { h: 'How', v: function (r) { return r.method === 'native' ? 'Share sheet' : 'Copied link'; } },
+          ], sh.recent, 'No shares in this range.')));
+
+      // ── 6. Leads ──
+      html += section('Leads', 'the actual people who asked');
+      html += '<div class="db-leads">' + card('Website requests', n(f.leads.count) + ' in the last ' + days + ' days',
+        table([
+          { h: 'Player', v: function (r) { return r.playerName || '—'; } },
+          { h: 'Contact', v: function (r) { return r.parentName || '—'; } },
+          { h: 'Email', v: function (r) { return r.email || '—'; } },
+          { h: 'Phone', v: function (r) { return r.phone || '—'; } },
+          { h: 'When', v: function (r) { return r.createdAt ? new Date(r.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'; } },
+        ], f.leads.recent, 'No requests in this range yet.')) + '</div>';
+
+      // ── 7. Data quality — always available, never in a headline ──
+      html += card('How these numbers are counted', null,
+        '<div class="db-pills">' +
+          '<span class="db-pill">' + n(a.excluded.bots) + ' bot pageviews excluded</span>' +
+          '<span class="db-pill">' + n(a.excluded.owner) + ' of your own visits excluded</span>' +
+          '<span class="db-pill">' + n(a.engagement.internalPageviews) + ' internal page-to-page clicks</span>' +
+        '</div>' +
+        '<div class="db-note">Everything above this card counts humans only. Bots are still recorded in the database — they are just never shown in a headline number.</div>',
+        disclosure('The full definitions',
+          '<div class="db-note">' +
+          '<p style="margin-bottom:10px"><strong>Bots</strong> are identified by the network their IP belongs to — datacenter and cloud providers (AWS, Google Cloud, Azure, Cloudflare and similar). That catches crawlers and link scanners well, but it is not perfect: a scraper running on a home connection would count as a person, and a real person on a corporate VPN could be counted as a bot.</p>' +
+          '<p style="margin-bottom:10px"><strong>Your own visits</strong> are excluded by geolocation (North York).</p>' +
+          '<p style="margin-bottom:10px"><strong>Internal page-to-page clicks</strong> are pageviews whose referrer was circuitstats.com itself. They count toward pageviews but never toward arrivals, and are never listed as a traffic source — that was making browsing look like a source of traffic.</p>' +
+          '<p><strong>Why arrivals and not visits:</strong> one person reading eight player pages is 1 person, 1 arrival and 8 pageviews. Leading with the 8 would overstate reach and make every conversion rate look ~8x worse than it is.</p>' +
+          '</div>')
+      );
+
+      el('db-content').innerHTML = html;
+      el('db-content').classList.remove('db-loading');
+      wireTrend(a.byDay);
+      animate();
+    }
+
+    // ── Load ─────────────────────────────────────────────────────────────────
+    var inflight = 0;
+    async function load() {
       var token = localStorage.getItem('cb_token');
       if (!token) {
-        document.getElementById('db-content').textContent = 'Sign in with the owner account to view analytics.';
-        if (window.gateOpen) window.gateOpen();   // matches the pre-SEO app: pop the sign-in modal
+        el('db-content').textContent = 'Sign in with the owner account to view analytics.';
+        if (window.gateOpen) window.gateOpen();
         return;
       }
+      var mine = ++inflight;
+      var content = el('db-content');
+      // Hold the previous render at reduced opacity rather than flashing a
+      // skeleton — no layout jump when switching range.
+      if (content.innerHTML && !content.classList.contains('db-loading')) content.style.opacity = '.45';
+      else content.textContent = 'Loading…';
+
       try {
-        var statsRes = await fetch(GB + '/dashboard/stats?limit=1', { headers: { 'Authorization': 'Bearer ' + token } });
-        if (statsRes.status === 403) { document.getElementById('db-content').textContent = 'Owner access only.'; return; }
-        if (!statsRes.ok) throw new Error('HTTP ' + statsRes.status);
-        var d = await statsRes.json();
-
-        var trafficRes = await fetch(GB + '/dashboard/traffic?limit=15', { headers: { 'Authorization': 'Bearer ' + token } });
-        var t = trafficRes.ok ? await trafficRes.json() : null;
-
-        var sharesRes = await fetch(GB + '/dashboard/shares?limit=15', { headers: { 'Authorization': 'Bearer ' + token } });
-        var sh = sharesRes.ok ? await sharesRes.json() : null;
-
-        var maxDay = Math.max.apply(null, d.visitsByDay.map(function (x) { return x.count; }).concat([1]));
-        var byDayBars = d.visitsByDay.slice(-14).map(function (r) {
-          var pct = Math.round((r.count / maxDay) * 100);
-          return '<div title="' + r._id + ': ' + r.count + '" style="display:flex;align-items:flex-end;gap:3px;flex-direction:column"><div style="width:24px;background:var(--accent);border-radius:3px 3px 0 0;height:' + Math.max(4, pct * 0.8) + 'px;opacity:.8"></div><div style="font-size:8px;color:var(--text-3);transform:rotate(-40deg);transform-origin:top right;white-space:nowrap">' + r._id.slice(5) + '</div></div>';
-        }).join('');
-        var subRows = (d.subscribers && d.subscribers.recent || []).map(function (s) {
-          return '<tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px;font-size:12px">' + esc(s.email) + '</td><td style="padding:6px 8px;font-size:11px;color:var(--accent)">' + esc(s.plan) + '</td><td style="padding:6px 8px;font-size:11px;color:var(--text-2)">' + (s.createdAt ? new Date(s.createdAt).toLocaleDateString() : '') + '</td></tr>';
-        }).join('');
-
-        var overviewStats = [['Human Visits', d.humanVisits != null ? d.humanVisits : d.totalVisits], ['Unique IPs', d.uniqueIpCount], ['Subscribers', (d.subscribers && d.subscribers.total) != null ? d.subscribers.total : '—']];
-
-        var html = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px">' + overviewStats.map(function (p) { return statCard(p[0], p[1]); }).join('') + '</div>';
-        html += card('Visits — last 14 days', null, '<div style="padding:14px;display:flex;align-items:flex-end;gap:4px;height:90px">' + byDayBars + '</div>');
-
-        if (t) {
-          // 1. Overall website traffic — where it's coming from + a per-hit log.
-          html += card(
-            'Overall Website Traffic',
-            t.totalHumanVisits + ' human visits tracked',
-            subHeading('Traffic sources') + barList(t.topReferrers, function (r) { return r.host; }, function (r) { return r.count; }) +
-            subHeading('Recent hits') + hitTable(
-              [{ h: 'Time', v: function (r) { return r.displayTime; } },
-               { h: 'Page', v: function (r) { return r.title || r.page; } },
-               { h: 'From', v: function (r) { return r.referrer ? (function () { try { return new URL(r.referrer).hostname; } catch (e) { return r.referrer; } })() : 'Direct'; } },
-               { h: 'Location', v: locOf }],
-              t.recentHits
-            )
-          );
-
-          // 2. Player page traffic
-          html += card(
-            'Player Page Traffic',
-            t.player.total + ' player-page views',
-            subHeading('Most-viewed players') + barList(t.player.top, nameOf, function (r) { return r.count; }) +
-            subHeading('Recent views') + hitTable(
-              [{ h: 'Time', v: function (r) { return r.displayTime; } },
-               { h: 'Player', v: nameOf },
-               { h: 'Location', v: locOf }],
-              t.player.recent
-            )
-          );
-
-          // 3. Team page traffic
-          html += card(
-            'Team Page Traffic',
-            t.team.total + ' team-page views',
-            subHeading('Most-viewed teams') + barList(t.team.top, nameOf, function (r) { return r.count; }) +
-            subHeading('Recent views') + hitTable(
-              [{ h: 'Time', v: function (r) { return r.displayTime; } },
-               { h: 'Team', v: nameOf },
-               { h: 'Location', v: locOf }],
-              t.team.recent
-            )
-          );
-
-          // 4. Comparisons — per-player attribution (a view of "A vs B" counts
-          // once for A and once for B) plus the exact match-ups themselves.
-          html += card(
-            'Comparisons',
-            t.compare.total + ' comparison views',
-            subHeading('Most-compared players') + barList(t.compare.topPlayers, function (r) { return r.name; }, function (r) { return r.count; }) +
-            subHeading('Most-viewed match-ups') + barList(t.compare.topPairs, nameOf, function (r) { return r.count; }) +
-            subHeading('Recent comparisons') + hitTable(
-              [{ h: 'Time', v: function (r) { return r.displayTime; } },
-               { h: 'Match-up', v: nameOf },
-               { h: 'Location', v: locOf }],
-              t.compare.recent
-            )
-          );
-        }
-
-        if (sh) {
-          // Shares: what's actually getting shared (native share sheet or the
-          // clipboard-copy fallback), broken into the same buckets as traffic.
-          var shareTop = [].concat(
-            sh.player.top.map(function (r) { return { label: nameOf(r), count: r.count }; }),
-            sh.team.top.map(function (r) { return { label: nameOf(r), count: r.count }; }),
-            sh.compare.top.map(function (r) { return { label: nameOf(r), count: r.count }; })
-          ).sort(function (a, b) { return b.count - a.count; }).slice(0, 15);
-          html += card(
-            'Shares',
-            sh.totalShares + ' total shares (player, team &amp; comparison pages)',
-            subHeading('Most-shared pages') + barList(shareTop, function (r) { return r.label; }, function (r) { return r.count; }) +
-            subHeading('Recent shares') + hitTable(
-              [{ h: 'Time', v: function (r) { return r.displayTime; } },
-               { h: 'Page', v: nameOf },
-               { h: 'Via', v: function (r) { return r.method === 'native' ? 'Share sheet' : 'Copied link'; } },
-               { h: 'Location', v: locOf }],
-              sh.recent
-            )
-          );
-        }
-
-        if (subRows) html += card('Subscribers', null, '<table style="width:100%;border-collapse:collapse"><tbody>' + subRows + '</tbody></table>');
-
-        document.getElementById('db-content').innerHTML = html;
-      } catch (e) { document.getElementById('db-content').textContent = 'Error loading stats: ' + e.message; }
+        var res = await fetch(API + '/dashboard/overview?days=' + days, {
+          headers: { Authorization: 'Bearer ' + token },
+        });
+        if (mine !== inflight) return;             // a newer range won the race
+        if (res.status === 403) { content.textContent = 'Owner access only.'; content.style.opacity = '1'; return; }
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        render(await res.json());
+        content.style.opacity = '1';
+      } catch (e) {
+        if (mine !== inflight) return;
+        content.style.opacity = '1';
+        content.classList.add('db-loading');
+        content.textContent = 'Could not load analytics: ' + e.message;
+      }
     }
-    // GateModal's gateVerify() (in Layout) may redeem a magic link async; re-run
-    // the dashboard once it settles, and expose a hook for immediate unlock.
-    window.onGateUnlock = renderDashboard;
+
+    document.querySelectorAll('.db-range').forEach(function (b) {
+      b.addEventListener('click', function () {
+        document.querySelectorAll('.db-range').forEach(function (x) { x.classList.remove('is-on'); });
+        b.classList.add('is-on');
+        days = parseInt(b.getAttribute('data-days'), 10) || 30;
+        el('db-range-label').textContent = 'Last ' + days + ' days';
+        load();
+      });
+    });
+
+    window.onGateUnlock = load;
     if (new URLSearchParams(location.search).has('auth')) {
-      // magic link present — wait for GateModal.gateVerify() to redeem it, then
-      // onGateUnlock fires renderDashboard. Avoids a premature sign-in prompt.
-      document.getElementById('db-content').textContent = 'Signing you in…';
+      el('db-content').textContent = 'Signing you in…';
     } else {
-      renderDashboard();
+      load();
     }
   })();
 </script>

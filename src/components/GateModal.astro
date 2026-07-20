@@ -49,7 +49,14 @@ const GATE_BACKEND = '/a1a2-command-center';
 </div>
 
 <script is:inline define:vars={{ GATE_BACKEND }}>
-  window.GATE_BACKEND = GATE_BACKEND;
+  // Prod reaches the backend through the Vercel rewrite on this relative path;
+  // localhost has no rewrite, so hit the local backend directly. Without this
+  // the path 404s in dev, gateVerify() reads that as an invalid session and
+  // deletes cb_token — which silently signs you out of /dashboard on every
+  // local page load. Matches what dashboard.astro and get-started.astro do.
+  var GATE_API = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+    ? 'http://localhost:4000/a1a2-command-center' : GATE_BACKEND;
+  window.GATE_BACKEND = GATE_API;
   var _gateTier = 'lifetime', _subscriber = false;
   window.gateSelectTier = function (t) {
     _gateTier = t;
@@ -71,7 +78,7 @@ const GATE_BACKEND = '/a1a2-command-center';
     if (!email || email.indexOf('@') < 0) { gateSetErr('Please enter a valid email address.'); return; }
     gateSetErr(''); gateSetLoading(true);
     try {
-      var res = await fetch(GATE_BACKEND + '/auth/request-access', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: email, tier: _gateTier }) });
+      var res = await fetch(GATE_API + '/auth/request-access', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: email, tier: _gateTier }) });
       if (!res.ok) { var d = await res.json().catch(function () { return {}; }); throw new Error(d.error || 'Backend error ' + res.status); }
       var data = await res.json();
       if (data.status === 'email_sent') {
@@ -85,7 +92,7 @@ const GATE_BACKEND = '/a1a2-command-center';
     if (!email || email.indexOf('@') < 0) { gateSetErr('Enter your email above, then click Resend.'); document.getElementById('gate-email').focus(); return; }
     gateSetErr('');
     try {
-      var res = await fetch(GATE_BACKEND + '/auth/resend-access', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: email }) });
+      var res = await fetch(GATE_API + '/auth/resend-access', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: email }) });
       if (!res.ok) throw new Error('Backend error ' + res.status);
       localStorage.setItem('cb_email', email);
       document.querySelector('.gate-card').innerHTML = '<div style="text-align:center;padding:12px 0 8px"><div style="font-size:42px;margin-bottom:12px">📬</div><h3 style="margin:0 0 10px;font-size:18px;font-weight:800;color:var(--text)">Check your inbox!</h3><p style="margin:0 0 6px;font-size:13px;color:var(--text-2);line-height:1.6">If <strong style="color:var(--text)">' + email + '</strong> has an active subscription,<br>a new access link is on its way.</p><button class="gate-btn" onclick="document.getElementById(\'gate-overlay\').classList.add(\'hidden\')" style="font-size:13px;padding:11px 24px">Got it</button></div>';
@@ -98,7 +105,7 @@ const GATE_BACKEND = '/a1a2-command-center';
     if (magic) {
       history.replaceState(null, '', location.pathname + location.hash);
       try {
-        var res = await fetch(GATE_BACKEND + '/auth/magic', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: magic }) });
+        var res = await fetch(GATE_API + '/auth/magic', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: magic }) });
         if (res.ok) { var j = await res.json(); if (j.token) { localStorage.setItem('cb_token', j.token); if (j.email) localStorage.setItem('cb_email', j.email); gateUnlock(); return; } }
         else { gateOpen(); gateSetErr('This access link has expired or was already used. Enter your email to get a new one.'); return; }
       } catch (e) {}
@@ -112,7 +119,7 @@ const GATE_BACKEND = '/a1a2-command-center';
     var token = localStorage.getItem('cb_token');
     if (!token) return;
     try {
-      var res2 = await fetch(GATE_BACKEND + '/auth/verify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: token }) });
+      var res2 = await fetch(GATE_API + '/auth/verify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: token }) });
       if (!res2.ok) { localStorage.removeItem('cb_token'); return; }
       var v = await res2.json();
       if (v.valid) gateUnlock(); else localStorage.removeItem('cb_token');
