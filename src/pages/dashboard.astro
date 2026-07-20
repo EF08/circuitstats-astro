@@ -307,6 +307,23 @@ const SITE = 'https://www.circuitstats.com';
       var v = x * 100;
       return (v < 1 && v > 0 ? v.toFixed(dp == null ? 2 : dp) : v.toFixed(v < 10 ? 1 : 0)) + '%';
     }
+    // "3m" / "3h" / "3d 3h" — how long ago, which is what you actually want from
+    // a log. An absolute timestamp makes you do the subtraction in your head.
+    function ago(ts) {
+      if (!ts) return '—';
+      var then = new Date(ts).getTime();
+      if (!then) return '—';
+      var s = Math.max(0, (Date.now() - then) / 1000);
+      if (s < 60) return 'just now';
+      var m = Math.floor(s / 60);
+      if (m < 60) return m + 'm';
+      var h = Math.floor(m / 60);
+      if (h < 24) return h + 'h';
+      var d = Math.floor(h / 24), rh = h % 24;
+      if (d < 30) return d + 'd' + (rh ? ' ' + rh + 'h' : '');
+      var mo = Math.floor(d / 30);
+      return mo + 'mo' + (d % 30 ? ' ' + (d % 30) + 'd' : '');
+    }
     function shortDate(iso) {
       var p = String(iso).split('-');
       return p.length === 3 ? (+p[1]) + '/' + (+p[2]) : iso;
@@ -655,7 +672,8 @@ const SITE = 'https://www.circuitstats.com';
               if (r.submitted) acts.push('REQUESTED');
               return acts.length ? acts.join(', ') : '—';
             } },
-          { h: 'Last seen', v: function (r) { return r.displayTime || '—'; } },
+          { h: 'Last seen', raw: true, v: function (r) {
+              return '<span title="' + esc(r.displayTime || '') + '">' + esc(ago(r.lastSeen)) + '</span>'; } },
         ], readers, 'No one yet.'),
         disclosure('How do I know these are real people?',
           '<div class="db-note">' +
@@ -665,8 +683,11 @@ const SITE = 'https://www.circuitstats.com';
 
       // ── 4. Audience ──
       html += section('Audience', 'who is actually showing up');
+      var conf = f.confirmed || { people: 0, of: 0 };
       html += '<div class="db-kpis">' +
-        kpi('People', compact(a.people), delta(a.delta.people, true), 'Unique humans. Bots and your own visits excluded.') +
+        kpi('People', compact(a.people), delta(a.delta.people, true), 'Bots and your own visits excluded.') +
+        kpi('Confirmed human', compact(conf.people), '',
+          'Of those, the ones who clicked something or read more than one page — a floor you can trust.') +
         kpi('Arrivals', compact(a.arrivals), delta(a.delta.arrivals, true), 'Times someone showed up from outside the site.') +
         kpi('Pageviews', compact(a.pageviews), delta(a.delta.pageviews, true), 'Every page load, including clicking around inside the site.') +
         kpi('Pages per visit', (a.engagement.pagesPerArrival || 0).toFixed(1), '', 'How deep people browse once they arrive.') +
@@ -722,7 +743,8 @@ const SITE = 'https://www.circuitstats.com';
         pageBars(sh.top),
         disclosure('Recent shares',
           table([
-            { h: 'When', v: function (r) { return r.displayTime || '—'; } },
+            { h: 'When', raw: true, v: function (r) {
+              return '<span title="' + esc(r.displayTime || '') + '">' + esc(ago(r.sharedAt)) + '</span>'; } },
             { h: 'Page', v: function (r) { return r.title || r.page || '—'; } },
             { h: 'How', v: function (r) { return r.method === 'native' ? 'Share sheet' : 'Copied link'; } },
           ], sh.recent, 'No shares in this range.')));
@@ -735,7 +757,8 @@ const SITE = 'https://www.circuitstats.com';
           { h: 'Contact', v: function (r) { return r.parentName || '—'; } },
           { h: 'Email', v: function (r) { return r.email || '—'; } },
           { h: 'Phone', v: function (r) { return r.phone || '—'; } },
-          { h: 'When', v: function (r) { return r.createdAt ? new Date(r.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'; } },
+          { h: 'When', raw: true, v: function (r) {
+              return '<span title="' + esc(r.createdAt ? new Date(r.createdAt).toLocaleString() : '') + '">' + esc(ago(r.createdAt)) + '</span>'; } },
         ], f.leads.recent, 'No requests in this range yet.')) + '</div>';
 
       // ── 7. Data quality — always available, never in a headline ──
@@ -748,8 +771,11 @@ const SITE = 'https://www.circuitstats.com';
         '<div class="db-note">Everything above this card counts humans only. Bots are still recorded in the database — they are just never shown in a headline number.</div>',
         disclosure('The full definitions',
           '<div class="db-note">' +
-          '<p style="margin-bottom:10px"><strong>Bots</strong> are identified by the network their IP belongs to — datacenter and cloud providers (AWS, Google Cloud, Azure, Cloudflare and similar). That catches crawlers and link scanners well, but it is not perfect: a scraper running on a home connection would count as a person, and a real person on a corporate VPN could be counted as a bot.</p>' +
-          '<p style="margin-bottom:10px"><strong>Your own visits</strong> are excluded by geolocation (North York).</p>' +
+          '<p style="margin-bottom:10px"><strong>Bots</strong> are caught two ways. <em>Network:</em> datacenter and cloud providers (AWS, Google Cloud, Azure, Cloudflare). <em>Browser:</em> anything announcing itself as a crawler in its user agent — Applebot, Googlebot, headless Chrome and the rest. The second check matters most: Applebot runs from Apple&rsquo;s own network, so it looks like a person on a Mac until you read the user agent.</p>' +
+          '<p style="margin-bottom:10px"><strong>This can only ever be a ceiling.</strong> A crawler that sends an ordinary Chrome user agent from a home broadband address is indistinguishable from a person at this level. That is why <strong>Confirmed human</strong> exists beside it: it counts only visitors who clicked something or read more than one page, which crawlers essentially never do. The true number sits between the two.</p>' +
+          '<p style="margin-bottom:10px"><strong>Your own visits</strong> are excluded by address and subnet, not city. Your ISP moves you around inside a block and geolocation resolves the same house to different cities on different days — matching on &ldquo;North York&rdquo; alone let one of your own clicks through as a customer. Currently excluded as you: ' +
+          esc(((a.excluded.ownerSubnets || []).concat(a.excluded.ownerIps || [])).join(', ') || 'nothing') +
+          '. If that is wrong, or you browse from somewhere missing here, set <code>OWNER_IPS</code> in the backend environment.</p>' +
           '<p style="margin-bottom:10px"><strong>Internal page-to-page clicks</strong> are pageviews whose referrer was circuitstats.com itself. They count toward pageviews but never toward arrivals, and are never listed as a traffic source — that was making browsing look like a source of traffic.</p>' +
           '<p><strong>Why arrivals and not visits:</strong> one person reading eight player pages is 1 person, 1 arrival and 8 pageviews. Leading with the 8 would overstate reach and make every conversion rate look ~8x worse than it is.</p>' +
           '</div>')
