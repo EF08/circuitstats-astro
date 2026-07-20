@@ -537,9 +537,19 @@ const SITE = 'https://www.circuitstats.com';
         tip.firstChild.textContent = longDate(d.date);
         tip.style.opacity = '1';
 
-        var relX = ((px - PL) / iw) * r.width;
-        var tw = tip.offsetWidth || 150;
-        tip.style.left = Math.max(0, Math.min(r.width - tw, relX - tw / 2)) + 'px';
+        // Placement must be computed in CSS pixels, not the visual pixels that
+        // getBoundingClientRect returns. global.css applies html{zoom:1.3} above
+        // 1024px, so a value derived from rects and then written to style.left
+        // lands 1.3x too far right — which is why the tooltip escaped the card
+        // (overflow:hidden) as the pointer moved right. offsetLeft/offsetWidth
+        // are already CSS pixels and are immune to the zoom.
+        //
+        // The pointer→index mapping above stays on rects because it is a ratio,
+        // so the scale cancels out.
+        var hostW = wrap.clientWidth;
+        var relX  = hit.offsetLeft + ((px - PL) / iw) * hit.offsetWidth;
+        var tw    = tip.offsetWidth || 160;
+        tip.style.left = Math.max(0, Math.min(hostW - tw, relX - tw / 2)) + 'px';
       }
       function hide() {
         tip.style.opacity = '0';
@@ -773,9 +783,11 @@ const SITE = 'https://www.circuitstats.com';
           '<div class="db-note">' +
           '<p style="margin-bottom:10px"><strong>Bots</strong> are caught two ways. <em>Network:</em> datacenter and cloud providers (AWS, Google Cloud, Azure, Cloudflare). <em>Browser:</em> anything announcing itself as a crawler in its user agent — Applebot, Googlebot, headless Chrome and the rest. The second check matters most: Applebot runs from Apple&rsquo;s own network, so it looks like a person on a Mac until you read the user agent.</p>' +
           '<p style="margin-bottom:10px"><strong>This can only ever be a ceiling.</strong> A crawler that sends an ordinary Chrome user agent from a home broadband address is indistinguishable from a person at this level. That is why <strong>Confirmed human</strong> exists beside it: it counts only visitors who clicked something or read more than one page, which crawlers essentially never do. The true number sits between the two.</p>' +
-          '<p style="margin-bottom:10px"><strong>Your own visits</strong> are excluded by address and subnet, not city. Your ISP moves you around inside a block and geolocation resolves the same house to different cities on different days — matching on &ldquo;North York&rdquo; alone let one of your own clicks through as a customer. Currently excluded as you: ' +
-          esc(((a.excluded.ownerSubnets || []).concat(a.excluded.ownerIps || [])).join(', ') || 'nothing') +
-          '. If that is wrong, or you browse from somewhere missing here, set <code>OWNER_IPS</code> in the backend environment.</p>' +
+          '<p style="margin-bottom:10px"><strong>Your own visits</strong> are excluded by address and subnet, not city. Your ISP moves you around inside a block and geolocation resolves the same house to different cities on different days — matching on &ldquo;North York&rdquo; alone let one of your own clicks through as a customer.</p>' +
+          '<p style="margin-bottom:10px"><strong>Proven yours</strong> (' + n((a.excluded.ownerProven || []).length) + ') — these addresses were seen geolocating to North York: <code>' +
+          esc((a.excluded.ownerProven || []).join(', ') || 'none') + '</code></p>' +
+          '<p style="margin-bottom:10px"><strong>Inferred</strong> (' + n((a.excluded.ownerInferred || []).length) + ') — excluded only because they share an ISP block with a proven address: <code>' +
+          esc((a.excluded.ownerInferred || []).join(', ') || 'none') + '</code>. This is inference, not proof: a /24 is 256 addresses and on a large ISP it can cover more than one household. It is on because the alternative lets your own traffic back in every time your ISP reassigns you, which distorts the numbers more. Set <code>OWNER_SUBNET_MATCH=off</code> for exact addresses only, or add addresses by hand with <code>OWNER_IPS</code>.</p>' +
           '<p style="margin-bottom:10px"><strong>Internal page-to-page clicks</strong> are pageviews whose referrer was circuitstats.com itself. They count toward pageviews but never toward arrivals, and are never listed as a traffic source — that was making browsing look like a source of traffic.</p>' +
           '<p><strong>Why arrivals and not visits:</strong> one person reading eight player pages is 1 person, 1 arrival and 8 pageviews. Leading with the 8 would overstate reach and make every conversion rate look ~8x worse than it is.</p>' +
           '</div>')
