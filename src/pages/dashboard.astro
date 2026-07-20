@@ -558,11 +558,18 @@ const SITE = 'https://www.circuitstats.com';
       if (leadN === 0) {
         var reached = (f.stages[3] || {}).people || 0;
         if (reached === 0) {
-          verdict = 'No one reached the offer page. <span class="lo">The pitch isn\'t being found</span> — the problem is upstream, not the offer itself.';
+          verdict = '<span class="lo">Nobody even reached the offer page.</span> Of ' + n(f.stages[0].people) +
+            ' visitors, none opened /get-started.';
         } else {
-          verdict = n(reached) + ' people read the pitch and <span class="lo">none requested a website</span>. The offer page is where this is failing.';
+          verdict = n(reached) + ' ' + (reached === 1 ? 'person' : 'people') + ' read the pitch and <span class="lo">none requested a website</span>.';
         }
-        sub = 'Fix the step with the biggest drop-off before spending anything on more traffic.';
+        // Name the step the data actually blames, rather than assuming it's the
+        // pitch page — the biggest leak is usually further up, and a hardcoded
+        // conclusion here would contradict the funnel directly beneath it.
+        sub = f.leak
+          ? 'Biggest leak: <strong>' + esc(f.leak.label) + '</strong> lost ' + n(f.leak.dropped) +
+            ' people. Fix that step before spending anything on more traffic.'
+          : 'Not enough traffic yet to say where it is failing.';
       } else {
         verdict = '<strong>' + n(leadN) + ' ' + (leadN === 1 ? 'lead' : 'leads') + '</strong> from ' +
           n(f.stages[0].people) + ' visitors — a ' + pct(conv, 2) + ' conversion rate.';
