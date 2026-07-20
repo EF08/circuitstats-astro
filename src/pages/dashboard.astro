@@ -150,6 +150,16 @@ const SITE = 'https://www.circuitstats.com';
   }
   .db-drop.is-leak { color: var(--bad); font-weight: 700; }
 
+
+  /* ── Geography ─────────────────────────────────────────────────────────── */
+  .geo-wrap { position: relative; width: 100%; }
+  .geo-wrap svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .geo-b { cursor: pointer; }
+  .geo-b circle:first-child { transition: fill-opacity .12s; }
+  .geo-b:hover circle:first-child, .geo-b:focus circle:first-child { fill-opacity: .55; }
+  .db-tip-c { font-size: 11px; color: var(--text-2); margin-top: 5px; line-height: 1.45; white-space: normal; }
+  .db-tip { max-width: 250px; }
+
   /* ── Charts ────────────────────────────────────────────────────────────── */
   .db-chart { position: relative; width: 100%; }
   .db-chart svg { display: block; width: 100%; height: 128px; overflow: visible; }
@@ -440,6 +450,142 @@ const SITE = 'https://www.circuitstats.com';
       }).join('') + '</div>';
     }
 
+// ── Geography ────────────────────────────────────────────────────────────
+    // Country centroids for the bubble map. Equirectangular, so screen position
+    // is a direct linear function of longitude/latitude — no projection maths.
+    // Only countries that can plausibly appear need to be here; anything missing
+    // is simply omitted from the map and still counted in the list below it.
+    var BUBBLE = 'var(--accent)';
+    var CENTROIDS = {
+      'United States':[39.8,-98.6],'Canada':[56.1,-106.3],'Mexico':[23.6,-102.6],'Brazil':[-14.2,-51.9],
+      'Argentina':[-38.4,-63.6],'Chile':[-35.7,-71.5],'Colombia':[4.6,-74.3],'Peru':[-9.2,-75.0],
+      'United Kingdom':[55.4,-3.4],'Ireland':[53.4,-8.2],'France':[46.2,2.2],'Spain':[40.5,-3.7],
+      'Portugal':[39.4,-8.2],'Germany':[51.2,10.5],'Italy':[41.9,12.6],'Netherlands':[52.1,5.3],
+      'Belgium':[50.5,4.5],'Switzerland':[46.8,8.2],'Austria':[47.5,14.6],'Poland':[51.9,19.1],
+      'Czechia':[49.8,15.5],'Slovakia':[48.7,19.7],'Hungary':[47.2,19.5],'Romania':[45.9,25.0],
+      'Bulgaria':[42.7,25.5],'Greece':[39.1,21.8],'Sweden':[60.1,18.6],'Norway':[60.5,8.5],
+      'Denmark':[56.3,9.5],'Finland':[61.9,25.7],'Iceland':[65.0,-19.0],'Latvia':[56.9,24.6],
+      'Lithuania':[55.2,23.9],'Estonia':[58.6,25.0],'Luxembourg':[49.8,6.1],'Ukraine':[48.4,31.2],
+      'Russia':[61.5,105.3],'Türkiye':[39.0,35.2],'Turkey':[39.0,35.2],'Israel':[31.0,34.9],
+      'Saudi Arabia':[23.9,45.1],'United Arab Emirates':[23.4,53.8],'Egypt':[26.8,30.8],
+      'Morocco':[31.8,-7.1],'Algeria':[28.0,1.7],'Tunisia':[33.9,9.5],'Nigeria':[9.1,8.7],
+      'Ghana':[7.9,-1.0],'Kenya':[-0.02,37.9],'South Africa':[-30.6,22.9],'India':[20.6,79.0],
+      'Pakistan':[30.4,69.3],'Bangladesh':[23.7,90.4],'China':[35.9,104.2],'Japan':[36.2,138.3],
+      'South Korea':[35.9,127.8],'Taiwan':[23.7,121.0],'Hong Kong':[22.3,114.2],'Singapore':[1.35,103.8],
+      'Malaysia':[4.2,101.98],'Indonesia':[-0.8,113.9],'Thailand':[15.9,101.0],'Vietnam':[14.06,108.3],
+      'Philippines':[12.9,121.8],'Australia':[-25.3,133.8],'New Zealand':[-40.9,174.9],
+      'Kazakhstan':[48.0,66.9],'Uzbekistan':[41.4,64.6],'Georgia':[42.3,43.4],'Armenia':[40.1,45.0],
+      'Serbia':[44.0,21.0],'Croatia':[45.1,15.2],'Slovenia':[46.2,15.0],'Bosnia and Herzegovina':[43.9,17.7],
+      'North Macedonia':[41.6,21.7],'Albania':[41.2,20.2],'Moldova':[47.4,28.4],'Belarus':[53.7,27.95],
+      'Qatar':[25.4,51.2],'Kuwait':[29.3,47.5],'Jordan':[30.6,36.2],'Lebanon':[33.9,35.9],
+      'Iraq':[33.2,43.7],'Iran':[32.4,53.7],'Nepal':[28.4,84.1],'Sri Lanka':[7.9,80.8],
+      'Costa Rica':[9.7,-83.8],'Panama':[8.5,-80.8],'Dominican Republic':[18.7,-70.2],
+      'Jamaica':[18.1,-77.3],'Trinidad and Tobago':[10.7,-61.2],'Puerto Rico':[18.2,-66.6],
+      'Bahamas':[25.0,-77.4],'Guatemala':[15.8,-90.2],'Honduras':[15.2,-86.2],'Ecuador':[-1.8,-78.2],
+      'Venezuela':[6.4,-66.6],'Uruguay':[-32.5,-55.8],'Paraguay':[-23.4,-58.4],'Bolivia':[-16.3,-63.6]
+    };
+
+    // Bubble area (not radius) tracks the count, so a country with twice the
+    // visitors looks twice as big rather than four times.
+    function geoMap(geo) {
+      var placed = (geo || []).filter(function (g) { return CENTROIDS[g.country]; });
+      if (!placed.length) return '';
+      // Crop the empty polar bands — nothing lives above 78N or below 56S, and
+      // including them wasted half the height and shrank every bubble.
+      var LAT_TOP = 78, LAT_BOT = -56;
+      var W = 720, H = Math.round(W * (LAT_TOP - LAT_BOT) / 360);
+      var max = placed[0].people || 1;
+      var x = function (lon) { return (lon + 180) / 360 * W; };
+      var y = function (lat) { return (LAT_TOP - lat) / (LAT_TOP - LAT_BOT) * H; };
+
+      // A faint graticule so the bubbles read as positions on a globe rather
+      // than a scatter plot. Equator and prime meridian a step stronger, since
+      // those are the two lines people orient from.
+      var grid = '';
+      for (var lon = -150; lon <= 150; lon += 30) {
+        grid += '<line x1="' + x(lon).toFixed(1) + '" y1="0" x2="' + x(lon).toFixed(1) + '" y2="' + H +
+          '" stroke="var(--grid)" stroke-width="' + (lon === 0 ? 1.4 : 0.7) + '"/>';
+      }
+      for (var lat = -40; lat <= 60; lat += 20) {
+        grid += '<line x1="0" y1="' + y(lat).toFixed(1) + '" x2="' + W + '" y2="' + y(lat).toFixed(1) +
+          '" stroke="var(--grid)" stroke-width="' + (lat === 0 ? 1.4 : 0.7) + '"/>';
+      }
+
+      // Bubble area (not radius) tracks the count, so twice the visitors looks
+      // twice as big rather than four times.
+      var geom = placed.map(function (g) {
+        var c = CENTROIDS[g.country];
+        return { g: g, cx: x(c[1]), cy: y(c[0]), r: Math.max(4, Math.sqrt(g.people / max) * 30) };
+      });
+
+      var bubbles = geom.map(function (b, i) {
+        var cities = b.g.cities.slice(0, 4).map(function (ct) { return ct.city + ' (' + ct.people + ')'; }).join(' · ');
+        return '<g class="geo-b" data-i="' + i + '" data-country="' + esc(b.g.country) +
+          '" data-people="' + b.g.people + '" data-cities="' + esc(cities) + '">' +
+          '<circle cx="' + b.cx.toFixed(1) + '" cy="' + b.cy.toFixed(1) + '" r="' + b.r.toFixed(1) +
+          '" fill="' + BUBBLE + '" fill-opacity=".28" stroke="' + BUBBLE + '" stroke-width="1.5"/>' +
+          // Generous invisible hit area — a 4px bubble is impossible to hover.
+          '<circle cx="' + b.cx.toFixed(1) + '" cy="' + b.cy.toFixed(1) + '" r="' +
+          Math.max(b.r, 13).toFixed(1) + '" fill="transparent"/></g>';
+      }).join('');
+
+      // Label the leaders only, with greedy collision avoidance: try above the
+      // bubble, then below, then give up. Canada and the USA sit close enough
+      // that their labels overlapped and both became unreadable.
+      var boxes = [], labels = '';
+      geom.slice(0, 5).forEach(function (b) {
+        var name = b.g.country === 'United States' ? 'USA' : b.g.country;
+        var w = name.length * 6.2, h = 13;
+        var cands = [b.cy - b.r - 5, b.cy + b.r + 12];
+        for (var k = 0; k < cands.length; k++) {
+          var box = { x1: b.cx - w / 2, x2: b.cx + w / 2, y1: cands[k] - h, y2: cands[k] };
+          var hits = boxes.some(function (o) {
+            return !(box.x2 < o.x1 || box.x1 > o.x2 || box.y2 < o.y1 || box.y1 > o.y2);
+          });
+          if (!hits) {
+            boxes.push(box);
+            labels += '<text x="' + b.cx.toFixed(1) + '" y="' + cands[k].toFixed(1) +
+              '" text-anchor="middle" font-size="11" font-weight="700" fill="var(--text-2)">' +
+              esc(name) + '</text>';
+            return;
+          }
+        }
+      });
+
+      return '<div class="geo-wrap" id="geo-wrap">' +
+        '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Visitors by country">' +
+        grid + bubbles + labels + '</svg><div class="db-tip" id="geo-tip"></div></div>';
+    }
+
+    function wireGeo() {
+      var wrap = document.getElementById('geo-wrap');
+      if (!wrap) return;
+      var tip = document.getElementById('geo-tip');
+      wrap.querySelectorAll('.geo-b').forEach(function (g) {
+        g.addEventListener('pointerenter', function () {
+          var name = g.getAttribute('data-country');
+          var ppl = g.getAttribute('data-people');
+          var cities = g.getAttribute('data-cities');
+          tip.innerHTML = '<div class="db-tip-d"></div>' +
+            '<div class="db-tip-r"><span class="db-tip-v">' + ppl + '</span>' +
+            '<span class="db-tip-n">' + (ppl === '1' ? 'person' : 'people') + '</span></div>' +
+            (cities ? '<div class="db-tip-c"></div>' : '');
+          tip.firstChild.textContent = name;
+          if (cities) tip.lastChild.textContent = cities;
+          tip.style.opacity = '1';
+          // Position from the bubble's own box, in CSS pixels.
+          var b = g.getBoundingClientRect(), hostR = wrap.getBoundingClientRect();
+          var scale = wrap.clientWidth / (hostR.width || 1);
+          var cx = (b.left + b.width / 2 - hostR.left) * scale;
+          var cy = (b.top - hostR.top) * scale;
+          var tw = tip.offsetWidth || 160;
+          tip.style.left = Math.max(0, Math.min(wrap.clientWidth - tw, cx - tw / 2)) + 'px';
+          tip.style.top = Math.max(0, cy - tip.offsetHeight - 8) + 'px';
+        });
+        g.addEventListener('pointerleave', function () { tip.style.opacity = '0'; });
+      });
+    }
+
     // ── Trend: small multiples ───────────────────────────────────────────────
     // Arrivals and pageviews are the same unit but wildly different magnitudes
     // (pageviews run ~7x arrivals). Plotted together on one axis the arrivals
@@ -709,6 +855,20 @@ const SITE = 'https://www.circuitstats.com';
       var groups = (a.sourceGroups || []).map(function (g) {
         return { label: g.group, count: g.count, share: g.share };
       });
+      html += card('Where visitors are from',
+        (a.geo || []).length + ' countries · hover a bubble for the cities inside it',
+        geoMap(a.geo) +
+        barList((a.geo || []).slice(0, 8).map(function (g) {
+          return { label: g.country, count: g.people, share: g.share };
+        }), { empty: 'No location data in this range.' }),
+        disclosure('Every country, with cities',
+          table([
+            { h: 'Country', v: function (g) { return g.country; } },
+            { h: 'People', v: function (g) { return n(g.people); }, num: true },
+            { h: 'Share', v: function (g) { return pct(g.share, 1); }, num: true },
+            { h: 'Cities', v: function (g) { return g.cities.map(function (c) { return c.city + ' (' + c.people + ')'; }).join(', ') || '—'; } },
+          ], a.geo || [], 'No location data.')));
+
       html += card('Where arrivals come from',
         'Grouped by kind, counted from <strong>arrivals only</strong> — clicks between pages of your own site are browsing, not a traffic source, so they are not in this list.',
         barList(groups, { empty: 'No arrivals in this range.' }),
@@ -796,6 +956,7 @@ const SITE = 'https://www.circuitstats.com';
       el('db-content').innerHTML = html;
       el('db-content').classList.remove('db-loading');
       wireTrend(a.byDay);
+      wireGeo();
       animate();
     }
 
