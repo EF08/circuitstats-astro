@@ -624,6 +624,45 @@ const SITE = 'https://www.circuitstats.com';
             : 'Nobody clicked through to abrifazliu.com') +
         '</div>';
 
+      // ── 3b. Who actually clicked, and who they were ──
+      // "How many real people clicked Get D1 offers now on Trey Johnson's page"
+      // — answerable because the click listener records the page it fired on.
+      html += section('The offer', 'who clicked, and who they were');
+      html += card('Offer clicks by player page',
+        'Real people only — crawlers and your own visits are already removed. <strong>Get D1 offers</strong> goes to the pitch; <strong>See live example</strong> goes to abrifazliu.com.',
+        table([
+          { h: 'Player page', v: function (r) { return r.title || r.page; } },
+          { h: 'Get D1 offers', v: function (r) { return r.getOffers ? n(r.getOffers) : '—'; }, num: true },
+          { h: 'See live example', v: function (r) { return r.liveExample ? n(r.liveExample) : '—'; }, num: true },
+        ], f.offerClicks || [], 'Nobody has clicked either button in this range.'));
+
+      // The answer to "are those pitch readers bots, humans, or me?" — one row
+      // per person, with the location and network that identify them.
+      var readers = f.pitchReaders || [];
+      html += card('Who read the pitch',
+        readers.length
+          ? n(readers.length) + ' real ' + (readers.length === 1 ? 'person' : 'people') + ' reached /get-started'
+          : 'Nobody reached /get-started in this range',
+        table([
+          { h: 'Location', v: function (r) { return r.location || 'Unknown'; } },
+          { h: 'Network', v: function (r) { return r.org || '—'; } },
+          { h: 'Device', v: function (r) { return r.mobile ? 'Mobile' : 'Desktop'; } },
+          { h: 'Came from', v: function (r) { return r.cameFromPlayerPage ? 'A player page' : (r.referrer ? 'Elsewhere' : 'Direct'); } },
+          { h: 'Visits', v: function (r) { return n(r.visits); }, num: true },
+          { h: 'Then', v: function (r) {
+              var acts = [];
+              if (r.clickedExample) acts.push('saw the example');
+              if (r.submitted) acts.push('REQUESTED');
+              return acts.length ? acts.join(', ') : '—';
+            } },
+          { h: 'Last seen', v: function (r) { return r.displayTime || '—'; } },
+        ], readers, 'No one yet.'),
+        disclosure('How do I know these are real people?',
+          '<div class="db-note">' +
+          '<p style="margin-bottom:10px">Three filters run before anyone appears here. <strong>Network:</strong> datacenter and cloud addresses are dropped. <strong>Browser:</strong> anything announcing itself as a crawler is dropped — this is the one that matters most, because Applebot runs from Apple&rsquo;s own network and its visits look like a person on a Mac until you read the user agent. <strong>Location:</strong> your own visits (North York) are dropped.</p>' +
+          '<p>Each row is one address, so the same person on the same connection is one row no matter how many times they came back — the visit count tells you that. Two people in the same house share a row; one person switching from wifi to mobile data becomes two.</p>' +
+          '</div>'));
+
       // ── 4. Audience ──
       html += section('Audience', 'who is actually showing up');
       html += '<div class="db-kpis">' +
