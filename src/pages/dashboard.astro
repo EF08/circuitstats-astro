@@ -593,8 +593,8 @@ const SITE = 'https://www.circuitstats.com';
     }
 
     // ── Trend: small multiples ───────────────────────────────────────────────
-    // Arrivals and pageviews are the same unit but wildly different magnitudes
-    // (pageviews run ~7x arrivals). Plotted together on one axis the arrivals
+    // Visits and page views are the same unit but wildly different magnitudes
+    // (page views run ~7x visits). Plotted together on one axis the visits
     // line — the one that actually matters — flattens against the baseline;
     // plotted on two axes the chart would invent a correlation. So: two charts,
     // each scaled to its own data, sharing an x-axis. Each is a single series,
@@ -645,8 +645,8 @@ const SITE = 'https://www.circuitstats.com';
     function trendChart(byDay) {
       if (!byDay || byDay.length < 2) return '<div class="db-empty">Not enough days yet to draw a trend.</div>';
       return '<div class="db-trends" id="db-trend">' +
-        trendPanel(byDay, 'arrivals', 'Arrivals', { line: 'var(--accent)', fill: 'rgba(79,142,247,.15)' }, 0) +
-        trendPanel(byDay, 'pageviews', 'Pageviews', { line: 'rgba(126,166,232,.75)', fill: 'rgba(126,166,232,.10)' }, 1) +
+        trendPanel(byDay, 'arrivals', 'Visits', { line: 'var(--accent)', fill: 'rgba(79,142,247,.15)' }, 0) +
+        trendPanel(byDay, 'pageviews', 'Page views', { line: 'rgba(126,166,232,.75)', fill: 'rgba(126,166,232,.10)' }, 1) +
         '<div class="db-tip" id="db-trend-tip"></div>' +
         '<div class="db-hitwrap" id="db-hit"></div>' +
         '</div>';
@@ -679,9 +679,9 @@ const SITE = 'https://www.circuitstats.com';
 
         tip.innerHTML = '<div class="db-tip-d"></div>' +
           '<div class="db-tip-r"><i class="db-tip-k" style="background:var(--accent)"></i>' +
-            '<span class="db-tip-v">' + n(d.arrivals) + '</span><span class="db-tip-n">arrivals</span></div>' +
+            '<span class="db-tip-v">' + n(d.arrivals) + '</span><span class="db-tip-n">visits</span></div>' +
           '<div class="db-tip-r"><i class="db-tip-k" style="background:rgba(126,166,232,.75)"></i>' +
-            '<span class="db-tip-v">' + n(d.pageviews) + '</span><span class="db-tip-n">pageviews</span></div>' +
+            '<span class="db-tip-v">' + n(d.pageviews) + '</span><span class="db-tip-n">page views</span></div>' +
           '<div class="db-tip-r"><i class="db-tip-k" style="background:transparent"></i>' +
             '<span class="db-tip-v">' + n(d.people) + '</span><span class="db-tip-n">people</span></div>';
         // Dates come from our own aggregation, but keep the habit of not
@@ -847,16 +847,19 @@ const SITE = 'https://www.circuitstats.com';
       // ── 4. Audience ──
       html += section('Audience', 'who is actually showing up');
       var conf = f.confirmed || { people: 0, of: 0 };
+      // Naming: the "Visits" tile is the audience block's `arrivals` (sessions
+      // that started from outside the site); "Page views" is `pageviews` (every
+      // load). The backend keeps the old key names — this is a display relabel.
       html += '<div class="db-kpis">' +
         kpi('People', compact(a.people), delta(a.delta.people, true), 'Bots and your own visits excluded.') +
         kpi('Confirmed human', compact(conf.people), '',
           'Of those, the ones who clicked something or read more than one page — a floor you can trust.') +
-        kpi('Arrivals', compact(a.arrivals), delta(a.delta.arrivals, true), 'Times someone showed up from outside the site.') +
-        kpi('Pageviews', compact(a.pageviews), delta(a.delta.pageviews, true), 'Every page load, including clicking around inside the site.') +
+        kpi('Visits', compact(a.arrivals), delta(a.delta.arrivals, true), 'A session — one time someone showed up from outside the site.') +
+        kpi('Page views', compact(a.pageviews), delta(a.delta.pageviews, true), 'Every page load, including clicking around inside the site.') +
         kpi('Pages per visit', (a.engagement.pagesPerArrival || 0).toFixed(1), '', 'How deep people browse once they arrive.') +
         '</div>';
 
-      html += card('Traffic over time', 'Arrivals is the number to watch — pageviews rise just from people clicking around.',
+      html += card('Traffic over time', 'Visits is the number to watch — page views rise just from people clicking around.',
         trendChart(a.byDay));
 
       var groups = (a.sourceGroups || []).map(function (g) {
@@ -876,12 +879,12 @@ const SITE = 'https://www.circuitstats.com';
             { h: 'Cities', v: function (g) { return g.cities.map(function (c) { return c.city + ' (' + c.people + ')'; }).join(', ') || '—'; } },
           ], a.geo || [], 'No location data.')));
 
-      html += card('Where arrivals come from',
-        'Grouped by kind, counted from <strong>arrivals only</strong> — clicks between pages of your own site are browsing, not a traffic source, so they are not in this list.',
-        barList(groups, { empty: 'No arrivals in this range.' }),
+      html += card('Where visits come from',
+        'Grouped by kind, counted from <strong>visits only</strong> — clicks between pages of your own site are browsing, not a traffic source, so they are not in this list.',
+        barList(groups, { empty: 'No visits in this range.' }),
         disclosure('Break down by exact site',
           barList((a.sourceHosts || []).map(function (h) { return { label: h.host, count: h.count }; }),
-            { empty: 'No referring sites yet — all arrivals were direct.' }) +
+            { empty: 'No referring sites yet — all visits were direct.' }) +
           '<div class="db-note" style="margin-top:14px"><strong>Direct</strong> (' + n(a.direct) + ') means no referrer was sent: typed the URL, a bookmark, a link from an app, or a browser that strips referrers.</div>')
       );
 
@@ -902,7 +905,7 @@ const SITE = 'https://www.circuitstats.com';
       html += card('Most-viewed pages', 'Player pages are the ones that carry the offer.',
         barList((a.topPages || []).slice(0, 10).map(function (p) {
           return { label: p.title || p.page, count: p.count };
-        }), { empty: 'No pageviews in this range.' }),
+        }), { empty: 'No page views in this range.' }),
         disclosure('Break down by page type',
           '<div class="db-note" style="margin-bottom:14px">' +
             n(pl.views) + ' player-page views from ' + n(pl.people) + ' people · ' +
@@ -941,7 +944,7 @@ const SITE = 'https://www.circuitstats.com';
       // ── 7. Data quality — always available, never in a headline ──
       html += card('How these numbers are counted', null,
         '<div class="db-pills">' +
-          '<span class="db-pill">' + n(a.excluded.bots) + ' bot pageviews excluded</span>' +
+          '<span class="db-pill">' + n(a.excluded.bots) + ' bot page views excluded</span>' +
           '<span class="db-pill">' + n(a.excluded.owner) + ' of your own visits excluded</span>' +
           '<span class="db-pill">' + n(a.engagement.internalPageviews) + ' internal page-to-page clicks</span>' +
         '</div>' +
@@ -955,8 +958,8 @@ const SITE = 'https://www.circuitstats.com';
           esc((a.excluded.ownerProven || []).join(', ') || 'none') + '</code></p>' +
           '<p style="margin-bottom:10px"><strong>Inferred</strong> (' + n((a.excluded.ownerInferred || []).length) + ') — excluded only because they share an ISP block with a proven address: <code>' +
           esc((a.excluded.ownerInferred || []).join(', ') || 'none') + '</code>. This is inference, not proof: a /24 is 256 addresses and on a large ISP it can cover more than one household. It is on because the alternative lets your own traffic back in every time your ISP reassigns you, which distorts the numbers more. Set <code>OWNER_SUBNET_MATCH=off</code> for exact addresses only, or add addresses by hand with <code>OWNER_IPS</code>.</p>' +
-          '<p style="margin-bottom:10px"><strong>Internal page-to-page clicks</strong> are pageviews whose referrer was circuitstats.com itself. They count toward pageviews but never toward arrivals, and are never listed as a traffic source — that was making browsing look like a source of traffic.</p>' +
-          '<p><strong>Why arrivals and not visits:</strong> one person reading eight player pages is 1 person, 1 arrival and 8 pageviews. Leading with the 8 would overstate reach and make every conversion rate look ~8x worse than it is.</p>' +
+          '<p style="margin-bottom:10px"><strong>Internal page-to-page clicks</strong> are page views whose referrer was circuitstats.com itself. They count toward page views but never toward visits, and are never listed as a traffic source — that was making browsing look like a source of traffic.</p>' +
+          '<p><strong>Visits vs page views:</strong> one person reading eight player pages is 1 person, 1 visit and 8 page views. A “visit” is a session that started from outside the site; a “page view” is any single load. Leading with the 8 would overstate reach and make every conversion rate look ~8x worse than it is — so Visits is the headline, not the raw page-view count.</p>' +
           '</div>')
       );
 
