@@ -941,7 +941,15 @@ const SITE = 'https://www.circuitstats.com';
               return '<span title="' + esc(r.createdAt ? new Date(r.createdAt).toLocaleString() : '') + '">' + esc(ago(r.createdAt)) + '</span>'; } },
         ], f.leads.recent, 'No requests in this range yet.')) + '</div>';
 
-      // ── 7. Data quality — always available, never in a headline ──
+      // ── 7. Visitor log — filled in by its own paged request after render ──
+      html += section('Visitors', 'every real visit, newest first');
+      html += '<div class="db-leads"><div class="db-card">' +
+        '<div class="db-card-h"><div class="db-card-t">Visitor log</div>' +
+        '<div class="db-card-s" id="db-logsub">Loading…</div></div>' +
+        '<div class="db-card-b"><div id="db-logbody"></div>' +
+        '<div id="db-logmore" style="text-align:center;margin-top:14px"></div></div></div></div>';
+
+      // ── 8. Data quality — always available, never in a headline ──
       html += card('How these numbers are counted', null,
         '<div class="db-pills">' +
           '<span class="db-pill">' + n(a.excluded.bots) + ' bot page views excluded</span>' +
@@ -968,6 +976,59 @@ const SITE = 'https://www.circuitstats.com';
       wireTrend(a.byDay);
       wireGeo();
       animate();
+      loadLog(true);
+    }
+
+    // ── Visitor log, paged 25 at a time ──────────────────────────────────────
+    // Bots and your own visits are removed server-side *before* paging, so every
+    // page is 25 real visits rather than 25 rows of which some are hidden.
+    // Always all-time (a log, not a range metric), so the range filter above
+    // doesn't apply here.
+    var logOffset = 0, logRows = [];
+    function loadLog(reset) {
+      if (reset) { logOffset = 0; logRows = []; }
+      var more = el('db-logmore');
+      if (more) more.innerHTML = '<span class="db-note">Loading…</span>';
+      fetch(API + '/dashboard/visitors?offset=' + logOffset + '&limit=25', {
+        headers: { Authorization: 'Bearer ' + (localStorage.getItem('cb_token') || '') },
+      })
+        .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+        .then(function (d) {
+          logRows = logRows.concat(d.visitors);
+          logOffset += d.visitors.length;
+          var sub = el('db-logsub');
+          if (sub) sub.textContent = 'Showing ' + logRows.length + ' of ' + n(d.total) + ' real visits';
+          renderLog(d.hasMore);
+        })
+        .catch(function (err) {
+          if (el('db-logmore')) el('db-logmore').innerHTML = '<span class="db-note">Could not load: ' + esc(err.message) + '</span>';
+        });
+    }
+    function renderLog(hasMore) {
+      var body = el('db-logbody');
+      if (!body) return;
+      if (!logRows.length) { body.innerHTML = '<div class="db-empty">No visitors yet.</div>'; return; }
+      body.innerHTML = table([
+        { h: 'When', raw: true, v: function (r) {
+            return '<span title="' + esc(r.displayTime || '') + '">' + esc(ago(r.visitedAt)) + '</span>'; } },
+        { h: 'Location', v: function (r) { return r.location || '—'; } },
+        { h: 'Network', v: function (r) { return r.org || '—'; } },
+        { h: 'Came from', v: function (r) { return sourceOf(r); } },
+        { h: 'Pages', v: function (r) { return n(r.views); }, num: true },
+        { h: 'Read', v: function (r) { return (r.pages || []).length ? r.pages.join(', ') : '—'; } },
+      ], logRows, 'No visitors yet.');
+      var more = el('db-logmore');
+      more.innerHTML = hasMore
+        ? '<button class="db-range" id="db-lognext" style="border:1px solid var(--border)">Next 25</button>'
+        : '<span class="db-note">That is everyone.</span>';
+      var btn = el('db-lognext');
+      if (btn) btn.addEventListener('click', function () { loadLog(false); });
+    }
+    // Readable origin for a visitor row: the site they came from, or direct.
+    function sourceOf(r) {
+      if (!r.referrer) return 'Direct';
+      try { return new URL(r.referrer).hostname.replace(/^www\./, '') || 'Direct'; }
+      catch (e) { return 'Direct'; }
     }
 
     // ── Load ─────────────────────────────────────────────────────────────────
