@@ -633,12 +633,34 @@ a{color:inherit;text-decoration:none}
 .pp-cta-btn:active{transform:scale(.97)}
 .pp-cta-ex{font-size:13.5px;font-weight:700;text-decoration:underline;text-underline-offset:3px;white-space:nowrap}
 .pp-cta-ex:hover{color:var(--gold)}
-/* Abri's pages: plain one-line link to his site instead of the pitch card */
-.pp-abri-link{flex-shrink:0;font-size:13.5px;font-weight:600;color:var(--text-2);white-space:nowrap}
-.pp-abri-link strong{color:var(--gold);font-weight:700;text-decoration:underline;text-underline-offset:3px}
-.pp-abri-link:hover strong{filter:brightness(1.15)}
+/* Abri's pages: card link to his site instead of the recruiting-site pitch card */
+.pp-abri-card{
+  flex-shrink:0;max-width:380px;display:flex;align-items:center;gap:14px;
+  padding:14px 16px;border:1px solid rgba(79,142,247,.35);border-radius:14px;
+  background:
+    radial-gradient(120% 140% at 100% 0%,rgba(79,142,247,.16),rgba(79,142,247,.04) 45%,transparent 70%),
+    var(--card);
+  box-shadow:0 8px 28px rgba(79,142,247,.10);
+  transition:border-color .15s,background .15s;
+}
+.pp-abri-card:hover{border-color:rgba(79,142,247,.6);background:
+    radial-gradient(120% 140% at 100% 0%,rgba(79,142,247,.22),rgba(79,142,247,.05) 45%,transparent 70%),
+    var(--card-h)}
+.pp-abri-icon{
+  flex-shrink:0;width:38px;height:38px;border-radius:10px;
+  display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(135deg,#6ba3ff,#4f8ef7 55%,#3d78e0);color:#0b1220;
+  box-shadow:0 4px 14px rgba(79,142,247,.35);
+}
+.pp-abri-icon svg{width:16px;height:16px}
+.pp-abri-body{min-width:0}
+.pp-abri-t{font-size:14.5px;font-weight:800;letter-spacing:-.2px;margin-bottom:2px}
+.pp-abri-d{font-size:12.5px;line-height:1.4;color:var(--text-2)}
+.pp-abri-d strong{color:var(--accent);font-weight:700}
+.pp-abri-arrow{flex-shrink:0;width:16px;height:16px;color:var(--text-3);transition:transform .15s,color .15s}
+.pp-abri-card:hover .pp-abri-arrow{transform:translateX(3px);color:var(--accent)}
 @media (max-width:640px){
-  .pp-abri-link{display:inline-block;margin-top:14px;white-space:normal}
+  .pp-abri-card{max-width:none;margin-top:14px}
 }
 .pp-compare-btn{
   display:inline-flex;align-items:center;gap:8px;margin-top:14px;
