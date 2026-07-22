@@ -809,7 +809,7 @@ const SITE = 'https://www.circuitstats.com';
       // — answerable because the click listener records the page it fired on.
       html += section('The offer', 'who clicked, and who they were');
       html += card('Offer clicks by player page',
-        'Real people only — crawlers and your own visits are already removed. <strong>Get D1 offers</strong> goes to the pitch; <strong>See live example</strong> goes to abrifazliu.com.',
+        'Real people only — crawlers and your own visits are already removed. <strong>Get D1 offers</strong> goes to the pitch; <strong>See live example</strong> goes to abrifazliu.com. Abri\'s own pages carry a scouting card instead of the pitch — its clicks count under See live example.',
         table([
           { h: 'Player page', v: function (r) { return r.title || r.page; } },
           { h: 'Get D1 offers', v: function (r) { return r.getOffers ? n(r.getOffers) : '—'; }, num: true },
