@@ -113,21 +113,17 @@ const body = `
           Compare ${first} vs anyone
         </a>
       </div>
-      <div class="pp-cta">${isAbri ? `
-        <div class="pp-cta-t">Scouting Abri?</div>
-        <p class="pp-cta-d">His full breakdown lives on his official site — <strong>game film</strong>, accolades, strengths, and more.</p>
-        <div class="pp-cta-row">
-          <a class="pp-cta-btn" href="${abriSiteHref}" target="_blank" rel="noopener" data-track="abri:scouting-site">View scouting report</a>
-          <a class="pp-cta-ex" href="${abriSiteHref}" target="_blank" rel="noopener" data-track="abri:scouting-site">abrifazliu.com →</a>
-        </div>` : `
+      ${isAbri ? `
+      <a class="pp-abri-link" href="${abriSiteHref}" target="_blank" rel="noopener" data-track="abri:scouting-site">See Abri's film, accolades, strengths → <strong>abrifazliu.com</strong></a>` : `
+      <div class="pp-cta">
         <div class="pp-cta-live" data-live-label${liveLabel() ? '' : ' style="display:none"'}>${liveLabel()}</div>
         <div class="pp-cta-t">Is this your player?</div>
         <p class="pp-cta-d">Get him a professional recruiting website while coaches are watching — players have landed <strong>multiple offers</strong> off theirs.</p>
         <div class="pp-cta-row">
           <a class="pp-cta-btn" href="${ctaHref}" data-track="player-site:get-offers">Get D1 offers now</a>
           <a class="pp-cta-ex" href="https://abrifazliu.com" target="_blank" rel="noopener" data-track="player-site:live-example">See live example →</a>
-        </div>`}
-      </div>
+        </div>
+      </div>`}
     </div>
     ${row('PPG', p.PPG, 'PPG', 'PTS', p['Tot PTS'], 'Tot PTS', true)}
     ${row('FGM/G', fgmPG, 'FGM/G', 'FGM', p.FGM, 'FGM')}
