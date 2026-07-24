@@ -1,0 +1,40 @@
+---
+// Session team pages (/uaa/u15/session2/team/{slug}) — TeamsGrid links to these
+// for the session scopes, mirroring the base-league team route one level up.
+// Like session player pages, they're share-only: noindex, canonical to self.
+import Layout from '../../../../../layouts/Layout.astro';
+import TeamPage from '../../../../../components/TeamPage.astro';
+import { SESSION_LEAGUES } from '../../../../../lib/leagues';
+import { teamSlug } from '../../../../../lib/slugs';
+
+export function getStaticPaths() {
+  const paths: any[] = [];
+  for (const lg of SESSION_LEAGUES) {
+    const session = lg.urlBase.split('/').pop()!;
+    const teams = [...new Set(lg.players.map(p => p.Team).filter(Boolean))];
+    for (const t of teams) {
+      paths.push({
+        params: { circuit: lg.circuit, age: lg.age, session, slug: teamSlug(t, lg) },
+        props: { team: t, league: lg },
+      });
+    }
+  }
+  return paths;
+}
+
+const { team, league } = Astro.props;
+const SITE = 'https://www.circuitstats.com';
+---
+<Layout
+  title={`${team} ${league.scopeLabel} Roster & Stats 2026 | Circuit Stats`}
+  trackTitle={team}
+  description={`${team} (${league.scopeLabel}) roster with full player stats — PPG, RPG, shooting and rankings.`}
+  subLabel={league.subLabel}
+  pillLabel={league.label}
+  pageBase={league.urlBase}
+  activeTab="teams"
+  canonical={`${SITE}${league.urlBase}/team/${Astro.params.slug}`}
+  robots="noindex,follow"
+>
+  <TeamPage team={team} league={league} />
+</Layout>
