@@ -242,7 +242,12 @@ const navIcons: Record<string, string> = {
       } catch (e) {}
     }
     btn.addEventListener('click', function () {
-      var shareData = { title: document.title, url: location.href };
+      // Share the URL and NOTHING else — no title, no text. Passing a title makes
+      // iOS Messages (and some other targets) build their own card out of that
+      // string instead of fetching the page's OG tags, which is why sharing via
+      // this button used to give a plain text-only preview while pasting the same
+      // URL from the address bar gave the rich one. url-only == pasted URL.
+      var shareData = { url: location.href };
       if (navigator.share) {
         navigator.share(shareData).then(function () { trackShare('native'); }).catch(function () {});
       } else if (navigator.clipboard && navigator.clipboard.writeText) {
