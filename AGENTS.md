@@ -1,3 +1,41 @@
+# Circuit Stats (circuitstats.com) — Project Brief
+
+## What it is
+A **free, fully open** web app giving coaches, scouts, recruiters, and basketball parents national stats and rankings for AAU youth basketball players (U15, U16, U17) across the three biggest U.S. circuits — UAA, EYBL, and 3SSB Platinum — for the 2026 season. **2,945 unique players tracked.** This data does not exist anywhere else in a combined, searchable, rankable format.
+
+Circuit Stats is **not the product — it is the top of the funnel.** It is given away to attract the audience (recruiting-minded parents and players) that gets converted into the paid player-website business below.
+
+## Audience (free users) vs. buyers (paid)
+Free users / traffic: AAU coaches scouting opponents, recruiters and college scouts, parents checking their kid's standing, program directors. The **buyer** is narrower: **parents of players** (and players themselves) who want their kid seen by college programs. Coaches and scouts are traffic and credibility, not revenue. Marketing and on-site CTAs are aimed at the parent segment.
+
+## Monetization (LIVE since July 2026)
+Professional player recruiting websites: **$399 to build, then $39/month** hosting (exact copy on `/get-started`: "his own domain, highlight film and verified stats that update after every session").
+
+The funnel is live end-to-end: player pages → CTA card → `/get-started` form → `website_requests` in the backend (`a1a2-command-center/apps/circuitboard`) + email notification to Andy. An urgency badge on the player-page CTA and `/get-started` hero (`src/lib/liveLabel.js`) shows only during the real NCAA live periods (April and July); other months it hides entirely — don't "fix" its absence.
+
+Still open: how the offer is pitched/marketed beyond the site itself, and whether sites are templated or custom-built.
+
+## Value props (copy reference)
+Scout any opponent before tip-off · recruit without traveling ("find the hidden gem") · national ranking for any player by any stat and age group · side-by-side player comparisons · see who's really carrying a team.
+
+## Data (2026 season)
+- UAA: U15 317, U16 324, U17 336 players
+- EYBL: U15 544, U16 490, U17 392 players
+- 3SSB Platinum: U15 205, U16 238, U17 235 players
+- Official stats from each circuit. **UAA and EYBL track all shooting stats; 3SSB Platinum does NOT publish raw FGM/FGA/FTM/FTA — only percentages.** Never compute or display raw attempt counts for 3SSB.
+- Data lives in the `circuitstats-data` repo; pushing there triggers a Vercel deploy hook that rebuilds this site.
+
+## Tech stack
+- **This repo (`circuitstats-astro`) is the live site** on circuitstats.com — Astro, deployed on Vercel.
+- Backend: `EF08/a1a2-command-center` (Node/Express on Render, MongoDB Atlas) — the `circuitboard` app handles website requests, funnel tracking, and visitor tracking.
+- Scrapers: EYBL via Cerebro API, 3SSB via Playwright + AJAX, UAA via UA Next HTML; collectors live in `circuitstats-data`.
+- **Legacy:** `EF08/circuitstats` (single-HTML-file SPA) is the old frontend, superseded by this repo. Its commented-out Stripe/magic-link/JWT paywall (and the matching backend endpoints) are deliberately preserved but dormant — don't delete, don't revive unless asked.
+
+## Business stage
+Solo founder (Andy Fazliu). Launched 2026; pivoted mid-2026 from paid SaaS to free + programmatic SEO, then added the player-website offer (July 2026). Focus: traffic/SEO into the free site and converting parents to player websites. Paywall conversion work is on hold.
+
+---
+
 ## Development
 
 When starting the dev server, use background mode:

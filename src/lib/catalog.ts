@@ -19,10 +19,12 @@ export function makeCats(qualMin: number): Cat[] {
     { lbl: 'Steals', fullLbl: 'Steals Per Game', field: 'SPG', rkField: 'SPG', filter: null, extra: [], slug: 'spg' },
     { lbl: 'Blocks', fullLbl: 'Blocks Per Game', field: 'BPG', rkField: 'BPG', filter: null, extra: [], slug: 'bpg' },
     { lbl: 'TO/G', fullLbl: 'Turnovers Per Game', field: 'TO/G', rkField: 'TO/G', filter: null, extra: [], lowerBetter: true, slug: 'to-g' },
-    { lbl: 'FG%', fullLbl: 'Field Goal %', field: 'FG%', rkField: 'FG%', filter: p => p.FGM >= qualMin, extra: ['FGM', 'FGA'], slug: 'fg-pct' },
-    { lbl: '3FG%', fullLbl: '3-Point %', field: '3FG%', rkField: '3FG%', filter: p => p['3PM'] >= qualMin, extra: ['3PM', '3PA'], slug: '3p-pct' },
+    // % boards require both the makes qualifier AND a real attempts total — 3SSB Platinum
+    // publishes shooting %s (and even 3PM makes) without attempts, so those aren't verifiable.
+    { lbl: 'FG%', fullLbl: 'Field Goal %', field: 'FG%', rkField: 'FG%', filter: p => p.FGM >= qualMin && p.FGA > 0, extra: ['FGM', 'FGA'], slug: 'fg-pct' },
+    { lbl: '3FG%', fullLbl: '3-Point %', field: '3FG%', rkField: '3FG%', filter: p => p['3PM'] >= qualMin && p['3PA'] > 0, extra: ['3PM', '3PA'], slug: '3p-pct' },
     { lbl: '3PM/G', fullLbl: '3-Pointers Made Per Game', field: '3PM/G', rkField: '3PM/G', filter: null, extra: ['3PM'], slug: '3pm-per-game' },
-    { lbl: 'FT%', fullLbl: 'Free Throw %', field: 'FT%', rkField: 'FT%', filter: p => p.FTM >= qualMin, extra: ['FTM', 'FTA'], slug: 'ft-pct' },
+    { lbl: 'FT%', fullLbl: 'Free Throw %', field: 'FT%', rkField: 'FT%', filter: p => p.FTM >= qualMin && p.FTA > 0, extra: ['FTM', 'FTA'], slug: 'ft-pct' },
   ];
 }
 export const CAT_SLUGS = ['ppg', 'rpg', 'apg', 'spg', 'bpg', 'to-g', 'fg-pct', '3p-pct', '3pm-per-game', 'ft-pct'];

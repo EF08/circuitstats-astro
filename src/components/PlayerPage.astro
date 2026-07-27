@@ -43,7 +43,7 @@ function rk(f: string | null): string {
 function prk(f: string): string {
   const r = RANK[f] && RANK[f][p.Player];
   if (!r) return '';
-  const qualNote = PCT_QUAL_FIELDS.has(f) ? `<span class="pp-pct-qual" title="Minimum ${qualMin} makes to qualify">ⓘ</span>` : '';
+  const qualNote = PCT_QUAL_FIELDS.has(f) ? `<span class="pp-pct-qual" title="Minimum ${qualMin} makes with verified attempts to qualify">ⓘ</span>` : '';
   const body = `#${r}/${N}${PCT_QUAL_FIELDS.has(f) ? ` (min. ${qualMin} made)` : ''}`;
   const slug = STAT_SLUG[f];
   const el = slug

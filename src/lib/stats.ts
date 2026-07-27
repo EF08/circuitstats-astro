@@ -16,6 +16,15 @@ export const PCT_MIN_MAKES: Record<string, string> = {
   '_ts': 'FGM',
 };
 
+// attempts column backing each % — 3SSB Platinum reports makes (even 3PM) without attempts,
+// so a % only counts as qualified when its attempts total actually exists.
+export const PCT_MIN_ATTEMPTS: Record<string, string> = {
+  'FG%': 'FGA',
+  '3FG%': '3PA',
+  'FT%': 'FTA',
+  '_ts': 'FGA',
+};
+
 export const SORT_TB: Record<string, string> = {
   'PPG': 'Tot PTS', 'RPG': 'Tot REB', 'APG': 'Tot AST', 'SPG': 'Tot STL', 'BPG': 'Tot BLK',
   '3PM/G': '3PM', 'GP': 'PPG',
@@ -153,7 +162,8 @@ export function computeRanks(players: Player[], qualMin = 15): Ranks {
   assign('FTA', d2(players, 'FTA', 'FTM'), n);
 
   for (const { f, mk } of [{ f: 'FG%', mk: 'FGM' }, { f: '3FG%', mk: '3PM' }, { f: 'FT%', mk: 'FTM' }]) {
-    const qs = [...players].filter(p => p[mk] >= qualMin);
+    const att = PCT_MIN_ATTEMPTS[f];
+    const qs = [...players].filter(p => p[mk] >= qualMin && p[att] > 0);
     assign(f, d2(qs, f, mk), qs.length);
   }
 
@@ -251,7 +261,9 @@ export function fmtColVal(p: Player, col: TblCol): string {
 export function sortCmp(a: Player, b: Player, field: string, av: number, bv: number, dir: 'asc' | 'desc', qualMin: number): number {
   const mk = PCT_MIN_MAKES[field];
   if (mk) {
-    const aQ = (a[mk] || 0) >= qualMin, bQ = (b[mk] || 0) >= qualMin;
+    const att = PCT_MIN_ATTEMPTS[field];
+    const aQ = (a[mk] || 0) >= qualMin && (!att || a[att] > 0);
+    const bQ = (b[mk] || 0) >= qualMin && (!att || b[att] > 0);
     if (aQ !== bQ) return bQ ? 1 : -1;
     if (!aQ) return a.Player.localeCompare(b.Player);
   } else {

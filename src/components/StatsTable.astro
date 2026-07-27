@@ -3,7 +3,7 @@
 // Server-rendered sorted by PPG desc (the app's default), ALL rows present so
 // nothing is hidden behind JS/pagination. A client island (StatsTableInteractive)
 // layers the app's exact click-to-sort / search / name-expand back on top.
-import { TBL_COLS, getColVal, sortCmp, fmtColVal, abbr, RANK_LABELS, PCT_MIN_MAKES, type Player } from '../lib/stats';
+import { TBL_COLS, getColVal, sortCmp, fmtColVal, abbr, RANK_LABELS, PCT_MIN_MAKES, PCT_MIN_ATTEMPTS, type Player } from '../lib/stats';
 import type { League } from '../lib/leagues';
 import { rowLinks } from '../lib/links';
 import { teamAlias } from '../lib/teamAliases';
@@ -69,7 +69,7 @@ const total = rows.length;
           {TBL_COLS.map(c => (
             <th id={`th-${c.f}`} class={(!rjActive && c.f === 'PPG') ? 'sorted' : undefined}>
               {c.h} <span class="sort-arrow" id={`arr-${c.f}`}>{(!rjActive && c.f === 'PPG') ? '↓' : ''}</span>{c.pct && (
-                <button class="pct-qual-btn" data-track="stats:pct-tooltip" onclick="event.stopPropagation();this.classList.toggle('tip-open')">?<span class="pct-qual-tip">min. {qualMin} makes to qualify</span></button>
+                <button class="pct-qual-btn" data-track="stats:pct-tooltip" onclick="event.stopPropagation();this.classList.toggle('tip-open')">?<span class="pct-qual-tip">min. {qualMin} makes with verified attempts to qualify</span></button>
               )}
             </th>
           ))}
@@ -91,7 +91,10 @@ const total = rows.length;
               </td>
               {TBL_COLS.map(c => {
                 const makesField = PCT_MIN_MAKES[c.f];
-                const qualifies = makesField ? ((p[makesField] || 0) >= qualMin ? '1' : '0') : undefined;
+                const attField = PCT_MIN_ATTEMPTS[c.f];
+                const qualifies = makesField
+                  ? (((p[makesField] || 0) >= qualMin && (!attField || p[attField] > 0)) ? '1' : '0')
+                  : undefined;
                 return <td class="tbl-td" data-qualifies={qualifies}>{fmtColVal(p, c)}</td>;
               })}
             </tr>
