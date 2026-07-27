@@ -2,7 +2,7 @@
 // Leaders.astro — one leaderboard (the pre-SEO view-leaders panel for a single
 // stat), verbatim markup. tab-row entries are real links to sibling stat pages;
 // the active stat's Top-10 panel is rendered. Paywall off → no locked tabs.
-import { makeCats, type Cat } from '../lib/catalog';
+import { makeCats, isCatAvailable, type Cat } from '../lib/catalog';
 import type { League, Player } from '../lib/leagues';
 import { rowLinks } from '../lib/links';
 
@@ -12,6 +12,18 @@ const { players, ranks, standings, qualMin, combineKind } = league;
 const RANK = ranks.RANK;
 const cats = makeCats(qualMin);
 const active = cats.find(c => c.slug === slug)!;
+
+// Only advertise boards that actually have qualifiers for this scope — see the
+// comment on isCatAvailable in catalog.ts. The tab row hides the rest; landing
+// on a hidden board directly (old link, bookmark) shows the explanation below
+// instead of a blank list, and [...path].astro noindexes it.
+const shownCats = cats.filter(c => isCatAvailable(c, players, ranks));
+const activeAvailable = isCatAvailable(active, players, ranks);
+// A % board with an attempts column is unavailable specifically because the
+// circuit doesn't publish attempts; anything else is just "nobody qualified yet".
+const unavailableReason = active.extra.length === 2
+  ? `${league.scopeLabel} doesn't publish the ${active.extra[1]} totals this board is ranked on, so there's nothing verifiable to rank.`
+  : `No ${league.scopeLabel} player currently meets the qualifier for this board.`;
 
 function tagBadge(p: Player): string {
   if (combineKind === 'circuit' && p._age) return `<span class="age-badge">${p._age}</span>`;
@@ -39,14 +51,20 @@ function extraHtml(p: Player, c: Cat): string {
 ---
 <div class="view active" id="view-leaders">
   <div class="tab-row" id="tab-row">
-    {cats.map(c => (
+    {shownCats.map(c => (
       <a class:list={["tab-btn", { active: c.slug === slug }]} href={`${league.urlBase}/leaders/${c.slug}`} data-track="leaders:category">{c.lbl}</a>
     ))}
   </div>
   <div class="leaders-body" id="leaders-body">
     <div class="panel active">
-      <div class="cat-title">{catTitle}</div>
+      <div class="cat-title">{activeAvailable ? catTitle : `${active.fullLbl} — not available`}</div>
       <div class="cat-sub">{catSub}</div>
+      {!activeAvailable && (
+        <p class="board-unavailable">
+          {unavailableReason}{' '}
+          <a href={`${league.urlBase}/leaders/ppg`}>See the {league.scopeLabel} scoring leaders instead →</a>
+        </p>
+      )}
       <div class="rank-list">
         {list.map(p => {
           const rk = RANK[active.rkField][p.Player];

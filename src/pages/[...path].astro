@@ -9,7 +9,7 @@ import Leaders from '../components/Leaders.astro';
 import TeamsGrid from '../components/TeamsGrid.astro';
 import Compare from '../components/Compare.astro';
 import { LEAGUES, S2_LEAGUE, SESSION_LEAGUES, type League } from '../lib/leagues';
-import { CAT_SLUGS } from '../lib/catalog';
+import { CAT_SLUGS, makeCats, isCatAvailable } from '../lib/catalog';
 
 const SITE = 'https://www.circuitstats.com';
 
@@ -54,6 +54,13 @@ export function getStaticPaths() {
 
 const { league, kind, stat, rjField } = Astro.props as { league: League; kind: string; stat: string | null; rjField?: string };
 const isAbri = kind === 'abri';
+// A leaderboard with no qualifiers for this scope still resolves (old links and
+// bookmarks keep working, and Leaders.astro explains why it's empty) but must not
+// be indexed — it's a thin page. It's already absent from the tab row + sitemap.
+const isEmptyBoard = kind === 'leaders' && (() => {
+  const cat = makeCats(league.qualMin).find(c => c.slug === stat);
+  return !!cat && !isCatAvailable(cat, league.players, league.ranks);
+})();
 const activeTab = kind === 'leaders' ? 'leaders' : isAbri ? 'stats' : (kind as 'stats' | 'teams' | 'compare');
 const canonical = isAbri
   ? `${SITE}${league.urlBase}/stats`   // abri pages canonicalize to the real S2 stats page
@@ -82,7 +89,7 @@ const descs: Record<string, string> = {
   pageBase={league.urlBase}
   activeTab={activeTab}
   canonical={canonical}
-  robots={isAbri ? 'noindex,follow' : undefined}
+  robots={isAbri || isEmptyBoard ? 'noindex,follow' : undefined}
 >
   {kind === 'stats' && <StatsTable league={league} />}
   {kind === 'abri' && <StatsTable league={league} rankJump={{ field: rjField!, player: 'Abri Fazliu' }} />}

@@ -1,6 +1,6 @@
 // catalog.ts — the Leaders categories (CATS) and Compare stat list (CMP_STATS),
 // ported verbatim from the pre-SEO app, plus the url slug for each leader board.
-import type { Player } from './stats';
+import type { Player, Ranks } from './stats';
 
 export interface Cat {
   lbl: string; fullLbl: string; field: string; rkField: string;
@@ -28,6 +28,33 @@ export function makeCats(qualMin: number): Cat[] {
   ];
 }
 export const CAT_SLUGS = ['ppg', 'rpg', 'apg', 'spg', 'bpg', 'to-g', 'fg-pct', '3p-pct', '3pm-per-game', 'ft-pct'];
+
+// ── Board availability ────────────────────────────────────────────────────────
+// Not every board exists for every scope. 3SSB Platinum publishes shooting
+// percentages without the underlying attempts, so after the "verified attempts"
+// qualifier nobody qualifies for FG% / 3FG% / FT% there and those boards render
+// empty. Rather than hardcode "hide these three for 3SSB" — which would silently
+// rot the day 3SSB starts publishing attempts — availability is DERIVED from the
+// data: a board is available iff at least one player actually qualifies for it.
+//
+// This mirrors Leaders.astro's own list-building (filter -> has a rank) exactly,
+// so "shown in the tab row" and "has rows" can never disagree. Used by
+// Leaders.astro (tab row + empty state), sitemap.xml.ts, and [...path].astro
+// (noindex). Self-heals in both directions with no config to update.
+export function isCatAvailable(cat: Cat, players: Player[], ranks: Ranks): boolean {
+  const board = ranks.RANK[cat.rkField];
+  if (!board) return false;
+  const pool = cat.filter ? players.filter(cat.filter) : players;
+  return pool.some(p => board[p.Player] != null);
+}
+
+export function availableCats(players: Player[], ranks: Ranks, qualMin: number): Cat[] {
+  return makeCats(qualMin).filter(c => isCatAvailable(c, players, ranks));
+}
+
+export function availableCatSlugs(players: Player[], ranks: Ranks, qualMin: number): string[] {
+  return availableCats(players, ranks, qualMin).map(c => c.slug);
+}
 
 export interface CmpStat { section?: string; lbl?: string; fa?: string; pct?: boolean; lowerBetter?: boolean; calc?: boolean; fn?: (p: Player) => number; }
 export const CMP_STATS: CmpStat[] = [

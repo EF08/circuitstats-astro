@@ -3,7 +3,7 @@
 // + Abri (noindex) and the on-demand compare pairs.
 import type { APIRoute } from 'astro';
 import { LEAGUES, BASE_LEAGUES } from '../lib/leagues';
-import { CAT_SLUGS } from '../lib/catalog';
+import { availableCatSlugs } from '../lib/catalog';
 import { allPlayerRefs, teamSlug } from '../lib/slugs';
 
 const SITE = 'https://www.circuitstats.com';
@@ -12,7 +12,9 @@ export const GET: APIRoute = () => {
   const urls: string[] = ['/', '/get-started'];
   for (const lg of LEAGUES) {
     urls.push(`${lg.urlBase}/stats`, `${lg.urlBase}/teams`, `${lg.urlBase}/compare`);
-    for (const s of CAT_SLUGS) urls.push(`${lg.urlBase}/leaders/${s}`);
+    // only boards that actually have qualifiers for this scope — an empty board
+    // is a thin page, so it stays out of the sitemap (and is noindexed)
+    for (const s of availableCatSlugs(lg.players, lg.ranks, lg.qualMin)) urls.push(`${lg.urlBase}/leaders/${s}`);
   }
   for (const lg of BASE_LEAGUES) {
     const teams = [...new Set(lg.players.map(p => p.Team).filter(Boolean))];

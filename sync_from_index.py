@@ -14,7 +14,7 @@ Usage (after a normal stats update in ../circuitstats):
 
 Point --index at a different index.html if the sibling path differs.
 """
-import json, os, re, argparse
+import json, os, re, argparse, datetime
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_INDEX = os.path.normpath(os.path.join(HERE, "..", "circuitstats", "index.html"))
@@ -68,6 +68,64 @@ def extract_standings(text):
     return out
 
 
+# ── Keep the docs' player counts honest ───────────────────────────────────────
+# AGENTS.md and CLAUDE.md quote per-league player counts. Those were hand-written
+# and had drifted badly (they claimed UAA 317/324/336 and "2,945 unique players"
+# when the real figures were 400/372/413 and 3,770) — stale numbers in an agent-
+# facing brief are worse than none, because they get taken as fact.
+#
+# So they are no longer hand-maintained: this rewrites the marked regions below
+# from the datasets we just wrote, on every single sync. Do not edit the numbers
+# by hand — edit nothing, just re-run this script.
+# AGENTS.md only — CLAUDE.md is a symlink to it, so one write covers both.
+DOC_FILES = ['AGENTS.md']
+LEAGUE_ROWS = [
+    ('UAA',            ['uaa-u15', 'uaa-u16', 'uaa-u17']),
+    ('EYBL',           ['eybl-u15', 'eybl-u16', 'eybl-u17']),
+    ('3SSB Platinum',  ['3ssb-u15', '3ssb-u16', '3ssb-u17']),
+]
+BLOCK_RE  = re.compile(r'(<!-- DATA-COUNTS:BEGIN[^>]*-->)(.*?)(<!-- DATA-COUNTS:END -->)', re.S)
+INLINE_RE = re.compile(r'(<!--PLAYERS-->)(.*?)(<!--/PLAYERS-->)', re.S)
+
+
+def refresh_doc_counts(datasets):
+    counts = {k: len(v.get('players', [])) for k, v in datasets.items()}
+    names = set()
+    lines = 0
+    for _, keys in LEAGUE_ROWS:
+        for k in keys:
+            for p in datasets.get(k, {}).get('players', []):
+                lines += 1
+                names.add(str(p.get('Player', '')).strip().lower())
+    today = datetime.date.today().isoformat()
+
+    rows = []
+    for label, keys in LEAGUE_ROWS:
+        parts = ', '.join(f'{k.split("-")[1].upper()} {counts.get(k, 0)}' for k in keys)
+        rows.append(f'- {label}: {parts}')
+    block = '\n'.join(rows) + (
+        f'\n- **{lines:,} player stat lines across {len(LEAGUE_ROWS) * 3} datasets '
+        f'· {len(names):,} unique players** (auto-updated {today})'
+    )
+    inline = f'{len(names):,} unique players tracked'
+
+    for fname in DOC_FILES:
+        path = os.path.join(HERE, fname)
+        if not os.path.exists(path):
+            continue
+        text = open(path, encoding='utf-8').read()
+        orig = text
+        if BLOCK_RE.search(text):
+            text = BLOCK_RE.sub(lambda m: f'{m.group(1)}\n{block}\n{m.group(3)}', text)
+        else:
+            print(f'  WARNING: {fname} has no DATA-COUNTS markers — counts NOT refreshed')
+        if INLINE_RE.search(text):
+            text = INLINE_RE.sub(lambda m: f'{m.group(1)}{inline}{m.group(3)}', text)
+        if text != orig:
+            open(path, 'w', encoding='utf-8').write(text)
+            print(f'  {fname} counts refreshed ({lines:,} lines, {len(names):,} unique)')
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--index", default=DEFAULT_INDEX)
@@ -94,6 +152,8 @@ def main():
         print(f"  seo_slugs.json ({len(reg)} slugs)")
     else:
         print(f"  WARNING: slug registry not found at {args.slugs} — keeping existing src/data/seo_slugs.json")
+
+    refresh_doc_counts(datasets)
 
     print("Done. Now run: npx astro build   (or commit + push to deploy)")
 
