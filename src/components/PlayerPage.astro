@@ -81,8 +81,12 @@ import { teamSlug, canonicalPlayerHref } from '../lib/slugs';
 const teamHref = p.Team ? `${league.urlBase}/team/${teamSlug(p.Team, league)}` : '#';
 
 // "Is this your player?" hero CTA — leads to the /get-started request form,
-// prefilled with this player via query params.
-const ctaHref = `/get-started?p=${encodeURIComponent(p.Player)}&t=${encodeURIComponent(p.Team || '')}&l=${encodeURIComponent(league.scopeLabel)}`;
+// prefilled with this player. The prefill rides in data-q, NOT in the href: a
+// per-player query string turns one page into 4,300 crawlable duplicate URLs
+// that all canonicalize back to /get-started. Layout.astro's pointerdown handler
+// splices data-q onto the href at navigation time, so humans get the prefill and
+// crawlers only ever see the clean URL. (&amp; so the attribute parses.)
+const ctaQuery = `p=${encodeURIComponent(p.Player)}&amp;t=${encodeURIComponent(p.Team || '')}&amp;l=${encodeURIComponent(league.scopeLabel)}`;
 const first = (p.Player || '').trim().split(/\s+/)[0];
 
 // Abri's own pages don't pitch him the recruiting site he already has — they
@@ -96,8 +100,10 @@ const abriSiteHref = 'https://www.abrifazliu.com/?src=circuitstats-player-page';
 // Compare button → All-Circuits compare hub with this player preselected
 // (?a= is picked up by Compare.astro's island). Canonical slug: the ALL pool
 // merges duplicate players onto their canonical base-league line.
+// Same treatment as ctaQuery — the preselect rides in data-q so /rankings/compare
+// stays a single crawlable URL instead of 3,775.
 const cmpSlug = (canonicalPlayerHref(p.Player) || '').replace('/player/', '');
-const compareHref = cmpSlug ? `/rankings/compare?a=${cmpSlug}` : '/rankings/compare';
+const compareQuery = cmpSlug ? `a=${cmpSlug}` : '';
 
 const body = `
     <div class="pp-hero">
@@ -108,7 +114,7 @@ const body = `
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
         </a>
         <div class="pp-gp">${p.GP} games played</div>
-        <a class="pp-compare-btn" href="${compareHref}" data-track="player-page:compare">
+        <a class="pp-compare-btn" href="/rankings/compare"${compareQuery ? ` data-q="${compareQuery}"` : ''} data-track="player-page:compare">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M10 3H6a2 2 0 0 0-2 2v14c0 1.1.9 2 2 2h4M14 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M12 8v8M9 11l3-3 3 3"/></svg>
           Compare ${first} vs anyone
         </a>
@@ -129,7 +135,7 @@ const body = `
         <div class="pp-cta-t">Is this your player?</div>
         <p class="pp-cta-d">Get him a professional recruiting website while coaches are watching — players have landed <strong>multiple offers</strong> off theirs.</p>
         <div class="pp-cta-row">
-          <a class="pp-cta-btn" href="${ctaHref}" data-track="player-site:get-offers">Get D1 offers now</a>
+          <a class="pp-cta-btn" href="/get-started" data-q="${ctaQuery}" data-track="player-site:get-offers">Get D1 offers now</a>
           <a class="pp-cta-ex" href="https://abrifazliu.com" target="_blank" rel="noopener" data-track="player-site:live-example">See live example →</a>
         </div>
       </div>`}

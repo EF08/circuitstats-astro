@@ -259,6 +259,24 @@ const navIcons: Record<string, string> = {
     });
   })();
 
+  // Deferred query strings. Links that need a query param (the player-page CTA
+  // prefill, the compare preselect) ship a CLEAN href plus data-q, so the served
+  // HTML never contains a per-player URL for a crawler to follow — that leak was
+  // generating ~8,000 duplicate URLs off 4,300 real pages. We splice the query on
+  // at pointerdown/keydown, i.e. before the browser navigates but after any bot has
+  // read the DOM. Rewriting the href (rather than calling preventDefault) keeps
+  // middle-click, ctrl-click and "open in new tab" working.
+  (function () {
+    function splice(e) {
+      var a = e.target.closest && e.target.closest('a[data-q]');
+      if (!a) return;
+      var href = a.getAttribute('href') || '';
+      if (href.indexOf('?') === -1) a.setAttribute('href', href + '?' + a.dataset.q);
+    }
+    document.addEventListener('pointerdown', splice, true);
+    document.addEventListener('keydown', function (e) { if (e.key === 'Enter') splice(e); }, true);
+  })();
+
   // Site-wide click tracking (feeds the /dashboard "Clicks" section): one
   // delegated listener catches every interactive element on every page, so
   // nothing needs its own tracking wire-up. Explicit data-track="..." on an
