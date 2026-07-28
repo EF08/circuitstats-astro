@@ -10,6 +10,341 @@
       "source": "/:scope*/leaders/ts-pct",
       "destination": "/:scope*/leaders/fg-pct",
       "permanent": true
+    },
+    {
+      "source": "/player/aiden-johnson-3ssb-u15",
+      "destination": "/player/aiden-johnson-3ssb-u15-2",
+      "permanent": true
+    },
+    {
+      "source": "/player/aj-igwiloa-eybl-u16",
+      "destination": "/eybl/u16/stats",
+      "permanent": true
+    },
+    {
+      "source": "/player/amire-gill-3ssb-u17",
+      "destination": "/player/amire-gill-3ssb-u17-2",
+      "permanent": true
+    },
+    {
+      "source": "/player/andre-ball-ii-3ssb-u16",
+      "destination": "/player/andre-ball-ii-3ssb-u16-2",
+      "permanent": true
+    },
+    {
+      "source": "/player/ashton-burt-3ssb-u15",
+      "destination": "/player/ashton-burt-3ssb-u15-2",
+      "permanent": true
+    },
+    {
+      "source": "/player/ashton-graves-3ssb-u17",
+      "destination": "/player/ashton-graves-3ssb-u17-2",
+      "permanent": true
+    },
+    {
+      "source": "/player/ashton-jones-3ssb-u15",
+      "destination": "/player/ashton-jones-3ssb-u15-2",
+      "permanent": true
+    },
+    {
+      "source": "/player/austin-dennard-3ssb-u16",
+      "destination": "/player/austin-dennard-3ssb-u16-2",
+      "permanent": true
+    },
+    {
+      "source": "/player/berkley-buhrmester-3ssb-u15",
+      "destination": "/player/berkley-buhrmester-3ssb-u15-2",
+      "permanent": true
+    },
+    {
+      "source": "/player/blake-bazile-3ssb-u15",
+      "destination": "/player/blake-bazile-3ssb-u15-2",
+      "permanent": true
+    },
+    {
+      "source": "/player/brady-bowman-3ssb-u16",
+      "destination": "/player/brady-bowman-3ssb-u16-2",
+      "permanent": true
+    },
+    {
+      "source": "/player/bryce-shamburger-3ssb-u15",
+      "destination": "/player/bryce-shamburger-3ssb-u15-2",
+      "permanent": true
+    },
+    {
+      "source": "/player/bryson-schofield-3ssb-u16",
+      "destination": "/player/bryson-schofield-3ssb-u16-2",
+      "permanent": true
+    },
+    {
+      "source": "/player/camerin-beard-eybl-u16",
+      "destination": "/eybl/u16/stats",
+      "permanent": true
+    },
+    {
+      "source": "/player/cameron-shepard-3ssb-u15",
+      "destination": "/player/cameron-shepard-3ssb-u15-2",
+      "permanent": true
+    },
+    {
+      "source": "/player/chibueze-igwe-3ssb-u16",
+      "destination": "/3ssb/u16/stats",
+      "permanent": true
+    },
+    {
+      "source": "/player/dalemontae-mcallum-3ssb-u15",
+      "destination": "/player/dalemontae-mcallum-3ssb-u15-2",
+      "permanent": true
+    },
+    {
+      "source": "/player/damir-buckingham-3ssb-u15",
+      "destination": "/player/damir-buckingham-3ssb-u15-2",
+      "permanent": true
+    },
+    {
+      "source": "/player/demarco-hunter-eybl-u17",
+      "destination": "/player/demarco-hunter-eybl-u17-2",
+      "permanent": true
+    },
+    {
+      "source": "/player/drew-scott-3ssb-u15",
+      "destination": "/player/drew-scott-3ssb-u15-2",
+      "permanent": true
+    },
+    {
+      "source": "/player/elton-axel-arthur-jaegerskog-3ssb-u17",
+      "destination": "/player/elton-axel-arthur-jaegerskog-3ssb-u17-2",
+      "permanent": true
+    },
+    {
+      "source": "/player/fredrick-jones-eybl-u16",
+      "destination": "/eybl/u16/stats",
+      "permanent": true
+    },
+    {
+      "source": "/player/galen-roberts-3ssb-u17",
+      "destination": "/player/galen-roberts-3ssb-u17-2",
+      "permanent": true
+    },
+    {
+      "source": "/player/gatlin-gafford-3ssb-u15",
+      "destination": "/player/gatlin-gafford-3ssb-u15-2",
+      "permanent": true
+    },
+    {
+      "source": "/player/j-guyton-uaa-u17",
+      "destination": "/uaa/u17/stats",
+      "permanent": true
+    },
+    {
+      "source": "/player/jackson-brooks-eybl-u16",
+      "destination": "/eybl/u16/stats",
+      "permanent": true
+    },
+    {
+      "source": "/player/jackson-price-eybl-u17",
+      "destination": "/eybl/u17/stats",
+      "permanent": true
+    },
+    {
+      "source": "/player/jacori-thompson-3ssb-u15",
+      "destination": "/player/jacori-thompson-3ssb-u15-2",
+      "permanent": true
+    },
+    {
+      "source": "/player/jalon-brown-eybl-u17",
+      "destination": "/player/jalon-brown-eybl-u17-2",
+      "permanent": true
+    },
+    {
+      "source": "/player/jarius-r-eybl-u16",
+      "destination": "/eybl/u16/stats",
+      "permanent": true
+    },
+    {
+      "source": "/player/jason-shaw-3ssb-u15",
+      "destination": "/player/jason-shaw-3ssb-u15-2",
+      "permanent": true
+    },
+    {
+      "source": "/player/jayden-adams-3ssb-u16",
+      "destination": "/player/jayden-adams-3ssb-u16-2",
+      "permanent": true
+    },
+    {
+      "source": "/player/jeffrey-reynolds-ii-3ssb-u17",
+      "destination": "/player/jeffrey-reynolds-ii-3ssb-u17-2",
+      "permanent": true
+    },
+    {
+      "source": "/player/jeremiah-anderson-3ssb-u15",
+      "destination": "/player/jeremiah-anderson-3ssb-u15-2",
+      "permanent": true
+    },
+    {
+      "source": "/player/jeremiah-harper-3ssb-u16",
+      "destination": "/player/jeremiah-harper-3ssb-u16-2",
+      "permanent": true
+    },
+    {
+      "source": "/player/jordan-d-smith-3ssb-u15",
+      "destination": "/player/jordan-d-smith-3ssb-u15-2",
+      "permanent": true
+    },
+    {
+      "source": "/player/joshua-rivera-eybl-u17",
+      "destination": "/eybl/u17/stats",
+      "permanent": true
+    },
+    {
+      "source": "/player/jujuan-bennett-eybl-u16",
+      "destination": "/eybl/u16/stats",
+      "permanent": true
+    },
+    {
+      "source": "/player/julian-sam-3ssb-u15",
+      "destination": "/player/julian-sam-3ssb-u15-2",
+      "permanent": true
+    },
+    {
+      "source": "/player/junior-smith-iv-eybl-u17",
+      "destination": "/eybl/u17/stats",
+      "permanent": true
+    },
+    {
+      "source": "/player/justin-desena-eybl-u16",
+      "destination": "/player/justin-desena-eybl-u16-2",
+      "permanent": true
+    },
+    {
+      "source": "/player/keyshawn-herring-3ssb-u17",
+      "destination": "/player/keyshawn-herring-3ssb-u17-2",
+      "permanent": true
+    },
+    {
+      "source": "/player/kingston-neal-3ssb-u15",
+      "destination": "/player/kingston-neal-3ssb-u15-2",
+      "permanent": true
+    },
+    {
+      "source": "/player/landon-crews-3ssb-u15",
+      "destination": "/player/landon-crews-3ssb-u15-2",
+      "permanent": true
+    },
+    {
+      "source": "/player/lj-diamond-3ssb-u17",
+      "destination": "/player/lj-diamond-3ssb-u17-2",
+      "permanent": true
+    },
+    {
+      "source": "/player/lj-holman-3ssb-u17",
+      "destination": "/player/lj-holman-3ssb-u17-2",
+      "permanent": true
+    },
+    {
+      "source": "/player/luke-olivar-eybl-u16",
+      "destination": "/eybl/u16/stats",
+      "permanent": true
+    },
+    {
+      "source": "/player/m-muscorella-uaa-u17",
+      "destination": "/uaa/u17/stats",
+      "permanent": true
+    },
+    {
+      "source": "/player/mailik-parrish-eybl-u17",
+      "destination": "/eybl/u17/stats",
+      "permanent": true
+    },
+    {
+      "source": "/player/makel-minor-3ssb-u17",
+      "destination": "/player/makel-minor-3ssb-u17-2",
+      "permanent": true
+    },
+    {
+      "source": "/player/mamadou-barry-uaa-u17",
+      "destination": "/uaa/u17/stats",
+      "permanent": true
+    },
+    {
+      "source": "/player/maxwell-joiner-3ssb-u16",
+      "destination": "/player/maxwell-joiner-3ssb-u16-2",
+      "permanent": true
+    },
+    {
+      "source": "/player/mustafa-muhommad-eybl-u17",
+      "destination": "/eybl/u17/stats",
+      "permanent": true
+    },
+    {
+      "source": "/player/myles-scott-3ssb-u15",
+      "destination": "/player/myles-scott-3ssb-u15-2",
+      "permanent": true
+    },
+    {
+      "source": "/player/nevin-l-brown-3ssb-u15",
+      "destination": "/player/nevin-l-brown-3ssb-u15-2",
+      "permanent": true
+    },
+    {
+      "source": "/player/nylan-rush-3ssb-u17",
+      "destination": "/player/nylan-rush-3ssb-u17-2",
+      "permanent": true
+    },
+    {
+      "source": "/player/obatayo-adigun-3ssb-u15",
+      "destination": "/player/obatayo-adigun-3ssb-u15-2",
+      "permanent": true
+    },
+    {
+      "source": "/player/obiajulu-igwiloh-eybl-u16",
+      "destination": "/eybl/u16/stats",
+      "permanent": true
+    },
+    {
+      "source": "/player/peyton-fogle-3ssb-u15",
+      "destination": "/player/peyton-fogle-3ssb-u15-2",
+      "permanent": true
+    },
+    {
+      "source": "/player/quincy-wright-3ssb-u17",
+      "destination": "/player/quincy-wright-3ssb-u17-2",
+      "permanent": true
+    },
+    {
+      "source": "/player/rahman-deuce-grayson-3ssb-u15",
+      "destination": "/player/rahman-deuce-grayson-3ssb-u15-2",
+      "permanent": true
+    },
+    {
+      "source": "/player/stevie-hall-3ssb-u17",
+      "destination": "/player/stevie-hall-3ssb-u17-2",
+      "permanent": true
+    },
+    {
+      "source": "/player/tra-jin-aleem-eybl-u17",
+      "destination": "/eybl/u17/stats",
+      "permanent": true
+    },
+    {
+      "source": "/player/trevin-davis-3ssb-u16-2",
+      "destination": "/player/trevin-davis-3ssb-u16",
+      "permanent": true
+    },
+    {
+      "source": "/player/trey-aleem-eybl-u17",
+      "destination": "/eybl/u17/stats",
+      "permanent": true
+    },
+    {
+      "source": "/player/trey-johnson-eybl-u16",
+      "destination": "/eybl/u16/stats",
+      "permanent": true
+    },
+    {
+      "source": "/player/warrick-scott-jr-3ssb-u15",
+      "destination": "/player/warrick-scott-jr-3ssb-u15-2",
+      "permanent": true
     }
   ]
 }
