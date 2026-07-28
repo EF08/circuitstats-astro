@@ -62,7 +62,7 @@ const st = standings[team];
         <tbody>
           {sorted.map(p => (
             <tr>
-              <td class="sc"><a class="player-link" href={`/player/${playerSlug(p.Player, league)}`}>{p.Player}</a></td>
+              <td class="sc"><a class="player-link" href={`/player/${playerSlug(p, league)}`}>{p.Player}</a></td>
               {TP_COLS.map(c => <td set:html={_tpCellVal(p, c)} />)}
             </tr>
           ))}

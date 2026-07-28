@@ -9,7 +9,7 @@ const SRC_TO_CIRCUIT: Record<string, string> = { UAA: 'uaa', EYBL: 'eybl', '3SSB
 export function rowLinks(p: Player, lg: League): { playerHref: string; teamHref: string | null } {
   if (lg.isBase || lg.key === 's2u15' || lg.key === 's3u15') {
     return {
-      playerHref: `/player/${playerSlug(p.Player, lg)}`,
+      playerHref: `/player/${playerSlug(p, lg)}`,
       teamHref: p.Team ? `${lg.urlBase}/team/${teamSlug(p.Team, lg)}` : null,
     };
   }

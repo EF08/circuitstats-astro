@@ -71,7 +71,7 @@ const slot = (p: Player | null, i: number) => p
 // literal string "null").
 function slugFor(p: Player): string {
   const href = league.isBase || league.key === 's2u15' || league.key === 's3u15'
-    ? `/player/${playerSlug(p.Player, league)}` : (canonicalPlayerHref(p.Player) || '');
+    ? `/player/${playerSlug(p, league)}` : (canonicalPlayerHref(p.Player) || '');
   return href.replace('/player/', '');
 }
 
@@ -88,7 +88,7 @@ if (league.key === 'allall') {
   for (const sl of SESSION_LEAGUES) {
     const tag = sl.key === 's2u15' ? 'S2' : 'S3';
     sl.players.forEach(p => {
-      picker.push({ n: `${p.Player} (${tag})`, s: playerSlug(p.Player, sl), t: p.Team, p: p.PPG, a: teamAlias(p.Team) || undefined });
+      picker.push({ n: `${p.Player} (${tag})`, s: playerSlug(p, sl), t: p.Team, p: p.PPG, a: teamAlias(p.Team) || undefined });
     });
   }
 }

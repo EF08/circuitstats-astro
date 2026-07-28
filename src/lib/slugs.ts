@@ -17,6 +17,9 @@ export function slugify(s: string): string {
     .toLowerCase() || 'x';
 }
 // registry ageKey: the session key ('s2u15'/'s3u15') for sessions, else the league's age.
+// Link-map key: same shape as regKey minus the scope, since the map is already
+// scoped per league.
+function linkKey(p: Player): string { return `${p.Player}|${p.Team}`; }
 function regKey(name: string, team: string, lg: League): string {
   const ageKey = isSessionKey(lg.key) ? lg.key : lg.age;
   return `${name}|${team}|${lg.circuit}|${ageKey}`;
@@ -45,16 +48,22 @@ function build() {
         while (used.has(slug)) { slug = `${base}-${i}`; i++; }
       }
       used.add(slug);
-      nameToSlug.set(p.Player, slug);
+      // Keyed by name+team, not name alone: two different kids can share a name
+      // inside one league (52 such groups today). Keying by name let the second
+      // overwrite the first, so BOTH table rows linked to the same page and the
+      // other kid's page was left orphaned — built and sitemapped but unlinkable.
+      if (!nameToSlug.has(linkKey(p))) nameToSlug.set(linkKey(p), slug);
       _bySlug.set(slug, { player: p, league: lg, slug });
     }
     _byLeague.set(lg.key, nameToSlug);
   }
 }
 
-export function playerSlug(name: string, league: League): string {
+// Takes the player ROW, not just the name — the row's team is what disambiguates
+// same-name kids within a league.
+export function playerSlug(p: Player, league: League): string {
   build();
-  return _byLeague.get(league.key)?.get(name) || slugify(`${name}-${league.circuit}-${league.age}`);
+  return _byLeague.get(league.key)?.get(linkKey(p)) || slugify(`${p.Player}-${league.circuit}-${league.age}`);
 }
 export function allPlayerRefs(): PlayerRef[] { build(); return [..._bySlug.values()]; }
 export function refBySlug(slug: string): PlayerRef | undefined { build(); return _bySlug.get(slug); }
@@ -98,7 +107,7 @@ function buildCanon() {
       const gp = p.GP || 0;
       if (!_canonPlayer.has(p.Player) || gp > (bestGp.get(p.Player) ?? -1)) {
         bestGp.set(p.Player, gp);
-        _canonPlayer.set(p.Player, { href: `/player/${playerSlug(p.Player, lg)}`, league: lg, player: p });
+        _canonPlayer.set(p.Player, { href: `/player/${playerSlug(p, lg)}`, league: lg, player: p });
       }
       _canonTeam.set(`${lg.circuit}|${lg.age}|${p.Team}`, `${lg.urlBase}/team/${teamSlug(p.Team, lg)}`);
     }
