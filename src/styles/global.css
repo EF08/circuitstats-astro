@@ -263,22 +263,12 @@ a{color:inherit;text-decoration:none}
 .s-val{font-size:20px;font-weight:900;letter-spacing:-.5px}
 .s-clbl{font-size:10px;color:var(--text-2);font-weight:700;text-transform:uppercase;margin-top:2px}
 /* ── PLAYER PAGE (stat rows) ── */
-.pp-pair-row{display:grid;grid-template-columns:1fr 1px 1fr;border-bottom:1px solid var(--border)}
-.pp-pr-sep{background:var(--border)}
-.pp-pr-cell{display:flex;align-items:center;padding:12px 14px;gap:6px}
-.pp-pr-lbl{font-size:11px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.4px;width:46px;flex-shrink:0}
-.pp-pr-val{font-size:20px;font-weight:900;color:var(--text);flex:1}
-.pp-pr-val.hi{color:var(--accent)}
-.pp-pr-rank{font-size:9px;font-weight:800;color:var(--accent);text-align:right;white-space:nowrap;min-width:36px;line-height:1.3}
+/* player box-score rank chips (#37/400) — table overrides live after .box-table */
+.pp-pr-rank{font-size:9px;font-weight:800;color:var(--accent);white-space:nowrap}
+.pp-pr-rank .of{opacity:.55}
 .pp-no-track{cursor:help;color:var(--text-3);border-bottom:1px dashed var(--text-3);font-size:inherit}
 #no-track-tip{display:none;position:fixed;z-index:9999;background:#1c2b44;color:var(--text-2);font-size:12px;padding:8px 12px;border-radius:8px;border:1px solid var(--border);pointer-events:none;max-width:220px;text-align:center;line-height:1.4}
-.pp-pct-grid{display:grid;grid-template-columns:1fr 1fr}
-.pp-pct-cell{padding:14px 14px;border-bottom:1px solid var(--border);text-align:center}
-.pp-pct-cell:nth-child(odd){border-right:1px solid var(--border)}
-.pp-pct-lbl{font-size:10px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
-.pp-pct-val{font-size:20px;font-weight:900;color:var(--text)}
-.pp-pct-rank{font-size:9px;font-weight:800;color:var(--accent);margin-top:2px}
-.pp-pct-qual{font-size:9px;color:var(--text-3);margin-left:2px;cursor:help;vertical-align:middle}
+.pp-box-note{font-size:10px;color:var(--text-3);padding:8px 16px 0;cursor:help;text-align:right}
 .s-lbl-row{
   font-size:10px;font-weight:800;text-transform:uppercase;
   letter-spacing:1.2px;color:var(--text-3);padding:14px 20px 8px;
@@ -479,6 +469,22 @@ a{color:inherit;text-decoration:none}
 .box-table .avg-row td.sc{background:var(--surface)}
 .player-link{color:var(--text);font-weight:700;white-space:nowrap}
 
+/* ── PLAYER BOX SCORE ── box-table variant: stats as columns, AVG/TOTAL rows,
+   not sortable/clickable; season %s span both rows on a slightly lifted bg */
+.pp-box-wrap{margin:0}
+.pp-box th{cursor:default;text-align:center}
+.pp-box th:hover{color:var(--text-3)}
+.pp-box th.sc{min-width:0}
+.pp-box td{text-align:center;cursor:default;padding:10px 10px;vertical-align:middle}
+.pp-box tbody tr{cursor:default}
+.pp-box tbody tr:active td{background:var(--card)}
+.pp-box td.sc{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:var(--text-2);padding-right:12px}
+.pp-box tbody tr:active td.sc{background:var(--card)}
+.pp-cv{font-size:16px;font-weight:900;color:var(--text);line-height:1.2}
+.pp-cv.hi{color:var(--accent)}
+.pp-box .pp-pr-rank{display:block;margin-top:3px;text-align:center}
+.pp-cn{font-size:13px;font-weight:600;color:var(--text-3)}
+
 /* ── EMPTY ── */
 .empty{text-align:center;padding:60px 20px;color:var(--text-3)}
 .empty svg{width:44px;height:44px;margin:0 auto 12px;opacity:.22;display:block}
@@ -486,13 +492,11 @@ a{color:inherit;text-decoration:none}
 
 @media(min-width:600px){
   .teams-grid{grid-template-columns:repeat(3,1fr)}
-  .pp-pr-rank{font-size:13px;min-width:52px;line-height:1.25}
-  .pp-pct-rank{font-size:13px;margin-top:4px}
-  .pp-pr-val{font-size:26px}
-  .pp-pct-val{font-size:26px}
-  .pp-pr-lbl{font-size:13px;width:56px}
-  .pp-pr-cell{padding:14px 20px}
-  .pp-pct-cell{padding:18px 20px}
+  .pp-cv{font-size:18px}
+  .pp-pr-rank{font-size:11px}
+  .pp-box td{padding:12px 12px}
+  .pp-box td.sc{font-size:10px}
+  .pp-box-note{font-size:11px}
 }
 @media(min-width:900px){.teams-grid{grid-template-columns:repeat(4,1fr)}.rank-list{display:grid;grid-template-columns:1fr 1fr;gap:8px}}
 

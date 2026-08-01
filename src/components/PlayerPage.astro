@@ -1,8 +1,9 @@
 ---
-// PlayerPage.astro — verbatim reproduction of the pre-SEO renderPlayerPage()
-// DOM. Rank chips that have a matching leaderboard become real <a> links (their
-// at-rest appearance is identical to the original clickable spans); chips for
-// fields without a leaderboard render as plain spans, same as seo_render did.
+// PlayerPage.astro — player stat block as a horizontal box score (ESPN-style):
+// stats as columns, AVG and TOTAL rows, season-wide percentages spanning both
+// rows. Reuses the team-page box-table aesthetic. Rank chips that have a
+// matching leaderboard become real <a> links; chips for fields without a
+// leaderboard render as plain spans.
 import { calcTS, type Player } from '../lib/stats';
 import type { League } from '../lib/leagues';
 import { liveLabel } from '../lib/liveLabel.js';
@@ -22,49 +23,31 @@ const STAT_SLUG: Record<string, string> = {
 };
 const leaderBase = league.urlBase; // leaderboards live at {urlBase}/leaders/{slug}
 
-const PCT_QUAL_FIELDS = new Set(['FG%', '3FG%', 'FT%', '_ts']);
-
 function tagBadge(): string {
   if (combineKind === 'circuit' && p._age) return `<span class="age-badge">${p._age}</span>`;
   if (combineKind === 'age' && p._src) return `<span class="age-badge">${p._src || 'Multi'}</span>`;
   if (combineKind === 'all' && p._tag) return `<span class="age-badge">${p._tag}</span>`;
   return '';
 }
-// rank chip for a pair-row value
+// one-line rank chip (#37/400) for a table cell
 function rk(f: string | null): string {
   if (!f) return '<span class="pp-pr-rank"></span>';
   const r = RANK[f] && RANK[f][p.Player];
   if (!r) return '<span class="pp-pr-rank"></span>';
-  const inner = `#${r}<br>/${N}`;
+  const inner = `#${r}<span class="of">/${N}</span>`;
   const slug = STAT_SLUG[f];
   if (slug) return `<a class="pp-pr-rank clickable" href="${leaderBase}/leaders/${slug}" title="See full ranking">${inner}</a>`;
   return `<span class="pp-pr-rank">${inner}</span>`;
 }
-function prk(f: string): string {
-  const r = RANK[f] && RANK[f][p.Player];
-  if (!r) return '';
-  const qualNote = PCT_QUAL_FIELDS.has(f) ? `<span class="pp-pct-qual" title="Minimum ${qualMin} makes with verified attempts to qualify">ⓘ</span>` : '';
-  const body = `#${r}/${N}${PCT_QUAL_FIELDS.has(f) ? ` (min. ${qualMin} made)` : ''}`;
-  const slug = STAT_SLUG[f];
-  const el = slug
-    ? `<a class="pp-pct-rank clickable" href="${leaderBase}/leaders/${slug}" title="See full ranking">${body}</a>`
-    : `<div class="pp-pct-rank">${body}</div>`;
-  return el + qualNote;
-}
 const nd = () => `<span class="pp-no-track">—</span>`;
 const nv = (v: any) => (v == null) ? nd() : v;
 
-function row(l1: string, v1: any, f1: string | null, l2: string, v2: any, f2: string | null, hi = false): string {
-  return `
-    <div class="pp-pair-row">
-      <div class="pp-pr-cell"><span class="pp-pr-lbl">${l1}</span><span class="pp-pr-val${hi ? ' hi' : ''}">${nv(v1)}</span>${rk(f1)}</div>
-      <div class="pp-pr-sep"></div>
-      <div class="pp-pr-cell"><span class="pp-pr-lbl">${l2}</span><span class="pp-pr-val">${nv(v2)}</span>${rk(f2)}</div>
-    </div>`;
+// one box-score cell: big value with its rank chip beneath
+function cell(v: any, f: string | null, hi = false): string {
+  return `<td><div class="pp-cv${hi ? ' hi' : ''}">${nv(v)}</div>${rk(f)}</td>`;
 }
-function pct(l: string, v: string, f: string): string {
-  return `<div class="pp-pct-cell"><div class="pp-pct-lbl">${l}</div><div class="pp-pct-val">${v}</div>${prk(f)}</div>`;
-}
+// TOTAL-row filler under a % column (a % has no separate season total)
+const ncell = '<td><span class="pp-cn">—</span></td>';
 
 const tov = p['TO/G'] != null ? Math.round(p['TO/G'] * p.GP) : null;
 const fgmPG = p.FGM != null ? (p.FGM / p.GP).toFixed(1) : null;
@@ -140,24 +123,33 @@ const body = `
         </div>
       </div>`}
     </div>
-    ${row('PPG', p.PPG, 'PPG', 'PTS', p['Tot PTS'], 'Tot PTS', true)}
-    ${row('RPG', p.RPG, 'RPG', 'REB', p['Tot REB'], 'Tot REB')}
-    ${row('APG', p.APG, 'APG', 'AST', p['Tot AST'], 'Tot AST')}
-    ${row('SPG', p.SPG, 'SPG', 'STL', p['Tot STL'], 'Tot STL')}
-    ${row('BPG', p.BPG, 'BPG', 'BLK', p['Tot BLK'], 'Tot BLK')}
-    ${row('TO/G', p['TO/G'], 'TO/G', 'TOV', tov, 'TOV')}
-    <div class="pp-pct-grid">
-      ${pct('FG%', p['FG%'] != null ? p['FG%'] + '%' : '—', 'FG%')}
-      ${pct('3P%', p['3FG%'] != null ? p['3FG%'] + '%' : '—', '3FG%')}
-      ${pct('FT%', p['FT%'] != null ? p['FT%'] + '%' : '—', 'FT%')}
-      ${pct('TS%', calcTS(p), '_ts')}
+    <div class="box-wrap pp-box-wrap">
+      <table class="box-table pp-box">
+        <thead><tr>
+          <th class="sc"></th>
+          <th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TOV</th>
+          <th>FG%</th><th>3P%</th><th>FT%</th>
+          <th>3PM</th><th>3PA</th><th>FTM</th><th>FTA</th><th>FGM</th><th>FGA</th><th>TS%</th>
+        </tr></thead>
+        <tbody>
+          <tr>
+            <td class="sc">Avg</td>
+            ${cell(p.PPG, 'PPG', true)}${cell(p.RPG, 'RPG')}${cell(p.APG, 'APG')}${cell(p.SPG, 'SPG')}${cell(p.BPG, 'BPG')}${cell(p['TO/G'], 'TO/G')}
+            ${cell(p['FG%'] != null ? p['FG%'] + '%' : null, 'FG%')}${cell(p['3FG%'] != null ? p['3FG%'] + '%' : null, '3FG%')}${cell(p['FT%'] != null ? p['FT%'] + '%' : null, 'FT%')}
+            ${cell(p['3PM/G'], '3PM/G')}${cell(paPG, '3PA/G')}${cell(ftmPG, 'FTM/G')}${cell(ftaPG, 'FTA/G')}${cell(fgmPG, 'FGM/G')}${cell(fgaPG, 'FGA/G')}
+            ${cell(calcTS(p), '_ts')}
+          </tr>
+          <tr>
+            <td class="sc">Total</td>
+            ${cell(p['Tot PTS'], 'Tot PTS')}${cell(p['Tot REB'], 'Tot REB')}${cell(p['Tot AST'], 'Tot AST')}${cell(p['Tot STL'], 'Tot STL')}${cell(p['Tot BLK'], 'Tot BLK')}${cell(tov, 'TOV')}
+            ${ncell}${ncell}${ncell}
+            ${cell(p['3PM'], '3PM')}${cell(p['3PA'], '3PA')}${cell(p.FTM, 'FTM')}${cell(p.FTA, 'FTA')}${cell(p.FGM, 'FGM')}${cell(p.FGA, 'FGA')}
+            ${ncell}
+          </tr>
+        </tbody>
+      </table>
     </div>
-    ${row('3PM/G', p['3PM/G'], '3PM/G', '3PM', p['3PM'], '3PM')}
-    ${row('3PA/G', paPG, '3PA/G', '3PA', p['3PA'], '3PA')}
-    ${row('FTM/G', ftmPG, 'FTM/G', 'FTM', p.FTM, 'FTM')}
-    ${row('FTA/G', ftaPG, 'FTA/G', 'FTA', p.FTA, 'FTA')}
-    ${row('FGM/G', fgmPG, 'FGM/G', 'FGM', p.FGM, 'FGM')}
-    ${row('FGA/G', fgaPG, 'FGA/G', 'FGA', p.FGA, 'FGA')}
+    <div class="pp-box-note" title="Minimum ${qualMin} makes with verified attempts to qualify for percentage rankings">Percentage ranks: min. ${qualMin} made ⓘ</div>
     <div style="height:16px"></div>`;
 ---
 <script>
