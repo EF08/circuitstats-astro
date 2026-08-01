@@ -14,14 +14,14 @@ const { ranks, standings, qualMin, circuit, age, combineKind } = league;
 const RANK = ranks.RANK;
 const N = league.players.length;
 
-// field -> leaderboard stat slug (only these get clickable rank links)
-// The pre-SEO Leaders view has exactly these 10 boards (no TS%), so only these
-// rank chips become links; every other field's chip is a plain, non-clickable span.
-const STAT_SLUG: Record<string, string> = {
-  PPG: 'ppg', RPG: 'rpg', APG: 'apg', SPG: 'spg', BPG: 'bpg', 'TO/G': 'to-g',
-  'FG%': 'fg-pct', '3FG%': '3p-pct', '3PM/G': '3pm-per-game', 'FT%': 'ft-pct',
-};
-const leaderBase = league.urlBase; // leaderboards live at {urlBase}/leaders/{slug}
+// fields that exist as columns on the league's /stats table (TBL_COLS in
+// stats.ts) — their chips deep-link there, sorted by that stat with this
+// player's row highlighted, like the pre-SEO app's rank-jump. Fields without
+// a table column (computed per-game makes/attempts, total TOV) stay plain spans.
+const JUMP_FIELDS = new Set([
+  'PPG', 'RPG', 'APG', 'SPG', 'BPG', 'TO/G', 'FG%', '3FG%', 'FT%', '_ts', '3PM/G',
+  'Tot PTS', 'Tot REB', 'Tot AST', 'Tot STL', 'Tot BLK', 'FGM', 'FGA', '3PM', '3PA', 'FTM', 'FTA',
+]);
 
 function tagBadge(): string {
   if (combineKind === 'circuit' && p._age) return `<span class="age-badge">${p._age}</span>`;
@@ -29,14 +29,18 @@ function tagBadge(): string {
   if (combineKind === 'all' && p._tag) return `<span class="age-badge">${p._tag}</span>`;
   return '';
 }
-// one-line rank chip (#37/400) for a table cell
+// one-line rank chip (#37/400) for a table cell. The jump params ride in
+// data-q (spliced onto the clean /stats href at pointerdown by Layout.astro),
+// so crawlers never see per-player query URLs — same as the CTA/compare links.
 function rk(f: string | null): string {
   if (!f) return '<span class="pp-pr-rank"></span>';
   const r = RANK[f] && RANK[f][p.Player];
   if (!r) return '<span class="pp-pr-rank"></span>';
   const inner = `#${r}<span class="of">/${N}</span>`;
-  const slug = STAT_SLUG[f];
-  if (slug) return `<a class="pp-pr-rank clickable" href="${leaderBase}/leaders/${slug}" title="See full ranking">${inner}</a>`;
+  if (JUMP_FIELDS.has(f)) {
+    const q = `rj=${encodeURIComponent(f)}&amp;rjp=${encodeURIComponent(p.Player)}&amp;rjr=${r}`;
+    return `<a class="pp-pr-rank clickable" href="${league.urlBase}/stats" data-q="${q}" title="See full ranking">${inner}</a>`;
+  }
   return `<span class="pp-pr-rank">${inner}</span>`;
 }
 const nd = () => `<span class="pp-no-track">—</span>`;
