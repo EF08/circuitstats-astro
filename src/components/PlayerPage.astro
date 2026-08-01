@@ -141,23 +141,23 @@ const body = `
       </div>`}
     </div>
     ${row('PPG', p.PPG, 'PPG', 'PTS', p['Tot PTS'], 'Tot PTS', true)}
-    ${row('FGM/G', fgmPG, 'FGM/G', 'FGM', p.FGM, 'FGM')}
-    ${row('FGA/G', fgaPG, 'FGA/G', 'FGA', p.FGA, 'FGA')}
     ${row('RPG', p.RPG, 'RPG', 'REB', p['Tot REB'], 'Tot REB')}
     ${row('APG', p.APG, 'APG', 'AST', p['Tot AST'], 'Tot AST')}
     ${row('SPG', p.SPG, 'SPG', 'STL', p['Tot STL'], 'Tot STL')}
     ${row('BPG', p.BPG, 'BPG', 'BLK', p['Tot BLK'], 'Tot BLK')}
     ${row('TO/G', p['TO/G'], 'TO/G', 'TOV', tov, 'TOV')}
-    ${row('3PM/G', p['3PM/G'], '3PM/G', '3PM', p['3PM'], '3PM')}
-    ${row('3PA/G', paPG, '3PA/G', '3PA', p['3PA'], '3PA')}
-    ${row('FTM/G', ftmPG, 'FTM/G', 'FTM', p.FTM, 'FTM')}
-    ${row('FTA/G', ftaPG, 'FTA/G', 'FTA', p.FTA, 'FTA')}
     <div class="pp-pct-grid">
       ${pct('FG%', p['FG%'] != null ? p['FG%'] + '%' : '—', 'FG%')}
       ${pct('3P%', p['3FG%'] != null ? p['3FG%'] + '%' : '—', '3FG%')}
       ${pct('FT%', p['FT%'] != null ? p['FT%'] + '%' : '—', 'FT%')}
       ${pct('TS%', calcTS(p), '_ts')}
     </div>
+    ${row('3PM/G', p['3PM/G'], '3PM/G', '3PM', p['3PM'], '3PM')}
+    ${row('3PA/G', paPG, '3PA/G', '3PA', p['3PA'], '3PA')}
+    ${row('FTM/G', ftmPG, 'FTM/G', 'FTM', p.FTM, 'FTM')}
+    ${row('FTA/G', ftaPG, 'FTA/G', 'FTA', p.FTA, 'FTA')}
+    ${row('FGM/G', fgmPG, 'FGM/G', 'FGM', p.FGM, 'FGM')}
+    ${row('FGA/G', fgaPG, 'FGA/G', 'FGA', p.FGA, 'FGA')}
     <div style="height:16px"></div>`;
 ---
 <script>
