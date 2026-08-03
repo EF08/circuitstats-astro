@@ -28,7 +28,9 @@ const { title, description = '', subLabel, pillLabel, pageBase, activeTab, canon
 // Self-referential — the function screenshots whatever host actually receives
 // the request, so this works unchanged on any domain (preview or production).
 const shotPath = new URL(canonical || Astro.url.pathname, Astro.site || Astro.url.origin).pathname;
-const ogImage = `${(Astro.site?.href || Astro.url.origin).replace(/\/$/, '')}/api/og-shot?path=${encodeURIComponent(shotPath)}`;
+// v2: dead-space trim (short pages no longer padded to a full phone screen) —
+// the version bump busts the CDN/scraper caches still holding the tall shots.
+const ogImage = `${(Astro.site?.href || Astro.url.origin).replace(/\/$/, '')}/api/og-shot?path=${encodeURIComponent(shotPath)}&v=2`;
 
 // Bottom-nav destinations (real pages). Leaders defaults to the PPG board.
 const tabs = [

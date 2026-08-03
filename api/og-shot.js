@@ -12,12 +12,15 @@
 // is testable on a dev machine; on Vercel it uses the bundled Linux Chromium.
 export const config = { maxDuration: 30 };
 
-// Phone-sized render. The viewport is grown to the page's full content height
+// Phone-sized render. The viewport is resized to the page's real content height
 // (capped so 100-row leaderboards don't produce a megapixel monster) before the
 // shot, so position:fixed chrome like the bottom nav lands at the bottom of the
-// image instead of floating mid-content.
+// image instead of floating mid-content. body{min-height:100dvh} is neutralized
+// before measuring — otherwise a short page (a player page is ~650px of content)
+// reports a full phone screen and the preview ships with a huge blank bottom.
 const WIDTH = 430;
-const MIN_HEIGHT = 932;
+const LOAD_HEIGHT = 932;  // phone-like viewport while the page loads/lays out
+const MIN_HEIGHT = 320;   // degenerate-page guard only, not a phone-screen floor
 const MAX_HEIGHT = 2800;
 
 export default async function handler(req, res) {
@@ -47,11 +50,15 @@ export default async function handler(req, res) {
     }
     browser = await puppeteer.launch(launchOpts);
     const page = await browser.newPage();
-    await page.setViewport({ width: WIDTH, height: MIN_HEIGHT, deviceScaleFactor: 2 });
+    await page.setViewport({ width: WIDTH, height: LOAD_HEIGHT, deviceScaleFactor: 2 });
     await page.goto(targetUrl, { waitUntil: 'networkidle0', timeout: 20000 });
-    const contentHeight = await page.evaluate(() =>
-      Math.ceil(Math.max(document.documentElement.scrollHeight, document.body.scrollHeight))
-    );
+    const contentHeight = await page.evaluate(() => {
+      // Measure body, not documentElement — html's scrollHeight is floored at
+      // the viewport height by spec, so it can never report a short page.
+      document.body.style.minHeight = '0';
+      const b = document.body;
+      return Math.ceil(Math.max(b.scrollHeight, b.getBoundingClientRect().height));
+    });
     const height = Math.max(MIN_HEIGHT, Math.min(contentHeight, MAX_HEIGHT));
     await page.setViewport({ width: WIDTH, height, deviceScaleFactor: 2 });
     const buf = await page.screenshot({ type: 'png' });
