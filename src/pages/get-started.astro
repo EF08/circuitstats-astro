@@ -1,10 +1,12 @@
 ---
 // get-started.astro — conversion landing for player websites, the destination
-// of the "Get D1 offers now" hero CTA. Structure: compact hero → LIVE embedded
-// example (abrifazliu.com in a browser frame, interactive) → what's included →
-// request form. Prefills player/team/league from query params (?p=&t=&l=) and
-// POSTs to the circuitboard backend (/website-request), which stores the lead
-// and emails Andy.
+// of the "Get D1 offers now" hero CTA. Implements the Claude Design redesign
+// ("Player Websites Sales Page"): own sticky nav (site header hidden) → hero →
+// what's-on-the-line money section → live Google-search demo + abrifazliu.com
+// mock → private-dashboard section → pricing + request form. Prefills
+// player/team/league from query params (?p=&t=&l=) and POSTs to the
+// circuitboard backend (/website-request), which stores the lead and emails
+// Andy.
 import Layout from '../layouts/Layout.astro';
 import { liveLabel } from '../lib/liveLabel.js';
 const SITE = 'https://www.circuitstats.com';
@@ -19,121 +21,254 @@ const SITE = 'https://www.circuitstats.com';
   activeTab={null}
   canonical={`${SITE}/get-started`}
   hideNav
+  hideHeader
 >
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
   <div class="gs-page">
 
+    <!-- NAV -->
+    <nav class="gs-nav">
+      <a class="gs-brand" href="/" data-track="get-started:logo">
+        <span class="gs-logo">CS</span>
+        <span class="gs-brand-txt">
+          <span class="gs-brand-t">Circuit Stats</span>
+          <span class="gs-brand-s">Player Websites</span>
+        </span>
+      </a>
+      <a class="gs-btn gs-btn-nav" href="#request" data-track="get-started:nav-cta">Request my website</a>
+    </nav>
+
     <!-- HERO -->
-    <section class="gs-hero">
+    <header class="gs-hero">
       <div class="gs-live" data-live-label style={liveLabel() ? undefined : 'display:none'}>{liveLabel()}</div>
-      <h1 class="gs-h1" id="gs-title">Get your player seen by college coaches.</h1>
-      <p class="gs-hero-sub">A professional recruiting website on his own domain, <span class="gs-domain">www.hisrealname.com</span>: film, verified stats, accolades. One link any coach can open — and his dashboard shows you when they do.</p>
-      <a class="gs-btn gs-hero-btn" href="#request" data-track="get-started:hero-cta">Request my website</a>
-    </section>
+      <div class="gs-eyebrow">RECRUITING WEBSITES · BUILT AND RUN FOR YOU</div>
+      <h1 class="gs-h1">If a coach can't find you in 10 seconds, you don't exist.</h1>
+      <p class="gs-hero-p1">We build your player a professional recruiting site on his own domain — <strong class="gs-domain">www.hisrealname.com</strong> — <strong>and it shows up at the top of Google when his name is searched.</strong> Organized film, verified stats, accolades and a private dashboard showing exactly which coaches are watching, and for how long.</p>
+      <p class="gs-hero-p2">You send film and info once. We do everything else, forever.</p>
+      <div class="gs-hero-ctas">
+        <a class="gs-btn gs-btn-lg" href="#request" data-track="get-started:hero-cta">Request my website</a>
+        <a class="gs-ghost" href="#proof" data-track="get-started:see-proof">See a real player's site ↓</a>
+      </div>
+    </header>
 
-    <!-- LIVE EXAMPLE (embedded, interactive) -->
-    <section class="gs-demo gs-reveal">
-      <h2 class="gs-h2">See exactly what you get</h2>
-      <p class="gs-sec-sub">This is Abri Fazliu's real site, live below. <strong class="gs-offers">Multiple offers</strong> came through this exact site.</p>
-      <div class="gs-browser">
-        <div class="gs-browser-bar">
-          <span class="gs-bdot"></span><span class="gs-bdot"></span><span class="gs-bdot"></span>
-          <span class="gs-burl">abrifazliu.com</span>
-          <a class="gs-bopen" href="https://www.abrifazliu.com" target="_blank" rel="noopener" data-track="get-started:example">Open full site ↗</a>
+    <!-- WHAT'S ON THE LINE -->
+    <section class="gs-stakes">
+      <div class="gs-stakes-card">
+        <div class="gs-eyebrow gs-eyebrow-dim">WHAT'S ACTUALLY ON THE LINE</div>
+        <h2 class="gs-h2 gs-stakes-h2">A D1 roster spot is now worth more than most houses.</h2>
+        <div class="gs-money">
+          <div class="gs-mrow">
+            <div class="gs-mnum gs-mnum-1">$20.5M</div>
+            <div class="gs-mtxt">
+              <div class="gs-mt">Per school, per year</div>
+              <div class="gs-md">What each school can now pay athletes directly under the House settlement. 310 of 364 D1 schools are in.<sup>2</sup></div>
+            </div>
+          </div>
+          <div class="gs-mrow">
+            <div class="gs-mnum gs-mnum-2">$240–360K</div>
+            <div class="gs-mtxt">
+              <div class="gs-mt">One full D1 scholarship</div>
+              <div class="gs-md">Tuition, room, board and fees at a major program run $60–90K a year — over a 4-year career.<sup>1</sup></div>
+            </div>
+          </div>
+          <div class="gs-mrow">
+            <div class="gs-mnum gs-mnum-3">$65,853</div>
+            <div class="gs-mtxt">
+              <div class="gs-mt">Average NIL, per player</div>
+              <div class="gs-md">What the average men's college basketball player earned in NIL in 2025 — on top of the scholarship.<sup>3</sup></div>
+            </div>
+          </div>
         </div>
-        <div class="gs-frame-wrap" id="gs-frame-wrap">
-          <iframe id="gs-frame" src="https://www.abrifazliu.com" title="Live example: Abri Fazliu's recruiting website" loading="lazy"></iframe>
+        <div class="gs-callout">
+          <div class="gs-callout-t">Every one of those outcomes starts the same way: a coach opens a link and watches your film.</div>
+          <a class="gs-btn gs-btn-md" href="#request" data-track="get-started:stakes-cta">Request my website</a>
+        </div>
+        <div class="gs-sources">
+          <sup>1</sup> Florida Coastal Prep, D1 Basketball Scholarship Guide 2026 &nbsp;·&nbsp; <sup>2</sup> House v. NCAA settlement, effective July 1 2025 &nbsp;·&nbsp; <sup>3</sup> NIL Athlete Network, NIL Market Rate Insights 2025
         </div>
       </div>
     </section>
 
-    <!-- WHAT'S INCLUDED -->
-    <section class="gs-feat gs-reveal">
-      <h2 class="gs-h2">Everything is done for you</h2>
-      <div class="gs-feat-grid">
-        <div class="gs-f gs-f-gold gs-f-wide">
-          <div class="gs-f-t">See which coaches actually look</div>
-          <div class="gs-f-d">Every site includes his private dashboard: a visitor log of who opened the site, what they viewed, and how long they watched his film — plus visitors over time. Send a coach the link, then watch the interest instead of wondering.</div>
+    <!-- PROOF: GOOGLE DEMO + LIVE SITE MOCK -->
+    <section class="gs-proof" id="proof">
+      <div class="gs-proof-head">
+        <h2 class="gs-h2">This is a real player's live site.</h2>
+        <div class="gs-proof-note"><strong class="gs-offers">Multiple offers</strong> came through this exact page.</div>
+      </div>
+      <div class="gs-google" id="gs-google">
+        <div class="gs-glogo"><span style="color:#4285F4">G</span><span style="color:#EA4335">o</span><span style="color:#FBBC05">o</span><span style="color:#4285F4">g</span><span style="color:#34A853">l</span><span style="color:#EA4335">e</span></div>
+        <div class="gs-gbox">
+          <div class="gs-glens"></div>
+          <div class="gs-gquery"><span id="gs-typed"></span><span class="gs-caret"></span></div>
         </div>
-        <div class="gs-f gs-f-gold">
-          <div class="gs-f-t">His own domain</div>
-          <div class="gs-f-d"><span class="gs-domain">www.hisrealname.com</span>, for Instagram bios, coach emails, everywhere.</div>
+        <div class="gs-gresults" id="gs-gresults" hidden>
+          <div class="gs-gres1">
+            <div class="gs-gr-title">Abri Fazliu | Class of 2029 PG</div>
+            <div class="gs-gr-url">https://abrifazliu.com</div>
+            <div class="gs-gr-snip">6'2 PG from Toronto (Class of 2029). Elite defense and off-ball instincts. Toronto, CA/ 2010 Born 6'2 PG/ 6'5 WS/ 194 LB Player Profile "Luka Doncic with ...</div>
+          </div>
+          <div class="gs-gres2">
+            <div class="gs-gr2-site">instagram.com</div>
+            <div class="gs-gr2-title">@abri.faz · Instagram</div>
+          </div>
         </div>
-        <div class="gs-f">
-          <div class="gs-f-t">Film, easily searchable</div>
-          <div class="gs-f-d">Send clips. Coaches can easily skip to film sections they care about, like on-ball defense, IQ decision making.</div>
+      </div>
+      <div class="gs-eyebrow gs-eyebrow-dim gs-proof-arrow">…ONE CLICK LATER, THE COACH LANDS HERE ↓</div>
+      <div class="gs-frame">
+        <div class="gs-frame-bar">
+          <div class="gs-dots"><span class="gs-dot"></span><span class="gs-dot"></span><span class="gs-dot"></span></div>
+          <div class="gs-url">abrifazliu.com</div>
+          <a class="gs-frame-open" href="https://www.abrifazliu.com" target="_blank" rel="noopener" data-track="get-started:example">His own domain ↗</a>
         </div>
-        <div class="gs-f gs-f-blue">
-          <div class="gs-f-t">Official stats, always updated</div>
-          <div class="gs-f-d">Coaches don't trust made-up numbers. Every stat on his site links to his official Circuit Stats page and updates automatically after every session.</div>
-        </div>
-        <div class="gs-f">
-          <div class="gs-f-t">Zero work for you</div>
-          <div class="gs-f-d">You send the film and info once. We build and maintain it all forever.</div>
+        <div class="gs-mock">
+          <div class="gs-mock-name-row">
+            <div class="gs-mock-name">ABRI <span>FAZLIU</span></div>
+            <div class="gs-mock-meta">CLASS OF 2029 / TORONTO, CA / 6'2 PG / 6'5 WS</div>
+          </div>
+          <div class="gs-mock-lbl">PLAYER PROFILE</div>
+          <div class="gs-mock-quote">"LUKA DONCIC WITH ELITE DEFENSE, A +45% THREE BALL, AND GREAT OFF-BALL INSTINCTS"</div>
+          <div class="gs-mock-badges">
+            <div class="gs-mock-badge">NORTH POLE HOOPS MVP</div>
+            <div class="gs-mock-badge">MADEHOOPS CANADA MVP</div>
+            <div class="gs-mock-badge">2× COALITION LEAGUE MVP</div>
+            <div class="gs-mock-badge">PLAY4KAY MVP (2 YRS UP)</div>
+          </div>
+          <div class="gs-mock-stats">
+            <div class="gs-mstat"><div class="gs-mstat-rank">#2</div><div class="gs-mstat-v">20.5</div><div class="gs-mstat-l">PPG</div></div>
+            <div class="gs-mstat"><div class="gs-mstat-rank">#2</div><div class="gs-mstat-v">50.0%</div><div class="gs-mstat-l">3P</div></div>
+            <div class="gs-mstat"><div class="gs-mstat-rank">#32</div><div class="gs-mstat-v">3.0</div><div class="gs-mstat-l">AST</div></div>
+            <div class="gs-mstat"><div class="gs-mstat-rank">#37</div><div class="gs-mstat-v">1.75</div><div class="gs-mstat-l">STL</div></div>
+            <div class="gs-mstat"><div class="gs-mstat-rank">#44</div><div class="gs-mstat-v">49.0%</div><div class="gs-mstat-l">FG</div></div>
+            <div class="gs-mstat"><div class="gs-mstat-v gs-mstat-gold">✓</div><div class="gs-mstat-l">VERIFIED</div></div>
+          </div>
+          <div class="gs-mock-foot">EVERY STAT LINKS TO HIS OFFICIAL CIRCUIT STATS PAGE · UPDATES AUTOMATICALLY AFTER EVERY SESSION</div>
         </div>
       </div>
     </section>
 
-    <!-- REQUEST FORM -->
-    <section class="gs-request gs-reveal" id="request">
-      <div class="gs-card">
-        <h2 class="gs-h2">Request the website</h2>
-        <p class="gs-sec-sub">You'll hear back within a few hours.</p>
+    <!-- PRIVATE DASHBOARD -->
+    <section class="gs-dash" id="gs-dash">
+      <div class="gs-dash-inner">
+        <div class="gs-dash-eyebrow"><span class="gs-dash-dot"></span>HIS PRIVATE DASHBOARD · WHAT ONLY YOU GET TO SEE</div>
+        <h2 class="gs-dash-h2">See which coaches are watching — before anyone calls.</h2>
+        <p class="gs-dash-p">Every site includes a private dashboard: who opened it, where they came from, and how long they watched film. Interest stops being a guess. It becomes a number.</p>
+        <div class="gs-dash-grid">
+          <div class="gs-watch">
+            <div class="gs-watch-head">COACHES · WATCH TIME</div>
+            <div class="gs-watch-list">
+              <div class="gs-wrow gs-wrow-hot">
+                <div class="gs-wtop"><div class="gs-wname">duke-blue-devils</div><div class="gs-wtime">40m 57s</div></div>
+                <div class="gs-wtrack"><div class="gs-wfill" style="width:100%"></div></div>
+              </div>
+              <div class="gs-wrow">
+                <div class="gs-wtop"><div class="gs-wname">montverde-academy</div><div class="gs-wtime">28m 12s</div></div>
+                <div class="gs-wtrack"><div class="gs-wfill" style="width:69%"></div></div>
+              </div>
+              <div class="gs-wrow">
+                <div class="gs-wtop"><div class="gs-wname">kansas-jayhawks</div><div class="gs-wtime">19m 44s</div></div>
+                <div class="gs-wtrack"><div class="gs-wfill" style="width:48%"></div></div>
+              </div>
+              <div class="gs-wrow">
+                <div class="gs-wtop"><div class="gs-wname">unc-tar-heels</div><div class="gs-wtime">14m 08s</div></div>
+                <div class="gs-wtrack"><div class="gs-wfill" style="width:34%"></div></div>
+              </div>
+              <div class="gs-wrow">
+                <div class="gs-wtop"><div class="gs-wname">gonzaga-bulldogs</div><div class="gs-wtime">8m 51s</div></div>
+                <div class="gs-wtrack"><div class="gs-wfill" style="width:22%"></div></div>
+              </div>
+              <div class="gs-wrow">
+                <div class="gs-wtop"><div class="gs-wname">uconn-huskies</div><div class="gs-wtime">2m 36s</div></div>
+                <div class="gs-wtrack"><div class="gs-wfill" style="width:6.4%"></div></div>
+              </div>
+            </div>
+          </div>
+          <div class="gs-dash-col">
+            <div class="gs-duke">
+              <div class="gs-duke-eyebrow">WHAT 40 MINUTES MEANS</div>
+              <div class="gs-duke-t">A Duke coach watched 41 minutes of this kid's film.</div>
+              <div class="gs-duke-d">Nobody watches 41 minutes out of politeness. That's a coach doing homework. His family knew the interest was real — and how deep it ran — before the first call came. That's leverage no highlight tape gives you.</div>
+            </div>
+            <div class="gs-tiles">
+              <div class="gs-tile"><div class="gs-tile-v">196</div><div class="gs-tile-l">REAL VISITORS</div></div>
+              <div class="gs-tile"><div class="gs-tile-v">10h 42m</div><div class="gs-tile-l">FILM WATCHED</div></div>
+              <div class="gs-tile"><div class="gs-tile-v">22</div><div class="gs-tile-l">COUNTRIES</div></div>
+            </div>
+            <div class="gs-dash-note">Example dashboard — actual school names were changed to protect the player's anonymity. Bots and family visits excluded; every count is a real person.</div>
+          </div>
+        </div>
+      </div>
+    </section>
 
-        <div class="gs-price" id="gs-price">
+    <!-- PRICING + REQUEST FORM -->
+    <section class="gs-request" id="request">
+      <div class="gs-req-card">
+        <div class="gs-price-panel">
+          <div class="gs-eyebrow">THE WHOLE THING, HANDLED</div>
           <div class="gs-price-row">
-            <span class="gs-price-main">$399</span>
-            <span class="gs-price-alt">to build, then $39/month</span>
+            <div class="gs-price-main">$399</div>
+            <div class="gs-price-alt">to build, then $39/month</div>
           </div>
-          <ul class="gs-price-list">
-            <li>His own domain</li>
-            <li>His film, edited and organized</li>
-            <li>Verified stats, updated every session</li>
-            <li>Private dashboard: coach visits &amp; film watch time</li>
-            <li>Hosting and upkeep handled for you</li>
-          </ul>
+          <div class="gs-checks">
+            <div class="gs-check"><span>✓</span> Ranks at the top of Google for his name</div>
+            <div class="gs-check"><span>✓</span> His own domain, registered to him</div>
+            <div class="gs-check"><span>✓</span> His film, edited and organized</div>
+            <div class="gs-check"><span>✓</span> Verified stats, updated every session</div>
+            <div class="gs-check"><span>✓</span> Private dashboard: coach visits &amp; watch time</div>
+            <div class="gs-check"><span>✓</span> Hosting and upkeep handled forever</div>
+          </div>
+          <div class="gs-roi">
+            <div class="gs-roi-item">
+              <div class="gs-roi-top"><div class="gs-roi-l">THIS WEBSITE</div><div class="gs-roi-v">$399</div></div>
+              <div class="gs-roi-track"><div class="gs-roi-fill gs-roi-fill-site"></div></div>
+            </div>
+            <div class="gs-roi-item">
+              <div class="gs-roi-top"><div class="gs-roi-l">ONE D1 OFFER &nbsp;<span class="gs-roi-sub">$2M NIL + $400K scholarship</span></div><div class="gs-roi-v gs-roi-v-accent">$2.4M</div></div>
+              <div class="gs-roi-track"><div class="gs-roi-fill gs-roi-fill-offer"></div></div>
+            </div>
+            <div class="gs-roi-pill">= a 6,015× return</div>
+            <div class="gs-roi-note">*No guarantee you go D1 — that part's on him.</div>
+          </div>
         </div>
-
-        <form id="gs-form">
-          <div class="gs-2col">
-            <div>
-              <label class="gs-lbl" for="gs-player">Player name <span class="gs-req">*</span></label>
-              <input class="gs-inp" id="gs-player" name="playerName" required maxlength="120" placeholder="e.g. Cayden Daughtry" />
-            </div>
-            <div>
-              <label class="gs-lbl" for="gs-team">Team &amp; league</label>
-              <input class="gs-inp" id="gs-team" name="teamLeague" maxlength="160" placeholder="e.g. Florida Rebels, EYBL U17" />
-            </div>
+        <div class="gs-form-panel">
+          <div id="gs-formwrap">
+            <h3 class="gs-h3">Request the website</h3>
+            <div class="gs-form-sub">You'll hear back within a few hours.</div>
+            <form id="gs-form">
+              <div class="gs-2col">
+                <label class="gs-lbl"><span>PLAYER NAME <span class="gs-req-star">*</span></span><input class="gs-inp" id="gs-player" name="playerName" type="text" required maxlength="120" placeholder="e.g. Cayden Daughtry" /></label>
+                <label class="gs-lbl"><span>TEAM &amp; LEAGUE</span><input class="gs-inp" id="gs-team" name="teamLeague" type="text" maxlength="160" placeholder="e.g. Florida Rebels, EYBL U17" /></label>
+              </div>
+              <label class="gs-lbl"><span>YOUR NAME</span><input class="gs-inp" id="gs-name" name="parentName" type="text" maxlength="120" placeholder="Parent / guardian / coach" /></label>
+              <div class="gs-2col">
+                <label class="gs-lbl"><span>YOUR EMAIL <span class="gs-req-star">*</span></span><input class="gs-inp" id="gs-email" name="email" type="email" required maxlength="160" placeholder="you@email.com" /></label>
+                <label class="gs-lbl"><span>PHONE (OPTIONAL)</span><input class="gs-inp" id="gs-phone" name="phone" type="tel" maxlength="40" /></label>
+              </div>
+              <label class="gs-lbl"><span>CHANGES OR ADDITIONS YOU'D WANT (OPTIONAL)</span><textarea class="gs-inp gs-ta" id="gs-notes" name="notes" maxlength="1500" rows="3" placeholder="I want it like abrifazliu.com but with... team colors, a different film order, an academics section, etc."></textarea></label>
+              <button class="gs-btn gs-btn-lg gs-submit" id="gs-submit" type="submit" data-track="get-started:submit">Request my website</button>
+              <div class="gs-form-note">No payment now. We confirm details first, then build.</div>
+              <div class="gs-err" id="gs-err"></div>
+            </form>
           </div>
-
-          <label class="gs-lbl" for="gs-name">Your name</label>
-          <input class="gs-inp" id="gs-name" name="parentName" maxlength="120" placeholder="Parent / guardian / coach" />
-
-          <div class="gs-2col">
-            <div>
-              <label class="gs-lbl" for="gs-email">Your email <span class="gs-req">*</span></label>
-              <input class="gs-inp" id="gs-email" name="email" type="email" required maxlength="160" placeholder="you@email.com" />
-            </div>
-            <div>
-              <label class="gs-lbl" for="gs-phone">Phone <span class="gs-opt">(optional)</span></label>
-              <input class="gs-inp" id="gs-phone" name="phone" maxlength="40" />
-            </div>
+          <div class="gs-done" id="gs-done" hidden>
+            <div class="gs-done-ico">✓</div>
+            <h3 class="gs-done-t">Request received.</h3>
+            <div class="gs-done-d">We'll reply within a few hours with next steps and what film to send. His site is usually live within days.</div>
           </div>
-
-          <label class="gs-lbl" for="gs-notes">Changes or additions you'd want <span class="gs-opt">(leave blank for none)</span></label>
-          <textarea class="gs-inp gs-ta" id="gs-notes" name="notes" maxlength="1500" rows="3" placeholder="I want it like abrifazliu.com but with... team colors, a different film order, an academics section, etc."></textarea>
-
-          <button class="gs-btn gs-submit" id="gs-submit" type="submit" data-track="get-started:submit">Request my website</button>
-          <div class="gs-err" id="gs-err"></div>
-        </form>
-
-        <div class="gs-done" id="gs-done" hidden>
-          <div class="gs-done-ico">✓</div>
-          <div class="gs-done-t">Request received</div>
-          <div class="gs-done-d">You'll hear back within a few hours at the email you provided.</div>
         </div>
       </div>
-      <p class="gs-trust">Built by Circuit Stats, the official stats source for EYBL, UAA and 3SSB. 2,945 players tracked.</p>
     </section>
+
+    <!-- FOOTER -->
+    <footer class="gs-footer">
+      <div class="gs-foot-brand">
+        <span class="gs-logo gs-logo-sm">CS</span>
+        <span class="gs-foot-txt"><strong>Circuit Stats</strong> · Player Websites</span>
+      </div>
+      <div class="gs-foot-sources">Sources: Florida Coastal Prep 2026 · House v. NCAA settlement · NIL Market Rate Insights 2025</div>
+    </footer>
 
   </div>
 
@@ -156,8 +291,7 @@ const SITE = 'https://www.circuitstats.com';
       var p = q.get('p'), t = q.get('t'), l = q.get('l');
       if (p) {
         document.getElementById('gs-player').value = p;
-        document.getElementById('gs-title').textContent = 'Get ' + p.split(' ')[0] + ' seen by college coaches.';
-        // Personalize the example domains: "Leartist Williams Jr" -> www.leartistwilliams.com
+        // Personalize the example domain: "Leartist Williams Jr" -> www.leartistwilliams.com
         var parts = p.trim().split(/\s+/);
         var dom = ((parts[0] || '') + (parts[1] || '')).normalize('NFKD').replace(/[^a-zA-Z]/g, '').toLowerCase();
         if (dom) document.querySelectorAll('.gs-domain').forEach(function (el) { el.textContent = 'www.' + dom + '.com'; });
@@ -166,45 +300,50 @@ const SITE = 'https://www.circuitstats.com';
       if (tl) document.getElementById('gs-team').value = tl;
     })();
 
-    // Fit the live-example iframe: desktop renders the real desktop site scaled
-    // to the container; narrow screens get the site's own responsive layout.
+    // Google-search demo: when the card scrolls into view, type the player's
+    // name, surface the results, then "click" the top one (highlight + the site
+    // frame below lights up). Reduced motion jumps straight to the final state.
     (function () {
-      var wrap = document.getElementById('gs-frame-wrap');
-      var frame = document.getElementById('gs-frame');
-      var DESK = 1180;
-      function fit() {
-        var w = wrap.clientWidth;
-        if (w < 620) {
-          frame.style.width = '100%';
-          frame.style.height = wrap.clientHeight + 'px';
-          frame.style.transform = 'none';
-        } else {
-          var s = w / DESK;
-          frame.style.width = DESK + 'px';
-          frame.style.height = Math.round(wrap.clientHeight / s) + 'px';
-          frame.style.transform = 'scale(' + s + ')';
-        }
+      var google = document.getElementById('gs-google');
+      var typed = document.getElementById('gs-typed');
+      var results = document.getElementById('gs-gresults');
+      var proof = document.getElementById('proof');
+      var Q = 'abri fazliu';
+      var started = false;
+      function finish() { typed.textContent = Q; results.hidden = false; proof.classList.add('gs-clicked'); }
+      function run() {
+        if (started) return;
+        started = true;
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { finish(); return; }
+        var i = 0;
+        var timer = setInterval(function () {
+          i++;
+          typed.textContent = Q.slice(0, i);
+          if (i >= Q.length) {
+            clearInterval(timer);
+            setTimeout(function () { results.hidden = false; }, 350);
+            setTimeout(function () { proof.classList.add('gs-clicked'); }, 1500);
+          }
+        }, 110);
       }
-      fit();
-      window.addEventListener('resize', fit);
+      if (!('IntersectionObserver' in window)) { finish(); return; }
+      var io = new IntersectionObserver(function (entries) {
+        if (entries.some(function (e) { return e.isIntersecting; })) { io.disconnect(); run(); }
+      }, { threshold: 0.35 });
+      io.observe(google);
     })();
 
-    // Soft scroll-reveal on sections (skipped under reduced motion).
+    // Dashboard watch-time bars grow when the section scrolls into view.
     (function () {
-      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-        document.querySelectorAll('.gs-reveal').forEach(function (el) { el.classList.add('in'); });
-        return;
-      }
+      var dash = document.getElementById('gs-dash');
+      function show() { dash.classList.add('in'); }
+      if (!('IntersectionObserver' in window)) { show(); return; }
       var io = new IntersectionObserver(function (entries) {
-        entries.forEach(function (e) {
-          if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
-        });
-      }, { threshold: 0.12 });
-      document.querySelectorAll('.gs-reveal').forEach(function (el) { io.observe(el); });
-      // Safety net: never leave content invisible (deep links, odd viewports).
-      setTimeout(function () {
-        document.querySelectorAll('.gs-reveal:not(.in)').forEach(function (el) { el.classList.add('in'); });
-      }, 2000);
+        if (entries.some(function (e) { return e.isIntersecting; })) { io.disconnect(); show(); }
+      }, { threshold: 0.25 });
+      io.observe(dash);
+      // Safety net: never leave the bars invisible.
+      setTimeout(show, 4000);
     })();
 
     (function () {
@@ -258,8 +397,7 @@ const SITE = 'https://www.circuitstats.com';
         }).then(function (r) {
           if (!r.ok) throw new Error('status ' + r.status);
           track('get-started:submit-success');
-          form.hidden = true;
-          document.getElementById('gs-price').hidden = true;
+          document.getElementById('gs-formwrap').hidden = true;
           document.getElementById('gs-done').hidden = false;
         }).catch(function (e) {
           // A failed submit is a lost lead that looks like a non-attempt unless
@@ -274,126 +412,296 @@ const SITE = 'https://www.circuitstats.com';
 </Layout>
 
 <style>
-  .gs-page{max-width:1000px;margin:0 auto;padding:8px 16px 48px}
-  .gs-h2{font-size:24px;font-weight:900;letter-spacing:-.4px;margin-bottom:8px}
-  .gs-sec-sub{font-size:14px;line-height:1.6;color:var(--text-2);max-width:56ch;margin-bottom:18px}
-  .gs-domain{font-weight:700;color:var(--text)}
-  .gs-offers{color:var(--gold);font-style:italic;font-weight:800}
-
-  /* reveal */
-  .gs-reveal{opacity:1;transform:none}
-  @media (prefers-reduced-motion: no-preference){
-    .gs-reveal{opacity:0;transform:translateY(14px);transition:opacity .55s cubic-bezier(.16,1,.3,1),transform .55s cubic-bezier(.16,1,.3,1)}
-    .gs-reveal.in{opacity:1;transform:none}
+  .gs-page{
+    background:#070d1a;min-height:100vh;color:#e9eef8;
+    font-family:'Archivo',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
   }
+  .gs-eyebrow{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12.5px;letter-spacing:.18em;color:#f2a83b}
+  .gs-eyebrow-dim{font-size:12px;color:#93a1bd}
+  .gs-h2{font-size:clamp(24px,3.4vw,34px);font-weight:900;letter-spacing:-.01em;margin:0}
+  .gs-domain{color:#fff}
 
-  /* ── HERO ── */
-  .gs-hero{padding:26px 0 30px}
-  .gs-live{display:inline-flex;align-items:center;gap:7px;font-size:11px;font-weight:800;color:var(--gold);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:14px}
-  .gs-live::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--gold);box-shadow:0 0 8px var(--gold)}
-  @media (prefers-reduced-motion: no-preference){
-    .gs-live::before{animation:gsPulse 1.5s ease-in-out infinite}
-    @keyframes gsPulse{0%,100%{opacity:1}50%{opacity:.25}}
-  }
-  .gs-h1{font-size:clamp(30px,5vw,44px);font-weight:900;letter-spacing:-1px;line-height:1.08;max-width:17ch;margin-bottom:12px}
-  .gs-hero-sub{font-size:15.5px;line-height:1.6;color:var(--text-2);max-width:48ch;margin-bottom:20px}
+  @keyframes gsPulse{0%,100%{opacity:1}50%{opacity:.35}}
+  @keyframes gsBarGrow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
 
+  /* ── BUTTONS ── */
   .gs-btn{
     display:inline-flex;align-items:center;justify-content:center;border:none;cursor:pointer;
-    background:linear-gradient(135deg,#ffbf47,#f5a623 55%,#e8941a);color:#141414;
-    font-size:14.5px;font-weight:800;letter-spacing:.2px;padding:13px 26px;border-radius:10px;
-    box-shadow:0 4px 14px rgba(245,166,35,.3);transition:filter .15s,transform .12s;
+    background:linear-gradient(180deg,#f7bd4d,#e8931f);color:#221503;font-weight:800;
+    font-family:inherit;border-radius:10px;transition:filter .15s,transform .12s;
+    box-shadow:0 4px 18px rgba(240,160,40,.35);white-space:nowrap;
   }
   .gs-btn:hover{filter:brightness(1.06)}
   .gs-btn:active{transform:scale(.98)}
+  .gs-btn-nav{font-size:14px;padding:10px 20px}
+  .gs-btn-md{font-size:16px;padding:14px 28px;border-radius:11px;box-shadow:0 5px 22px rgba(240,160,40,.35)}
+  .gs-btn-lg{font-size:17px;padding:16px 32px;border-radius:12px;box-shadow:0 6px 28px rgba(240,160,40,.4)}
 
-  /* ── LIVE EXAMPLE ── */
-  .gs-demo{padding:10px 0 34px}
-  .gs-browser{
-    border:1px solid var(--border);border-radius:14px;overflow:hidden;background:var(--surface);
-    box-shadow:0 18px 50px rgba(0,0,0,.45);
+  /* ── NAV ── */
+  .gs-nav{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+    padding:18px clamp(20px,5vw,64px);border-bottom:1px solid #131d33;
+    position:sticky;top:0;background:rgba(7,13,26,.92);
+    backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);z-index:50;
   }
-  .gs-browser-bar{
-    display:flex;align-items:center;gap:8px;padding:10px 14px;
-    background:var(--card);border-bottom:1px solid var(--border);
-  }
-  .gs-bdot{width:10px;height:10px;border-radius:50%;background:#2a3a58;flex-shrink:0}
-  .gs-burl{
-    flex:1;min-width:0;margin-left:6px;font-size:12px;font-weight:600;color:var(--text-2);
-    background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:7px;
-    padding:5px 12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-  }
-  .gs-bopen{flex-shrink:0;font-size:12px;font-weight:700;color:var(--accent);white-space:nowrap}
-  .gs-bopen:hover{text-decoration:underline;text-underline-offset:3px}
-  .gs-frame-wrap{position:relative;height:560px;overflow:hidden;background:#0a0a0b}
-  .gs-frame-wrap iframe{border:0;transform-origin:top left;display:block}
-  /* The embedded site has its own fixed bottom nav, which pins to the bottom of
-     the iframe viewport and reads as a rendering glitch. Fade the preview out
-     over it — the cut looks deliberate and the floating bar disappears. */
-  .gs-frame-wrap::after{
-    content:'';position:absolute;left:0;right:0;bottom:0;height:130px;pointer-events:none;
-    background:linear-gradient(to bottom,rgba(10,10,11,0) 0%,rgba(10,10,11,.82) 55%,#0a0a0b 100%);
-  }
-  @media (max-width:640px){.gs-frame-wrap{height:480px}.gs-frame-wrap::after{height:110px}}
-
-  /* ── WHAT'S INCLUDED ── */
-  .gs-feat{padding:6px 0 34px}
-  .gs-feat-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-  @media (max-width:640px){.gs-feat-grid{grid-template-columns:1fr}}
-  .gs-f{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px}
-  .gs-f-wide{grid-column:1/-1}
-  .gs-f-gold{border-color:rgba(245,166,35,.35);background:linear-gradient(135deg,rgba(245,166,35,.10),rgba(245,166,35,.02) 60%,transparent),var(--card)}
-  .gs-f-blue{background:linear-gradient(135deg,rgba(79,142,247,.10),rgba(79,142,247,.02) 60%,transparent),var(--card)}
-  .gs-f-t{font-size:15.5px;font-weight:800;letter-spacing:-.2px;margin-bottom:6px}
-  .gs-f-d{font-size:13px;line-height:1.6;color:var(--text-2)}
-
-  /* ── REQUEST ── */
-  .gs-request{padding:6px 0 0;scroll-margin-top:calc(var(--hdr-h) + 12px)}
-  .gs-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:22px 20px 24px;max-width:640px}
-  .gs-price{
-    border:1px solid rgba(245,166,35,.35);border-radius:12px;padding:12px 14px;margin:4px 0 18px;
-    background:linear-gradient(135deg,rgba(245,166,35,.10),rgba(245,166,35,.02) 60%,transparent);
-  }
-  .gs-price-row{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
-  .gs-price-main{font-size:24px;font-weight:900;color:var(--gold)}
-  .gs-price-alt{font-size:13.5px;font-weight:700}
-  .gs-price-list{
-    list-style:none;margin:9px 0 0;padding:0;display:grid;gap:4px;
-    font-size:12.5px;line-height:1.5;color:var(--text-2);
-  }
-  .gs-price-list li{position:relative;padding-left:17px}
-  .gs-price-list li::before{
-    content:'✓';position:absolute;left:0;top:0;
-    color:var(--gold);font-size:11px;font-weight:900;
-  }
-
-  .gs-lbl{display:block;font-size:11px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.5px;margin:0 0 6px 2px}
-  .gs-req{color:var(--gold)}
-  .gs-opt{text-transform:none;letter-spacing:0;font-weight:500;color:var(--text-3)}
-  .gs-inp{
-    width:100%;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:10px;
-    padding:11px 13px;font-size:14px;color:var(--text);margin-bottom:14px;outline:none;
-    transition:border-color .15s,background .15s;
-  }
-  .gs-inp::placeholder{color:var(--text-3)}
-  .gs-inp:focus{border-color:var(--gold);background:rgba(245,166,35,.05)}
-  .gs-ta{resize:vertical;min-height:70px;font-family:inherit}
-  .gs-2col{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-  @media (max-width:480px){.gs-2col{display:block}}
-
-  .gs-submit{width:100%;margin-top:2px}
-  .gs-btn:disabled{opacity:.6;cursor:not-allowed}
-  .gs-err{font-size:12.5px;color:var(--red);margin-top:8px;min-height:15px;text-align:center}
-
-  .gs-done{text-align:center;padding:26px 10px 14px}
-  .gs-done-ico{
-    width:52px;height:52px;border-radius:50%;margin:0 auto 14px;
+  .gs-brand{display:flex;align-items:center;gap:12px;color:inherit}
+  .gs-logo{
+    width:34px;height:34px;border-radius:8px;flex-shrink:0;
+    background:linear-gradient(135deg,#1e3a8a,#2563eb);
     display:flex;align-items:center;justify-content:center;
-    background:rgba(52,211,153,.12);border:1px solid rgba(52,211,153,.4);
-    color:var(--green);font-size:24px;font-weight:900;
+    font-weight:900;font-style:italic;font-size:15px;color:#fff;
   }
-  .gs-done-t{font-size:20px;font-weight:900;margin-bottom:6px}
-  .gs-done-d{font-size:13.5px;color:var(--text-2);line-height:1.6}
+  .gs-brand-txt{display:flex;flex-direction:column}
+  .gs-brand-t{font-weight:800;font-size:16px;line-height:1.1}
+  .gs-brand-s{font-size:11.5px;color:#93a1bd;line-height:1.2}
 
-  .gs-trust{font-size:12px;color:var(--text-3);margin-top:18px}
+  /* ── HERO ── */
+  .gs-hero{max-width:1080px;margin:0 auto;padding:clamp(48px,8vw,96px) clamp(20px,5vw,64px) clamp(36px,5vw,64px)}
+  .gs-live{
+    display:inline-flex;align-items:center;gap:8px;margin-bottom:12px;
+    font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;font-weight:600;
+    letter-spacing:.18em;color:#f2a83b;text-transform:uppercase;
+  }
+  .gs-live::before{content:'';width:7px;height:7px;border-radius:50%;background:#f2a83b;box-shadow:0 0 8px #f2a83b}
+  @media (prefers-reduced-motion: no-preference){.gs-live::before{animation:gsPulse 1.5s ease-in-out infinite}}
+  .gs-hero .gs-eyebrow{margin-bottom:20px}
+  .gs-h1{
+    font-size:clamp(38px,6.5vw,72px);line-height:1.02;font-weight:900;letter-spacing:-.02em;
+    margin:0 0 24px;max-width:18ch;text-wrap:balance;
+  }
+  .gs-hero-p1{font-size:clamp(17px,2vw,20px);line-height:1.55;color:#b8c3da;max-width:56ch;margin:0 0 12px;text-wrap:pretty}
+  .gs-hero-p1 strong{color:#fff}
+  .gs-hero-p2{font-size:clamp(15px,1.8vw,17px);line-height:1.5;color:#8b9ab5;max-width:56ch;margin:0 0 32px}
+  .gs-hero-ctas{display:flex;flex-wrap:wrap;gap:14px;align-items:center}
+  .gs-ghost{color:#b8c3da;font-weight:600;font-size:15px;padding:16px 8px;transition:color .15s}
+  .gs-ghost:hover{color:#fff}
+
+  /* ── WHAT'S ON THE LINE ── */
+  .gs-stakes{max-width:1080px;margin:0 auto;padding:0 clamp(20px,5vw,64px) clamp(48px,7vw,88px)}
+  .gs-stakes-card{
+    border:1px solid #1b2740;border-radius:18px;
+    background:linear-gradient(180deg,#0d1528,#0a1122);padding:clamp(24px,4vw,44px);
+  }
+  .gs-stakes-card .gs-eyebrow-dim{margin-bottom:8px}
+  .gs-stakes-h2{margin-bottom:28px;max-width:30ch;text-wrap:balance}
+  .gs-money{border:1px solid #1b2740;border-radius:14px;background:#0b1224;overflow:hidden}
+  .gs-mrow{
+    display:flex;flex-wrap:wrap;align-items:center;gap:6px 28px;
+    padding:clamp(14px,2.2vw,20px) clamp(18px,3vw,28px);border-bottom:1px solid #1b2740;
+  }
+  .gs-mrow:first-child{padding:clamp(18px,3vw,26px) clamp(18px,3vw,28px)}
+  .gs-mrow:nth-child(2){padding:clamp(16px,2.6vw,22px) clamp(18px,3vw,28px)}
+  .gs-mrow:last-child{border-bottom:none}
+  .gs-mnum{font-weight:900;color:#f2a83b;letter-spacing:-.02em;line-height:1;min-width:min(300px,100%)}
+  .gs-mnum-1{font-size:clamp(44px,6vw,62px)}
+  .gs-mnum-2{font-size:clamp(34px,4.6vw,48px)}
+  .gs-mnum-3{font-size:clamp(28px,3.6vw,38px)}
+  .gs-mtxt{flex:1;min-width:240px}
+  .gs-mt{font-weight:800;font-size:16px}
+  .gs-md{font-size:14px;color:#8b9ab5;line-height:1.5;margin-top:3px}
+  .gs-md sup{color:#f2a83b}
+  .gs-callout{
+    margin-top:24px;padding:22px 24px;border-radius:12px;
+    background:rgba(242,168,59,.07);border:1px solid rgba(242,168,59,.25);
+    display:flex;flex-wrap:wrap;gap:16px 24px;align-items:center;justify-content:space-between;
+  }
+  .gs-callout-t{font-size:clamp(16px,2vw,19px);font-weight:800;color:#fff;max-width:44ch;text-wrap:pretty}
+  .gs-sources{margin-top:16px;font-size:11.5px;color:#5a6884;line-height:1.7}
+  .gs-sources sup{color:inherit}
+
+  /* ── PROOF ── */
+  .gs-proof{max-width:1080px;margin:0 auto;padding:0 clamp(20px,5vw,64px) clamp(48px,7vw,88px);scroll-margin-top:80px}
+  .gs-proof-head{display:flex;flex-wrap:wrap;gap:8px 20px;align-items:baseline;margin-bottom:20px}
+  .gs-proof-note{font-size:15px;color:#b8c3da}
+  .gs-offers{color:#f2a83b;font-style:italic}
+
+  .gs-google{
+    background:#fdfdfd;border-radius:16px;padding:clamp(18px,3vw,28px);
+    max-width:680px;margin:0 0 18px;box-shadow:0 12px 40px rgba(0,0,0,.35);
+  }
+  .gs-glogo{font-family:arial,sans-serif;font-size:24px;font-weight:700;letter-spacing:-.02em;margin-bottom:14px}
+  .gs-gbox{
+    border:1px solid #dfe1e5;border-radius:24px;padding:11px 18px;
+    display:flex;align-items:center;gap:12px;box-shadow:0 1px 6px rgba(32,33,36,.15);
+  }
+  .gs-glens{width:13px;height:13px;border:2px solid #9aa0a6;border-radius:50%;flex-shrink:0}
+  .gs-gquery{font-family:arial,sans-serif;font-size:16px;color:#202124;min-height:20px}
+  .gs-caret{
+    display:inline-block;width:1.5px;height:17px;background:#202124;
+    vertical-align:text-bottom;margin-left:1px;
+  }
+  @media (prefers-reduced-motion: no-preference){.gs-caret{animation:gsPulse 1s steps(2) infinite}}
+  .gs-gresults{margin-top:18px;font-family:arial,sans-serif}
+  .gs-gres1{padding:12px 14px;border-radius:10px;background:#fdfdfd;transition:background .4s,box-shadow .4s}
+  .gs-gr-title{font-size:19px;color:#1a0dab;margin:0 0 2px}
+  .gs-gr-url{font-size:12.5px;color:#006621;margin:1px 0 4px}
+  .gs-gr-snip{font-size:13.5px;color:#4d5156;line-height:1.5}
+  .gs-gres2{padding:12px 14px;opacity:.45}
+  .gs-gr2-site{font-size:13px;color:#202124}
+  .gs-gr2-title{font-size:17px;color:#1a0dab;margin:2px 0}
+  .gs-clicked .gs-gres1{background:rgba(242,168,59,.22);box-shadow:0 0 0 2px #e8931f}
+
+  .gs-proof-arrow{letter-spacing:.14em;margin:0 0 14px}
+
+  .gs-frame{
+    border:1px solid #1b2740;border-radius:16px;overflow:hidden;background:#0d1528;
+    box-shadow:0 24px 60px rgba(0,0,0,.45);transition:box-shadow .5s;
+  }
+  .gs-clicked .gs-frame{box-shadow:0 0 0 2px rgba(242,168,59,.7),0 24px 60px rgba(0,0,0,.45)}
+  .gs-frame-bar{display:flex;align-items:center;gap:12px;padding:12px 16px;background:#0a1122;border-bottom:1px solid #1b2740}
+  .gs-dots{display:flex;gap:6px}
+  .gs-dot{width:10px;height:10px;border-radius:50%;background:#2a3a5c}
+  .gs-url{
+    flex:1;min-width:0;background:#101a30;border:1px solid #1b2740;border-radius:8px;padding:7px 14px;
+    font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:13px;color:#c8d2e8;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .gs-frame-open{font-size:13px;font-weight:700;color:#f2a83b;white-space:nowrap}
+  .gs-frame-open:hover{text-decoration:underline;text-underline-offset:3px}
+
+  .gs-mock{background:#0a0a09;padding:clamp(20px,4vw,36px);font-family:'IBM Plex Mono',ui-monospace,monospace}
+  .gs-mock-name-row{display:flex;flex-wrap:wrap;gap:10px 28px;align-items:baseline;border-left:2px solid #d8b878;padding-left:16px}
+  .gs-mock-name{font-size:clamp(24px,3.6vw,34px);font-weight:600;letter-spacing:.04em;color:#f3e9d2}
+  .gs-mock-name span{color:#d8b878}
+  .gs-mock-meta{font-size:12.5px;color:#8f8878;letter-spacing:.08em}
+  .gs-mock-lbl{margin:18px 0 0;font-size:12px;color:#8f8878;letter-spacing:.14em}
+  .gs-mock-quote{margin:6px 0 18px;font-size:clamp(13px,1.8vw,15px);color:#d9d2c0;letter-spacing:.03em;line-height:1.6}
+  .gs-mock-badges{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px}
+  .gs-mock-badge{border:1px solid #3a352b;border-radius:6px;padding:6px 12px;font-size:11px;letter-spacing:.08em;color:#c9c0a8}
+  .gs-mock-stats{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:1px;
+    background:#262320;border:1px solid #262320;border-radius:10px;overflow:hidden;
+  }
+  .gs-mstat{background:#0f0e0c;padding:14px 12px 12px;position:relative}
+  .gs-mstat-rank{position:absolute;top:8px;right:10px;font-size:10px;color:#8f8878}
+  .gs-mstat-v{font-size:22px;font-weight:600;color:#f3e9d2}
+  .gs-mstat-gold{color:#d8b878}
+  .gs-mstat-l{font-size:10px;letter-spacing:.14em;color:#8f8878;margin-top:2px}
+  .gs-mock-foot{margin-top:14px;font-size:11.5px;color:#8f8878;letter-spacing:.06em}
+
+  /* ── DASHBOARD ── */
+  .gs-dash{background:#0a0a09;border-top:1px solid #262320;border-bottom:1px solid #262320}
+  .gs-dash-inner{max-width:1080px;margin:0 auto;padding:clamp(48px,7vw,88px) clamp(20px,5vw,64px)}
+  .gs-dash-eyebrow{
+    display:flex;align-items:center;gap:10px;margin-bottom:8px;
+    font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;letter-spacing:.18em;color:#d8b878;
+  }
+  .gs-dash-dot{width:8px;height:8px;border-radius:50%;background:#d8b878;flex-shrink:0}
+  @media (prefers-reduced-motion: no-preference){.gs-dash-dot{animation:gsPulse 2.4s ease-in-out infinite}}
+  .gs-dash-h2{
+    font-size:clamp(26px,3.8vw,40px);font-weight:900;letter-spacing:-.01em;
+    margin:0 0 14px;color:#f3e9d2;max-width:24ch;text-wrap:balance;
+  }
+  .gs-dash-p{font-size:clamp(15px,1.9vw,17px);line-height:1.6;color:#b3ab96;max-width:60ch;margin:0 0 32px;text-wrap:pretty}
+  .gs-dash-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;align-items:start}
+  .gs-watch{border:1px solid #262320;border-radius:14px;background:#0f0e0c;overflow:hidden}
+  .gs-watch-head{
+    padding:16px 20px;border-bottom:1px solid #262320;
+    font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;letter-spacing:.12em;color:#8f8878;
+  }
+  .gs-watch-list{padding:8px 20px 16px}
+  .gs-wrow{padding:11px 0;border-bottom:1px solid #1c1a16}
+  .gs-wtop{display:flex;justify-content:space-between;gap:12px;align-items:baseline;margin-bottom:7px}
+  .gs-wname,.gs-wtime{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:13px;color:#8f8878}
+  .gs-wtime{white-space:nowrap}
+  .gs-wrow-hot .gs-wname{color:#d8b878;font-weight:600}
+  .gs-wrow-hot .gs-wtime{color:#d8b878}
+  .gs-wtrack{height:5px;border-radius:3px;background:#1c1a16;overflow:hidden}
+  .gs-wfill{height:100%;border-radius:3px;background:#4a443a;transform-origin:left}
+  .gs-wrow-hot .gs-wfill{background:linear-gradient(90deg,#d8b878,#f0d9a8)}
+  @media (prefers-reduced-motion: no-preference){
+    .gs-dash:not(.in) .gs-wfill{transform:scaleX(0)}
+    .gs-dash.in .gs-wfill{animation:gsBarGrow 1s ease-out both}
+  }
+  .gs-dash-col{display:flex;flex-direction:column;gap:16px}
+  .gs-duke{border:1px solid rgba(216,184,120,.4);border-radius:14px;background:rgba(216,184,120,.06);padding:22px 24px}
+  .gs-duke-eyebrow{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;letter-spacing:.12em;color:#d8b878;margin-bottom:10px}
+  .gs-duke-t{font-size:clamp(17px,2.2vw,20px);font-weight:800;color:#f3e9d2;line-height:1.45;margin-bottom:8px}
+  .gs-duke-d{font-size:14.5px;color:#b3ab96;line-height:1.6;text-wrap:pretty}
+  .gs-tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .gs-tile{border:1px solid #262320;border-radius:12px;background:#0f0e0c;padding:16px 14px}
+  .gs-tile-v{font-size:24px;font-weight:900;color:#d8b878}
+  .gs-tile-l{font-size:11px;letter-spacing:.08em;color:#8f8878;margin-top:4px;font-family:'IBM Plex Mono',ui-monospace,monospace}
+  .gs-dash-note{font-size:12.5px;color:#6d6656;line-height:1.6}
+
+  /* ── PRICING + FORM ── */
+  .gs-request{
+    max-width:1080px;margin:0 auto;
+    padding:clamp(48px,7vw,88px) clamp(20px,5vw,64px) clamp(64px,8vw,110px);
+    scroll-margin-top:80px;
+  }
+  .gs-req-card{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:0;
+    border:1px solid #1b2740;border-radius:20px;overflow:hidden;background:#0d1528;
+    box-shadow:0 24px 70px rgba(0,0,0,.5);
+  }
+  .gs-price-panel{
+    padding:clamp(28px,4vw,44px);
+    background:linear-gradient(160deg,#101c38,#0b1224);border-bottom:1px solid #1b2740;
+  }
+  .gs-price-panel .gs-eyebrow{display:block;font-size:12px;margin-bottom:14px}
+  .gs-price-row{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+  .gs-price-main{font-size:clamp(44px,6vw,60px);font-weight:900;color:#f2a83b;letter-spacing:-.02em;line-height:1}
+  .gs-price-alt{font-size:16px;font-weight:700;color:#c8d2e8}
+  .gs-checks{margin:24px 0 0;display:flex;flex-direction:column;gap:12px}
+  .gs-check{display:flex;gap:10px;font-size:14.5px;color:#c8d2e8}
+  .gs-check span{color:#f2a83b;font-weight:800}
+  .gs-roi{margin-top:26px;padding-top:22px;border-top:1px solid #1b2740;display:flex;flex-direction:column;gap:14px}
+  .gs-roi-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;gap:10px}
+  .gs-roi-l{font-size:12px;font-weight:700;letter-spacing:.08em;color:#93a1bd}
+  .gs-roi-sub{color:#5a6884;font-weight:600;letter-spacing:0}
+  .gs-roi-v{font-size:15px;font-weight:800;color:#c8d2e8;white-space:nowrap}
+  .gs-roi-v-accent{color:#f2a83b}
+  .gs-roi-track{height:10px;border-radius:5px;background:#0a1122;overflow:hidden}
+  .gs-roi-fill{height:100%;border-radius:5px}
+  .gs-roi-fill-site{width:5px;background:#93a1bd}
+  .gs-roi-fill-offer{width:100%;background:linear-gradient(90deg,#e8931f,#f7bd4d)}
+  .gs-roi-pill{
+    align-self:center;font-size:13px;font-weight:800;color:#f2a83b;
+    border:1px solid rgba(242,168,59,.35);background:rgba(242,168,59,.08);
+    border-radius:20px;padding:6px 16px;
+  }
+  .gs-roi-note{align-self:center;font-size:11.5px;color:#5a6884}
+
+  .gs-form-panel{padding:clamp(28px,4vw,44px)}
+  .gs-h3{font-size:24px;font-weight:900;margin:0 0 6px}
+  .gs-form-sub{font-size:14.5px;color:#8b9ab5;margin-bottom:24px}
+  .gs-form-panel form{display:flex;flex-direction:column;gap:16px}
+  .gs-2col{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px}
+  .gs-lbl{display:flex;flex-direction:column;gap:7px;font-size:12px;font-weight:700;letter-spacing:.08em;color:#93a1bd}
+  .gs-req-star{color:#f2a83b}
+  .gs-inp{
+    background:#0a1122;border:1px solid #1b2740;border-radius:10px;padding:13px 14px;
+    color:#e9eef8;font-size:15px;font-family:'Archivo',sans-serif;outline:none;width:100%;
+    transition:border-color .15s;
+  }
+  .gs-inp::placeholder{color:#5a6884}
+  .gs-inp:focus{border-color:#f2a83b}
+  .gs-ta{resize:vertical;min-height:70px}
+  .gs-submit{margin-top:4px}
+  .gs-btn:disabled{opacity:.6;cursor:not-allowed}
+  .gs-form-note{font-size:12.5px;color:#5a6884;text-align:center}
+  .gs-err{font-size:12.5px;color:#f87171;min-height:15px;text-align:center}
+
+  .gs-done{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;height:100%;gap:14px;padding:20px 0}
+  .gs-done-ico{
+    width:52px;height:52px;border-radius:50%;
+    background:rgba(242,168,59,.15);border:1px solid rgba(242,168,59,.5);
+    display:flex;align-items:center;justify-content:center;font-size:24px;color:#f2a83b;
+  }
+  .gs-done[hidden]{display:none}
+  .gs-done-t{font-size:26px;font-weight:900;margin:0}
+  .gs-done-d{font-size:15.5px;color:#b8c3da;line-height:1.6;max-width:40ch}
+
+  /* ── FOOTER ── */
+  .gs-footer{
+    border-top:1px solid #131d33;padding:28px clamp(20px,5vw,64px);
+    display:flex;flex-wrap:wrap;gap:12px 24px;justify-content:space-between;align-items:center;
+    max-width:1080px;margin:0 auto;
+  }
+  .gs-foot-brand{display:flex;align-items:center;gap:10px}
+  .gs-logo-sm{width:26px;height:26px;border-radius:6px;font-size:11px}
+  .gs-foot-txt{font-size:13.5px;color:#8b9ab5}
+  .gs-foot-txt strong{color:#c8d2e8}
+  .gs-foot-sources{font-size:12.5px;color:#5a6884}
 </style>

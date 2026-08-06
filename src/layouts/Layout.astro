@@ -19,8 +19,9 @@ export interface Props {
   robots?: string;
   trackTitle?: string;       // human-readable name for analytics (player/team/matchup) — not SEO title
   hideNav?: boolean;         // drop the bottom nav (conversion pages: no exits off the page)
+  hideHeader?: boolean;      // drop the site header too (page ships its own nav, e.g. /get-started)
 }
-const { title, description = '', subLabel, pillLabel, pageBase, activeTab, canonical, robots, trackTitle, hideNav = false } = Astro.props;
+const { title, description = '', subLabel, pillLabel, pageBase, activeTab, canonical, robots, trackTitle, hideNav = false, hideHeader = false } = Astro.props;
 
 // Share-preview image: one static brand card for every page. Replaced the
 // per-page Chromium screenshot function (api/og-shot.js, removed Aug 2026) —
@@ -135,7 +136,7 @@ const navIcons: Record<string, string> = {
 </head>
 <body>
 <GateModal />
-<header class="hdr">
+{!hideHeader && <header class="hdr">
   <a class="hdr-home" id="hdr-home" href="/" data-track="header:logo">
     <div class="hdr-logo" id="hdr-logo" role="img" aria-label="Circuit Stats logo"></div>
     <div class="hdr-info">
@@ -153,9 +154,9 @@ const navIcons: Record<string, string> = {
       {LEAGUES.map(l => <a class="ld-item" href={`${l.urlBase}/${activeTab === 'leaders' ? 'leaders/ppg' : activeTab === 'compare' ? 'compare' : activeTab === 'teams' ? 'teams' : 'stats'}`} data-track={`header:league-switch:${l.key}`}>{l.label}</a>)}
     </div>
   </div>
-</header>
+</header>}
 
-<main class:list={["main", { "main-no-nav": hideNav }]}>
+<main class:list={["main", { "main-no-nav": hideNav, "main-no-hdr": hideHeader }]}>
   <slot />
 </main>
 

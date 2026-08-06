@@ -112,6 +112,8 @@ a{color:inherit;text-decoration:none}
 }
 /* Conversion pages render without the bottom nav — reclaim its reserved space. */
 .main-no-nav{padding-bottom:env(safe-area-inset-bottom,0px)}
+/* Pages that ship their own nav (hideHeader) — reclaim the fixed header's space. */
+.main-no-hdr{padding-top:0}
 .view{display:none}
 .view.active{display:block;animation:fadeUp .18s ease}
 @keyframes fadeUp{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
