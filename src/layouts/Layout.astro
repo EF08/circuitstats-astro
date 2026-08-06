@@ -22,15 +22,11 @@ export interface Props {
 }
 const { title, description = '', subLabel, pillLabel, pageBase, activeTab, canonical, robots, trackTitle, hideNav = false } = Astro.props;
 
-// Share-preview image: a real full-page screenshot of THIS page (api/og-shot.js)
-// at phone width, so link previews show the whole content — Andy's pick over the
-// old top-1200x630 crop and the drawn-card generator, both since removed.
-// Self-referential — the function screenshots whatever host actually receives
-// the request, so this works unchanged on any domain (preview or production).
-const shotPath = new URL(canonical || Astro.url.pathname, Astro.site || Astro.url.origin).pathname;
-// v2: dead-space trim (short pages no longer padded to a full phone screen) —
-// the version bump busts the CDN/scraper caches still holding the tall shots.
-const ogImage = `${(Astro.site?.href || Astro.url.origin).replace(/\/$/, '')}/api/og-shot?path=${encodeURIComponent(shotPath)}&v=2`;
+// Share-preview image: one static brand card for every page. Replaced the
+// per-page Chromium screenshot function (api/og-shot.js, removed Aug 2026) —
+// crawlers fetching ~5,800 unique screenshot URLs burned through the whole
+// Vercel Hobby Active-CPU quota. Don't reintroduce per-request image rendering.
+const ogImage = `${(Astro.site?.href || Astro.url.origin).replace(/\/$/, '')}/og-card.png`;
 
 // Bottom-nav destinations (real pages). Leaders defaults to the PPG board.
 const tabs = [
@@ -128,6 +124,8 @@ const navIcons: Record<string, string> = {
   {description && <meta property="og:description" content={description} />}
   {canonical && <meta property="og:url" content={canonical} />}
   <meta property="og:image" content={ogImage} />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content={title} />
   {description && <meta name="twitter:description" content={description} />}
