@@ -416,6 +416,14 @@ const SITE = 'https://www.circuitstats.com';
 </Layout>
 
 <style>
+  /* global.css zooms the whole site 1.3x on desktop (html{zoom:1.3}, tuned for
+     the stats app). This page's typography is already desktop-sized by its own
+     clamp() scales, so the zoom made everything enormous — neutralize it here.
+     html:root outranks the plain html selector regardless of bundle order. */
+  @media (min-width:1024px){
+    :global(html:root){zoom:1}
+  }
+
   .gs-page{
     background:#070d1a;min-height:100vh;color:#e9eef8;
     font-family:'Archivo',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
