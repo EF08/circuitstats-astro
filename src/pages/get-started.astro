@@ -2,8 +2,9 @@
 // get-started.astro — conversion landing for player websites, the destination
 // of the "Get D1 offers now" hero CTA. Implements the Claude Design redesign
 // ("Player Websites Sales Page"): own sticky nav (site header hidden) → hero →
-// what's-on-the-line money section → live Google-search demo + abrifazliu.com
-// mock → private-dashboard section → pricing + request form. Prefills
+// what's-on-the-line money section → live Google-search demo + the real
+// abrifazliu.com embedded in a browser frame (interactive) →
+// private-dashboard section → pricing + request form. Prefills
 // player/team/league from query params (?p=&t=&l=) and POSTs to the
 // circuitboard backend (/website-request), which stores the lead and emails
 // Andy.
@@ -32,7 +33,7 @@ const SITE = 'https://www.circuitstats.com';
     <!-- NAV -->
     <nav class="gs-nav">
       <a class="gs-brand" href="/" data-track="get-started:logo">
-        <span class="gs-logo">CS</span>
+        <div class="hdr-logo gs-nav-logo" role="img" aria-label="Circuit Stats logo"></div>
         <span class="gs-brand-txt">
           <span class="gs-brand-t">Circuit Stats</span>
           <span class="gs-brand-s">Player Websites</span>
@@ -123,28 +124,8 @@ const SITE = 'https://www.circuitstats.com';
           <div class="gs-url">abrifazliu.com</div>
           <a class="gs-frame-open" href="https://www.abrifazliu.com" target="_blank" rel="noopener" data-track="get-started:example">His own domain ↗</a>
         </div>
-        <div class="gs-mock">
-          <div class="gs-mock-name-row">
-            <div class="gs-mock-name">ABRI <span>FAZLIU</span></div>
-            <div class="gs-mock-meta">CLASS OF 2029 / TORONTO, CA / 6'2 PG / 6'5 WS</div>
-          </div>
-          <div class="gs-mock-lbl">PLAYER PROFILE</div>
-          <div class="gs-mock-quote">"LUKA DONCIC WITH ELITE DEFENSE, A +45% THREE BALL, AND GREAT OFF-BALL INSTINCTS"</div>
-          <div class="gs-mock-badges">
-            <div class="gs-mock-badge">NORTH POLE HOOPS MVP</div>
-            <div class="gs-mock-badge">MADEHOOPS CANADA MVP</div>
-            <div class="gs-mock-badge">2× COALITION LEAGUE MVP</div>
-            <div class="gs-mock-badge">PLAY4KAY MVP (2 YRS UP)</div>
-          </div>
-          <div class="gs-mock-stats">
-            <div class="gs-mstat"><div class="gs-mstat-rank">#2</div><div class="gs-mstat-v">20.5</div><div class="gs-mstat-l">PPG</div></div>
-            <div class="gs-mstat"><div class="gs-mstat-rank">#2</div><div class="gs-mstat-v">50.0%</div><div class="gs-mstat-l">3P</div></div>
-            <div class="gs-mstat"><div class="gs-mstat-rank">#32</div><div class="gs-mstat-v">3.0</div><div class="gs-mstat-l">AST</div></div>
-            <div class="gs-mstat"><div class="gs-mstat-rank">#37</div><div class="gs-mstat-v">1.75</div><div class="gs-mstat-l">STL</div></div>
-            <div class="gs-mstat"><div class="gs-mstat-rank">#44</div><div class="gs-mstat-v">49.0%</div><div class="gs-mstat-l">FG</div></div>
-            <div class="gs-mstat"><div class="gs-mstat-v gs-mstat-gold">✓</div><div class="gs-mstat-l">VERIFIED</div></div>
-          </div>
-          <div class="gs-mock-foot">EVERY STAT LINKS TO HIS OFFICIAL CIRCUIT STATS PAGE · UPDATES AUTOMATICALLY AFTER EVERY SESSION</div>
+        <div class="gs-embed-wrap" id="gs-embed-wrap">
+          <iframe id="gs-embed" src="https://www.abrifazliu.com" title="Live example: Abri Fazliu's recruiting website" loading="lazy"></iframe>
         </div>
       </div>
     </section>
@@ -300,6 +281,29 @@ const SITE = 'https://www.circuitstats.com';
       if (tl) document.getElementById('gs-team').value = tl;
     })();
 
+    // Fit the live-example iframe: desktop renders the real desktop site scaled
+    // to the container; narrow screens get the site's own responsive layout.
+    (function () {
+      var wrap = document.getElementById('gs-embed-wrap');
+      var frame = document.getElementById('gs-embed');
+      var DESK = 1180;
+      function fit() {
+        var w = wrap.clientWidth;
+        if (w < 620) {
+          frame.style.width = '100%';
+          frame.style.height = wrap.clientHeight + 'px';
+          frame.style.transform = 'none';
+        } else {
+          var s = w / DESK;
+          frame.style.width = DESK + 'px';
+          frame.style.height = Math.round(wrap.clientHeight / s) + 'px';
+          frame.style.transform = 'scale(' + s + ')';
+        }
+      }
+      fit();
+      window.addEventListener('resize', fit);
+    })();
+
     // Google-search demo: when the card scrolls into view, type the player's
     // name, surface the results, then "click" the top one (highlight + the site
     // frame below lights up). Reduced motion jumps straight to the final state.
@@ -445,6 +449,8 @@ const SITE = 'https://www.circuitstats.com';
     backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);z-index:50;
   }
   .gs-brand{display:flex;align-items:center;gap:12px;color:inherit}
+  /* Real Circuit Stats logo (global .hdr-logo image), sized to this nav. */
+  .gs-nav .gs-nav-logo{width:34px;height:34px;border-radius:8px}
   .gs-logo{
     width:34px;height:34px;border-radius:8px;flex-shrink:0;
     background:linear-gradient(135deg,#1e3a8a,#2563eb);
@@ -559,25 +565,16 @@ const SITE = 'https://www.circuitstats.com';
   .gs-frame-open{font-size:13px;font-weight:700;color:#f2a83b;white-space:nowrap}
   .gs-frame-open:hover{text-decoration:underline;text-underline-offset:3px}
 
-  .gs-mock{background:#0a0a09;padding:clamp(20px,4vw,36px);font-family:'IBM Plex Mono',ui-monospace,monospace}
-  .gs-mock-name-row{display:flex;flex-wrap:wrap;gap:10px 28px;align-items:baseline;border-left:2px solid #d8b878;padding-left:16px}
-  .gs-mock-name{font-size:clamp(24px,3.6vw,34px);font-weight:600;letter-spacing:.04em;color:#f3e9d2}
-  .gs-mock-name span{color:#d8b878}
-  .gs-mock-meta{font-size:12.5px;color:#8f8878;letter-spacing:.08em}
-  .gs-mock-lbl{margin:18px 0 0;font-size:12px;color:#8f8878;letter-spacing:.14em}
-  .gs-mock-quote{margin:6px 0 18px;font-size:clamp(13px,1.8vw,15px);color:#d9d2c0;letter-spacing:.03em;line-height:1.6}
-  .gs-mock-badges{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px}
-  .gs-mock-badge{border:1px solid #3a352b;border-radius:6px;padding:6px 12px;font-size:11px;letter-spacing:.08em;color:#c9c0a8}
-  .gs-mock-stats{
-    display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:1px;
-    background:#262320;border:1px solid #262320;border-radius:10px;overflow:hidden;
+  .gs-embed-wrap{position:relative;height:560px;overflow:hidden;background:#0a0a0b}
+  .gs-embed-wrap iframe{border:0;transform-origin:top left;display:block}
+  /* The embedded site has its own fixed bottom nav, which pins to the bottom of
+     the iframe viewport and reads as a rendering glitch. Fade the preview out
+     over it — the cut looks deliberate and the floating bar disappears. */
+  .gs-embed-wrap::after{
+    content:'';position:absolute;left:0;right:0;bottom:0;height:130px;pointer-events:none;
+    background:linear-gradient(to bottom,rgba(10,10,11,0) 0%,rgba(10,10,11,.82) 55%,#0a0a0b 100%);
   }
-  .gs-mstat{background:#0f0e0c;padding:14px 12px 12px;position:relative}
-  .gs-mstat-rank{position:absolute;top:8px;right:10px;font-size:10px;color:#8f8878}
-  .gs-mstat-v{font-size:22px;font-weight:600;color:#f3e9d2}
-  .gs-mstat-gold{color:#d8b878}
-  .gs-mstat-l{font-size:10px;letter-spacing:.14em;color:#8f8878;margin-top:2px}
-  .gs-mock-foot{margin-top:14px;font-size:11.5px;color:#8f8878;letter-spacing:.06em}
+  @media (max-width:640px){.gs-embed-wrap{height:480px}.gs-embed-wrap::after{height:110px}}
 
   /* ── DASHBOARD ── */
   .gs-dash{background:#0a0a09;border-top:1px solid #262320;border-bottom:1px solid #262320}
