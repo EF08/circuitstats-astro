@@ -9,7 +9,7 @@ Circuit Stats is **not the product — it is the top of the funnel.** It is give
 Free users / traffic: AAU coaches scouting opponents, recruiters and college scouts, parents checking their kid's standing, program directors. The **buyer** is narrower: **parents of players** (and players themselves) who want their kid seen by college programs. Coaches and scouts are traffic and credibility, not revenue. Marketing and on-site CTAs are aimed at the parent segment.
 
 ## Monetization (LIVE since July 2026)
-Professional player recruiting websites: **$399 to build, then $39/month** hosting (exact copy on `/get-started`: "his own domain, highlight film and verified stats that update after every session").
+Professional player recruiting websites: **$399 to build, then $39/month** hosting (exact copy on `/get-started`: "his own domain, highlight film, verified stats that update after every session, and a private dashboard showing which coaches opened his site and what they watched"). The dashboard (visitor log, visitors over time, film watch time — like abrifazliu's) is a standard included feature as of Aug 2026.
 
 The funnel is live end-to-end: player pages → CTA card → `/get-started` form → `website_requests` in the backend (`a1a2-command-center/apps/circuitboard`) + email notification to Andy. An urgency badge on the player-page CTA and `/get-started` hero (`src/lib/liveLabel.js`) shows only during the real NCAA live periods (April and July); other months it hides entirely — don't "fix" its absence.
 

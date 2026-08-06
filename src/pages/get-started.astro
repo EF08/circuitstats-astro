@@ -12,7 +12,7 @@ const SITE = 'https://www.circuitstats.com';
 <Layout
   title="Get Your Player's Website | Circuit Stats"
   trackTitle="Get Started — Player Website"
-  description="A professional recruiting website for your player: his own domain, highlight film and verified stats that update after every session. $399 to build, then $39/month."
+  description="A professional recruiting website for your player: his own domain, highlight film, verified stats that update after every session, and a private dashboard showing which coaches opened his site and what they watched. $399 to build, then $39/month."
   subLabel="Player Websites"
   pillLabel="ALL"
   pageBase="/rankings"
@@ -26,7 +26,7 @@ const SITE = 'https://www.circuitstats.com';
     <section class="gs-hero">
       <div class="gs-live" data-live-label style={liveLabel() ? undefined : 'display:none'}>{liveLabel()}</div>
       <h1 class="gs-h1" id="gs-title">Get your player seen by college coaches.</h1>
-      <p class="gs-hero-sub">A professional recruiting website on his own domain, <span class="gs-domain">www.hisrealname.com</span>: film, verified stats, accolades. One link any coach can open.</p>
+      <p class="gs-hero-sub">A professional recruiting website on his own domain, <span class="gs-domain">www.hisrealname.com</span>: film, verified stats, accolades. One link any coach can open — and his dashboard shows you when they do.</p>
       <a class="gs-btn gs-hero-btn" href="#request" data-track="get-started:hero-cta">Request my website</a>
     </section>
 
@@ -50,6 +50,10 @@ const SITE = 'https://www.circuitstats.com';
     <section class="gs-feat gs-reveal">
       <h2 class="gs-h2">Everything is done for you</h2>
       <div class="gs-feat-grid">
+        <div class="gs-f gs-f-gold gs-f-wide">
+          <div class="gs-f-t">See which coaches actually look</div>
+          <div class="gs-f-d">Every site includes his private dashboard: a visitor log of who opened the site, what they viewed, and how long they watched his film — plus visitors over time. Send a coach the link, then watch the interest instead of wondering.</div>
+        </div>
         <div class="gs-f gs-f-gold">
           <div class="gs-f-t">His own domain</div>
           <div class="gs-f-d"><span class="gs-domain">www.hisrealname.com</span>, for Instagram bios, coach emails, everywhere.</div>
@@ -84,6 +88,7 @@ const SITE = 'https://www.circuitstats.com';
             <li>His own domain</li>
             <li>His film, edited and organized</li>
             <li>Verified stats, updated every session</li>
+            <li>Private dashboard: coach visits &amp; film watch time</li>
             <li>Hosting and upkeep handled for you</li>
           </ul>
         </div>
@@ -115,7 +120,7 @@ const SITE = 'https://www.circuitstats.com';
           </div>
 
           <label class="gs-lbl" for="gs-notes">Changes or additions you'd want <span class="gs-opt">(leave blank for none)</span></label>
-          <textarea class="gs-inp gs-ta" id="gs-notes" name="notes" maxlength="1500" rows="3" placeholder="I want it like abrifazliu.com but with... a dashboard I can track which coaches went to my website, from what location, watched which of my film, etc."></textarea>
+          <textarea class="gs-inp gs-ta" id="gs-notes" name="notes" maxlength="1500" rows="3" placeholder="I want it like abrifazliu.com but with... team colors, a different film order, an academics section, etc."></textarea>
 
           <button class="gs-btn gs-submit" id="gs-submit" type="submit" data-track="get-started:submit">Request my website</button>
           <div class="gs-err" id="gs-err"></div>
@@ -336,6 +341,7 @@ const SITE = 'https://www.circuitstats.com';
   .gs-feat-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
   @media (max-width:640px){.gs-feat-grid{grid-template-columns:1fr}}
   .gs-f{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px}
+  .gs-f-wide{grid-column:1/-1}
   .gs-f-gold{border-color:rgba(245,166,35,.35);background:linear-gradient(135deg,rgba(245,166,35,.10),rgba(245,166,35,.02) 60%,transparent),var(--card)}
   .gs-f-blue{background:linear-gradient(135deg,rgba(79,142,247,.10),rgba(79,142,247,.02) 60%,transparent),var(--card)}
   .gs-f-t{font-size:15.5px;font-weight:800;letter-spacing:-.2px;margin-bottom:6px}
