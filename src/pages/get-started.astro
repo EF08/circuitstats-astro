@@ -402,6 +402,9 @@ const SITE = 'https://www.circuitstats.com';
         }).then(function (r) {
           if (!r.ok) throw new Error('status ' + r.status);
           track('get-started:submit-success');
+          // Meta ads conversion: a completed request is the Lead event the ad
+          // campaigns optimize toward. No-op until the pixel is live (MetaPixel.astro).
+          if (window.fbq) window.fbq('track', 'Lead');
           document.getElementById('gs-formwrap').hidden = true;
           document.getElementById('gs-done').hidden = false;
         }).catch(function (e) {
