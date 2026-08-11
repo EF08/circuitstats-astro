@@ -85,19 +85,19 @@ const SITE = 'https://www.circuitstats.com';
       <p class="gs-callout-t">The coaches who decide who gets this money are already recruiting on Circuit Stats. From the site's visitor log:</p>
       <div class="gs-vlog">
         <div class="gs-vrow">
-          <div class="gs-vorg">University of North Carolina at Chapel Hill</div>
+          <div class="gs-vtop"><div class="gs-vorg">University of North Carolina at Chapel Hill</div><div class="gs-vtime">recently</div></div>
           <div class="gs-vsub">Chapel Hill, NC · viewed Xavier Young, Texas Impact film, U17 scoring leaders</div>
         </div>
         <div class="gs-vrow">
-          <div class="gs-vorg">University of Michigan</div>
+          <div class="gs-vtop"><div class="gs-vorg">University of Michigan</div><div class="gs-vtime">recently</div></div>
           <div class="gs-vsub">New Hudson, MI · viewed Merrick Ham</div>
         </div>
         <div class="gs-vrow">
-          <div class="gs-vorg">Cleveland Cavaliers</div>
+          <div class="gs-vtop"><div class="gs-vorg">Cleveland Cavaliers</div><div class="gs-vtime">2d ago</div></div>
           <div class="gs-vsub">Cleveland, OH · viewed Flory Kuminga, EYBL U15 stats</div>
         </div>
         <div class="gs-vrow">
-          <div class="gs-vorg">Illinois State University</div>
+          <div class="gs-vtop"><div class="gs-vorg">Illinois State University</div><div class="gs-vtime">3d ago</div></div>
           <div class="gs-vsub">Normal, IL · viewed Alexander Sirbu</div>
         </div>
       </div>
@@ -209,7 +209,7 @@ const SITE = 'https://www.circuitstats.com';
           </div>
           <div class="gs-checks">
             <div class="gs-check"><span>✓</span> Ranks at the top of Google for his name</div>
-            <div class="gs-check"><span>✓</span> Connected to Circuit Stats, where D1 &amp; NBA coaches scout</div>
+            <div class="gs-check"><span>✓</span> Connect website to Circuit Stats, where D1 &amp; NBA teams scout</div>
             <div class="gs-check"><span>✓</span> His own domain, registered to him</div>
             <div class="gs-check"><span>✓</span> His film, edited and organized</div>
             <div class="gs-check"><span>✓</span> Verified stats, updated every session</div>
@@ -547,7 +547,9 @@ const SITE = 'https://www.circuitstats.com';
      page's own row idiom (not screenshots), ordered most→least impressive. */
   .gs-vlog{margin-top:18px;border-top:1px solid #131f38}
   .gs-vrow{padding:13px 0;border-bottom:1px solid #131f38}
+  .gs-vtop{display:flex;justify-content:space-between;gap:12px;align-items:baseline}
   .gs-vorg{font-weight:700;font-size:15px;color:#e9eef8}
+  .gs-vtime{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12.5px;color:#8fa0c0;white-space:nowrap}
   .gs-vsub{margin-top:4px;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12.5px;color:#6d7c9c;line-height:1.6}
   .gs-vnote{margin-top:10px;font-size:11.5px;color:#6d7c9c;line-height:1.6}
   .gs-sources{margin-top:20px;font-size:11.5px;color:#6d7c9c;line-height:1.7}
@@ -770,6 +772,7 @@ const SITE = 'https://www.circuitstats.com';
     .gs-roi-v{font-size:17px}                      /* was 15px */
     .gs-roi-return{font-size:16px}
     .gs-vorg{font-size:17px}
+    .gs-vtime{font-size:13.5px}
     .gs-vsub{font-size:13.5px}
     /* fine-print floor: 13.5px */
     .gs-vnote{font-size:13.5px}
