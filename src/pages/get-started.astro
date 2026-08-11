@@ -262,7 +262,7 @@ const SITE = 'https://www.circuitstats.com';
         <div class="hdr-logo gs-foot-logo" role="img" aria-label="Circuit Stats logo"></div>
         <span class="gs-foot-txt"><strong>Circuit Stats</strong> · Player Websites</span>
       </div>
-      <div class="gs-foot-contact">Questions? <a href="mailto:andyfazliu@gmail.com" data-track="get-started:contact">andyfazliu@gmail.com</a></div>
+      <div class="gs-foot-contact">Questions? <a href="mailto:andyfazliu@gmail.com" data-track="get-started:contact"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 5L2 7"/></svg>Email us</a></div>
       <div class="gs-foot-sources">Sources: Florida Coastal Prep 2026 · House v. NCAA settlement · NIL Market Rate Insights 2025</div>
     </footer>
 
@@ -749,8 +749,12 @@ const SITE = 'https://www.circuitstats.com';
   .gs-foot-txt{font-size:13.5px;color:#8b9ab5}
   .gs-foot-txt strong{color:#c8d2e8}
   .gs-foot-contact{font-size:12.5px;color:#8b9ab5}
-  .gs-foot-contact a{color:#f2a83b;text-decoration:underline;text-underline-offset:3px;transition:color .15s}
+  .gs-foot-contact a{
+    display:inline-flex;align-items:center;gap:6px;vertical-align:bottom;
+    color:#f2a83b;text-decoration:underline;text-underline-offset:3px;transition:color .15s;
+  }
   .gs-foot-contact a:hover{color:#f7ba60}
+  .gs-foot-contact svg{width:14px;height:14px;flex-shrink:0}
   .gs-foot-sources{font-size:12.5px;color:#5a6884}
 
   /* ── DESKTOP TYPE FLOORS ── the large-size compression now lives in the base
