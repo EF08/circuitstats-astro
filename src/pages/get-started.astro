@@ -196,12 +196,14 @@ const SITE = 'https://www.circuitstats.com';
             <div class="gs-check"><span>✓</span> Hosting and upkeep handled forever</div>
             <div class="gs-check"><span>✓</span> Cancel anytime</div>
           </div>
-          <div class="gs-roi">
+          <div class="gs-roi" id="gs-roi">
             <div class="gs-roi-item">
               <div class="gs-roi-top"><div class="gs-roi-l">THIS WEBSITE</div><div class="gs-roi-v">$399</div></div>
+              <div class="gs-roi-track"><div class="gs-roi-fill gs-roi-fill-site"></div></div>
             </div>
             <div class="gs-roi-item">
               <div class="gs-roi-top"><div class="gs-roi-l">ONE D1 OFFER &nbsp;<span class="gs-roi-sub">$2M NIL + $400K scholarship</span></div><div class="gs-roi-v gs-roi-v-accent">$2.4M</div></div>
+              <div class="gs-roi-track"><div class="gs-roi-fill gs-roi-fill-offer"></div></div>
             </div>
             <div class="gs-roi-return">= a 6,015× return</div>
             <div class="gs-roi-note">*No guarantee you go D1 — that part's on him.</div>
@@ -340,6 +342,19 @@ const SITE = 'https://www.circuitstats.com';
         if (entries.some(function (e) { return e.isIntersecting; })) { io.disconnect(); show(); }
       }, { threshold: 0.25 });
       io.observe(dash);
+      // Safety net: never leave the bars invisible.
+      setTimeout(show, 4000);
+    })();
+
+    // ROI comparison bars grow when the pricing block scrolls into view.
+    (function () {
+      var roi = document.getElementById('gs-roi');
+      function show() { roi.classList.add('in'); }
+      if (!('IntersectionObserver' in window)) { show(); return; }
+      var io = new IntersectionObserver(function (entries) {
+        if (entries.some(function (e) { return e.isIntersecting; })) { io.disconnect(); show(); }
+      }, { threshold: 0.4 });
+      io.observe(roi);
       // Safety net: never leave the bars invisible.
       setTimeout(show, 4000);
     })();
@@ -636,9 +651,20 @@ const SITE = 'https://www.circuitstats.com';
   .gs-check{display:flex;gap:12px;font-size:14.5px;color:#c8d2e8;padding:10px 0;border-bottom:1px solid #131f38}
   .gs-check span{color:#f2a83b;font-weight:700}
   .gs-roi{margin-top:30px}
-  .gs-roi-item{padding:11px 0;border-bottom:1px solid #131f38}
+  .gs-roi-item{padding:11px 0 13px;border-bottom:1px solid #131f38}
   .gs-roi-item:first-child{border-top:1px solid #131f38}
   .gs-roi-top{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+  /* Comparison bars: the $399 sliver in site gold vs the offer in green.
+     The widths are the point — don't scale them to be "fair". */
+  .gs-roi-track{margin-top:9px;height:6px;border-radius:3px;background:#0e1830;overflow:hidden}
+  .gs-roi-fill{height:100%;border-radius:3px;transform-origin:left}
+  .gs-roi-fill-site{width:6px;background:#f2a83b}
+  .gs-roi-fill-offer{width:100%;background:#34d399}
+  @media (prefers-reduced-motion: no-preference){
+    .gs-roi:not(.in) .gs-roi-fill{transform:scaleX(0)}
+    .gs-roi.in .gs-roi-fill{animation:gsBarGrow .9s ease-out both}
+    .gs-roi.in .gs-roi-fill-offer{animation-delay:.18s}
+  }
   .gs-roi-l{font-size:12px;font-weight:700;letter-spacing:.08em;color:#8b9ab5}
   .gs-roi-sub{color:#6d7c9c;font-weight:600;letter-spacing:0}
   .gs-roi-v{font-size:15px;font-weight:700;color:#c8d2e8;white-space:nowrap}
