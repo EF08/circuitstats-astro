@@ -243,6 +243,7 @@ const SITE = 'https://www.circuitstats.com';
               <input type="hidden" id="gs-team" name="teamLeague" />
               <label class="gs-lbl"><span>CHANGES OR ADDITIONS YOU'D WANT (OPTIONAL)</span><textarea class="gs-inp gs-ta" id="gs-notes" name="notes" maxlength="1500" rows="3" placeholder="I want it like abrifazliu.com but with... team colors, a different film order, an academics section, etc."></textarea></label>
               <button class="gs-btn gs-btn-lg gs-submit" id="gs-submit" type="submit" data-track="get-started:submit">Request my website</button>
+              <a class="gs-wa-btn" href="https://wa.me/16476079935?text=Hi%2C%20I%27m%20interested%20in%20a%20player%20website." target="_blank" rel="noopener" data-track="get-started:whatsapp-form">Prefer to talk first? WhatsApp us</a>
               <div class="gs-form-note">No payment now. We confirm details first, then build.</div>
               <div class="gs-err" id="gs-err"></div>
             </form>
@@ -724,7 +725,15 @@ const SITE = 'https://www.circuitstats.com';
   .gs-inp:focus{border-color:#f2a83b}
   .gs-ta{resize:vertical;min-height:72px}
   .gs-submit{margin-top:6px;align-self:flex-start}
-  @media (max-width:560px){.gs-submit{align-self:stretch}}
+  /* Quiet secondary next step: talk to a human before committing. */
+  .gs-wa-btn{
+    display:inline-flex;align-items:center;justify-content:center;
+    border:1px solid #1b2740;border-radius:10px;background:none;
+    color:#b8c3da;font-weight:600;font-size:14.5px;padding:12px 22px;
+    align-self:flex-start;transition:border-color .15s,color .15s;
+  }
+  .gs-wa-btn:hover{border-color:#2a3f62;color:#fff}
+  @media (max-width:560px){.gs-submit{align-self:stretch}.gs-wa-btn{align-self:stretch}}
   .gs-btn:disabled{opacity:.55;cursor:not-allowed}
   .gs-form-note{font-size:12.5px;color:#6d7c9c}
   .gs-err{font-size:12.5px;color:#f87171;min-height:15px}
@@ -773,6 +782,7 @@ const SITE = 'https://www.circuitstats.com';
     .gs-form-sub{font-size:17px}                   /* was 14.5px */
     .gs-done-d{font-size:17px}                     /* was 15.5px */
     .gs-inp{font-size:16px}                        /* was 15px (form control) */
+    .gs-wa-btn{font-size:15px}
     /* ROI comparison block: caps labels read ~1px bigger */
     .gs-roi-l{font-size:15px}
     .gs-roi-sub{font-size:14px}                    /* secondary detail inside the label */
