@@ -736,7 +736,9 @@ const SITE = 'https://www.circuitstats.com';
 
   /* The embedded site's own scrollbar can't be styled cross-origin, so the
      screen clips it: the iframe runs one scrollbar-width wider than visible. */
-  .iph-view{position:relative;flex:1;display:flex}
+  /* Column, not row: with row-direction flex the iframe's flex:1 sizes its
+     WIDTH and cancels the +16px scrollbar clip below. */
+  .iph-view{position:relative;flex:1;display:flex;flex-direction:column}
   .iph-screen iframe{border:0;width:calc(100% + 16px);flex:1;display:block;background:#0a0a0b}
   /* The snapshot paints above the iframe until the live site loads. */
   .iph-preview{
