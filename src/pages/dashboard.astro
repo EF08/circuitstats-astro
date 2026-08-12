@@ -830,6 +830,24 @@ const SITE = 'https://www.circuitstats.com';
           }), { empty: 'Nobody opened the pitch page in this range.' }));
       }
 
+      // ── 3a2. Landing pages, separately ──
+      // The three pitch experiences never blend: v2 phone-first /get-started,
+      // the /get-started-info copy, and pre-cutover v1 history.
+      if (f.landingPages) {
+        html += card('Landing pages, compared',
+          'Each column counts unique people on that page in this range. "Opened drawer" is the new page\'s <em>I want more info first</em> — its version of reading the pitch.',
+          table([
+            { h: 'Page', v: function (r) { return r.label; } },
+            { h: 'People', v: function (r) { return n(r.people); }, num: true },
+            { h: 'Opened drawer', v: function (r) { return r.key === 'v2' ? n(r.drawerOpens) : '—'; }, num: true },
+            { h: 'Money section', v: function (r) { return n(r.scroll.money); }, num: true },
+            { h: 'Dashboard pitch', v: function (r) { return n(r.scroll.dashboard); }, num: true },
+            { h: 'Started form', v: function (r) { return n(r.formStarts); }, num: true },
+            { h: 'Contacted', v: function (r) { return n(r.contact); }, num: true },
+            { h: 'Leads', v: function (r) { return n(r.leads); }, num: true },
+          ], f.landingPages, 'No pitch-page traffic in this range.'));
+      }
+
       // ── 3b. Who actually clicked, and who they were ──
       // "How many real people clicked Get D1 offers now on Trey Johnson's page"
       // — answerable because the click listener records the page it fired on.
@@ -847,13 +865,14 @@ const SITE = 'https://www.circuitstats.com';
       var readers = f.pitchReaders || [];
       html += card('Who read the pitch',
         readers.length
-          ? n(readers.length) + ' real ' + (readers.length === 1 ? 'person' : 'people') + ' reached /get-started · newest first'
-          : 'Nobody reached /get-started in this range',
+          ? n(readers.length) + ' real ' + (readers.length === 1 ? 'person' : 'people') + ' reached a pitch page · newest first · Page: new = phone-first /get-started, old = pre-Aug-12 long form, info = /get-started-info'
+          : 'Nobody reached a pitch page in this range',
         table([
           { h: 'Location', v: function (r) { return r.location || 'Unknown'; } },
           { h: 'Network', v: function (r) { return r.org || '—'; } },
           { h: 'Device', v: function (r) { return r.mobile ? 'Mobile' : 'Desktop'; } },
           { h: 'Came from', v: function (r) { return r.cameFromPlayerPage ? 'A player page' : (r.referrer ? 'Elsewhere' : 'Direct'); } },
+          { h: 'Page', v: function (r) { return r.lp || '—'; } },
           { h: 'Visits', v: function (r) { return n(r.visits); }, num: true },
           { h: 'Scrolled to', raw: true, v: function (r) {
               // 'untracked' = visited before the scroll tracker existed; depth
