@@ -14,7 +14,7 @@
 // Mobile pass (Aug 12 2026): on stacked layouts the iframe ate every
 // mid-screen swipe (page scrolled 0px — measured with a synthesized touch
 // gesture), so coarse-pointer devices get a touch shield over the screen; the
-// phone is cropped to its top ~72% on mobile so $399 + form land one short
+// phone is cropped to its top ~68% on mobile so $399 + form land one short
 // flick down; a static snapshot sits behind the iframe while it loads; a
 // sticky $399 bar covers the thumb zone (label get-started:sticky-cta, picked
 // up by the site-wide [data-track] listener); inputs are 16px (iOS zoom rule).
@@ -304,7 +304,7 @@ const SITE = 'https://www.circuitstats.com';
         <div class="hdr-logo gs-foot-logo" role="img" aria-label="Circuit Stats logo"></div>
         <span class="gs-foot-txt"><strong>Circuit Stats</strong> · Player Websites</span>
       </div>
-      <div class="gs-foot-contact"><span class="gs-foot-q">Questions?</span><a href="mailto:andyfazliu@gmail.com" data-track="get-started:contact">Email us</a> &nbsp;·&nbsp; <a href="tel:+16476079935" data-track="get-started:call">Call us</a> &nbsp;·&nbsp; <a href="https://wa.me/16476079935" target="_blank" rel="noopener" data-track="get-started:whatsapp">WhatsApp call</a></div>
+      <div class="gs-foot-contact"><span class="gs-foot-q">Questions?</span><a href="mailto:andyfazliu@gmail.com" data-track="get-started:contact">Email us</a> &nbsp;·&nbsp; <a href="tel:+16476079935" data-track="get-started:call">Call us</a> &nbsp;·&nbsp; <a href="https://wa.me/16476079935" target="_blank" rel="noopener" data-track="get-started:whatsapp">WhatsApp</a></div>
     </footer>
 
   </div>
@@ -349,10 +349,12 @@ const SITE = 'https://www.circuitstats.com';
         if (!w) return; // pre-layout call — the observer re-fires with the real width
         var s = Math.min(1, w / W);
         phone.style.transform = 'scale(' + s + ')';
-        // Stacked layout shows the top ~72% of the phone — chrome, name,
-        // profile, accolades, stats: all the persuasion — so the $399 + form
-        // land one short flick down instead of a full phone-height away.
-        wrap.style.height = Math.round(H * s * (CROP.matches ? 0.72 : 1)) + 'px';
+        // Stacked layout shows the top ~68% of the phone — chrome, name,
+        // profile, accolades: the persuasion — so the $399 + form land one
+        // short flick down instead of a full phone-height away. 68 not 72:
+        // at 72 the cut landed on the glow of abrifazliu.com's own "Tap any
+        // stat to verify" tooltip, which glistened through the fade.
+        wrap.style.height = Math.round(H * s * (CROP.matches ? 0.68 : 1)) + 'px';
       }
       fit();
       // ResizeObserver instead of a bare resize listener: on mobile the first
@@ -683,7 +685,7 @@ const SITE = 'https://www.circuitstats.com';
   @media (prefers-reduced-motion: no-preference){
     .iph-fit{animation:gsRise .7s cubic-bezier(.16,1,.3,1) both}
   }
-  /* Stacked layout crops the phone to its top ~72% (height math in fit()).
+  /* Stacked layout crops the phone to its top ~68% (height math in fit()).
      clip-path instead of overflow so the frame's soft shadow survives on the
      top and sides; only the bottom is cut, and the cut edge fades into the
      page so the phone reads as continuing, not broken. */
