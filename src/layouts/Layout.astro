@@ -213,20 +213,171 @@ const navIcons: Record<string, string> = {
     // immediately re-close it here.
     document.querySelectorAll('.pct-qual-btn.tip-open').forEach(function (b) { b.classList.remove('tip-open'); });
   });
+  // ── Tracking transport ────────────────────────────────────────────────────
+  // One sender for every beacon on the site. sendBeacon rather than a
+  // keepalive fetch, because the events that matter most fire exactly when the
+  // page is being torn down — a tap immediately followed by a tab close, and
+  // the dwell beacon itself — which is the case keepalive drops. That loss was
+  // biased: it silently ate the fast-bounce visitor, the one you most need to
+  // count.
+  //
+  // sendBeacon can't send an application/json body cross-origin (it would need
+  // a CORS preflight, which beacons can't perform). In production the backend
+  // is same-origin via the Vercel rewrite, so this never applies; on localhost
+  // dev it is a different origin, so that case falls back to fetch.
+  (function () {
+    var dev = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+    var API = dev ? 'http://localhost:4000/a1a2-command-center' : '/a1a2-command-center';
+    var sameOrigin = !dev;
+    window.csBeacon = function (path, body) {
+      var url = API + path, json;
+      try { json = JSON.stringify(body); } catch (e) { return; }
+      try {
+        if (sameOrigin && navigator.sendBeacon
+          && navigator.sendBeacon(url, new Blob([json], { type: 'application/json' }))) return;
+      } catch (e) {}
+      try {
+        fetch(url, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: json, keepalive: true,
+        }).catch(function () {});
+      } catch (e) {}
+    };
+  })();
+
   // Fire-and-forget visit tracking (feeds the /dashboard analytics), verbatim from the app.
   (function () {
-    try {
-      fetch('/a1a2-command-center/track', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          referrer: document.referrer || null,
-          userAgent: navigator.userAgent,
-          page: location.pathname + location.hash,
-          src: new URLSearchParams(location.search).get('src') || null,
-          title: trackTitleInit,
-        }),
-      }).catch(function () {});
-    } catch (e) {}
+    window.csBeacon('/track', {
+      referrer: document.referrer || null,
+      userAgent: navigator.userAgent,
+      page: location.pathname + location.hash,
+      src: new URLSearchParams(location.search).get('src') || null,
+      title: trackTitleInit,
+    });
+  })();
+
+  // ── Dwell + attention ─────────────────────────────────────────────────────
+  // How long they actually stayed, how far down they actually got, and — on
+  // pages that register sections — how many seconds each block spent on screen.
+  //
+  // Time accrues only while the tab is visible, so a page abandoned in a
+  // background tab never reports as an hour of reading. Depth is a continuous
+  // max-scroll percentage rather than a set of hand-placed markers, so it stays
+  // honest when a page's layout changes underneath it.
+  //
+  // Sections are the closest first-party answer to "what did they actually
+  // look at" — a block that scrolled past in a flick and one that was studied
+  // for thirty seconds are identical to a scroll marker, and very different
+  // here.
+  (function () {
+    var startedAt = Date.now();
+    var visibleSince = document.visibilityState === 'visible' ? startedAt : 0;
+    var engagedMs = 0;
+    var maxScroll = 0;
+    var lastSent = -1;
+
+    function engaged() { return engagedMs + (visibleSince ? Date.now() - visibleSince : 0); }
+
+    function measureScroll() {
+      var doc = document.documentElement;
+      var h = Math.max(doc.scrollHeight || 0, document.body ? document.body.scrollHeight : 0);
+      if (h <= 0) return;
+      var seen = (window.scrollY || doc.scrollTop || 0) + window.innerHeight;
+      var pct = Math.round(Math.max(0, Math.min(100, (seen / h) * 100)));
+      if (pct > maxScroll) maxScroll = pct;
+    }
+    measureScroll();
+    var ticking = false;
+    window.addEventListener('scroll', function () {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(function () { ticking = false; measureScroll(); });
+    }, { passive: true });
+
+    // Pages opt in by pushing { key, el } onto window.__csSections. Their
+    // markup and scripts render inside <main>, above this one, so the array is
+    // already populated by the time we read it.
+    var sections = [];
+    (window.__csSections || []).forEach(function (s) {
+      if (s && s.key && s.el) sections.push({ key: s.key, el: s.el, ms: 0, since: 0, wasOn: false });
+    });
+    if (sections.length && 'IntersectionObserver' in window) {
+      var byEl = new Map();
+      sections.forEach(function (s) { byEl.set(s.el, s); });
+      var sio = new IntersectionObserver(function (entries) {
+        entries.forEach(function (en) {
+          var s = byEl.get(en.target);
+          if (!s) return;
+          // Half the block on screen is the bar for "being looked at" —
+          // anything less is a section passing by on the way somewhere else.
+          if (en.isIntersecting) { if (!s.since) s.since = Date.now(); }
+          else if (s.since) { s.ms += Date.now() - s.since; s.since = 0; }
+        });
+      }, { threshold: 0.5 });
+      sections.forEach(function (s) { sio.observe(s.el); });
+    }
+    // IntersectionObserver keeps reporting a section as intersecting when the
+    // tab is hidden, so the section clocks are paused by hand alongside the
+    // page clock.
+    function pauseSections(now) {
+      sections.forEach(function (s) {
+        s.wasOn = !!s.since;
+        if (s.since) { s.ms += now - s.since; s.since = 0; }
+      });
+    }
+    function resumeSections(now) {
+      sections.forEach(function (s) { if (s.wasOn) s.since = now; });
+    }
+    function sectionTimes() {
+      var out = {}, now = Date.now();
+      sections.forEach(function (s) {
+        var ms = s.ms + (s.since ? now - s.since : 0);
+        if (ms >= 1000) out[s.key] = Math.round(ms / 1000);
+      });
+      return out;
+    }
+
+    // Totals are cumulative, so a later beacon supersedes an earlier one rather
+    // than adding to it — the dashboard takes the max per person and page, which
+    // makes a duplicate harmless and lets someone who tabs away and comes back
+    // be counted for the whole visit instead of only the first slice.
+    function send(final) {
+      var eng = Math.round(engaged() / 1000);
+      var wall = Math.round((Date.now() - startedAt) / 1000);
+      if (wall < 1) return;                        // sub-second: a prerender, not a visit
+      if (lastSent >= 0 && eng <= lastSent) return; // nothing new since the last one
+      if (!final && eng - lastSent < 3) return;
+      lastSent = eng;
+      measureScroll();
+      window.csBeacon('/track-dwell', {
+        page: location.pathname,
+        seconds: eng,
+        wall: wall,
+        maxScrollPct: maxScroll,
+        sections: sectionTimes(),
+      });
+    }
+
+    document.addEventListener('visibilitychange', function () {
+      var now = Date.now();
+      if (document.visibilityState === 'hidden') {
+        if (visibleSince) { engagedMs += now - visibleSince; visibleSince = 0; }
+        pauseSections(now);
+        send(false);
+      } else {
+        visibleSince = now;
+        resumeSections(now);
+      }
+    });
+    // pagehide catches the close/navigate case that visibilitychange misses on
+    // some desktop browsers; the "nothing new" guard above stops the two from
+    // writing the same number twice.
+    window.addEventListener('pagehide', function () {
+      var now = Date.now();
+      if (visibleSince) { engagedMs += now - visibleSince; visibleSince = 0; }
+      pauseSections(now);
+      send(true);
+    });
   })();
 
   // Share button: native share sheet where supported, clipboard-copy fallback
@@ -249,13 +400,9 @@ const navIcons: Record<string, string> = {
       el._t = setTimeout(function () { el.classList.remove('show'); }, 2000);
     }
     function trackShare(method) {
-      try {
-        fetch('/a1a2-command-center/track-share', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ page: location.pathname, title: trackTitleInit, url: location.href, method: method }),
-          keepalive: true,
-        }).catch(function () {});
-      } catch (e) {}
+      window.csBeacon('/track-share', {
+        page: location.pathname, title: trackTitleInit, url: location.href, method: method,
+      });
     }
     btn.addEventListener('click', function () {
       // Share the URL and NOTHING else — no title, no text. Passing a title makes
@@ -325,13 +472,7 @@ const navIcons: Record<string, string> = {
     document.addEventListener('click', function (e) {
       var el = e.target.closest(SELECTOR);
       if (!el) return;
-      try {
-        fetch('/a1a2-command-center/track-click', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ label: label(el), detail: detail(el), page: location.pathname }),
-          keepalive: true,
-        }).catch(function () {});
-      } catch (err) {}
+      window.csBeacon('/track-click', { label: label(el), detail: detail(el), page: location.pathname });
     }, true);
   })();
 </script>

@@ -318,7 +318,16 @@ const SITE = 'https://www.circuitstats.com';
     // Funnel instrumentation, shared by the scroll tracker, the more-info
     // reveal and the form. Labels must stay in sync with
     // a1a2-command-center/apps/circuitboard/funnel.js.
+    //
+    // Routed through Layout's csBeacon (sendBeacon) so an event fired on the
+    // way out — a WhatsApp tap, a submit, the last section reached — survives
+    // the page being torn down. Layout's script runs after this one in document
+    // order, so csBeacon is resolved at call time, never at definition time.
     function track(label, detail) {
+      if (window.csBeacon) {
+        window.csBeacon('/track-click', { label: label, detail: detail || null, page: location.pathname });
+        return;
+      }
       try {
         fetch(API + '/track-click', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -327,6 +336,26 @@ const SITE = 'https://www.circuitstats.com';
         }).catch(function () {});
       } catch (e) {}
     }
+
+    // Sections whose on-screen time Layout's dwell tracker should clock. This
+    // is the part that answers "what did they actually look at": a scroll
+    // marker can only say a block went past, which is the same event whether
+    // they flicked through it or read it. Registered here, measured there.
+    (function () {
+      var SECTIONS = [
+        ['gs-phone',   '.gs-phone-col'],   // the live site in the iPhone
+        ['gs-form',    '#get'],            // price + request form
+        ['money',      '#info-money'],
+        ['example',    '#info-example'],
+        ['dashboard',  '#info-dash'],
+        ['included',   '#info-included'],
+      ];
+      window.__csSections = window.__csSections || [];
+      SECTIONS.forEach(function (s) {
+        var el = document.querySelector(s[1]);
+        if (el) window.__csSections.push({ key: s[0], el: el });
+      });
+    })();
 
     // Prefill from the player page that linked here (?p=&t=&l=).
     (function () {
@@ -458,9 +487,15 @@ const SITE = 'https://www.circuitstats.com';
           omni.classList.remove('iph-nudge-on');
           setTimeout(function () { tip.remove(); }, 420);
         }
-        document.addEventListener('click', dismiss, true);
-        window.addEventListener('blur', dismiss);
-        window.addEventListener('scroll', dismiss, { passive: true, once: true });
+        // The nudge stays until they do the thing it asks for. It used to clear
+        // on any click, on the first scroll, and on window blur (which fires
+        // just from tapping into the iframe, or switching tabs) — so most
+        // visitors lost the only instruction telling them the phone is a real
+        // site they can open. Now only the two links that actually open
+        // abrifazliu.com retire it.
+        document.addEventListener('click', function (e) {
+          if (e.target.closest && e.target.closest('.iph-omni, .iph-touch')) dismiss();
+        }, true);
       }
 
       var nudgeTimer = null;
@@ -493,9 +528,15 @@ const SITE = 'https://www.circuitstats.com';
     })();
 
     // Scroll depth: one event per section, the first time it comes into view.
-    // scroll-pricing is the form block (first viewport by design); the other
-    // three live inside the reveal, so they only ever fire for people who
-    // asked for the info. Labels sync with circuitboard/funnel.js.
+    // scroll-pricing is the form block (first viewport by design); the rest
+    // live inside the reveal, so they only ever fire for people who asked for
+    // the info. Labels sync with circuitboard/funnel.js.
+    //
+    // These markers are coarse by nature — the continuous max-scroll figure in
+    // Layout's dwell beacon is what actually measures depth on this page, since
+    // most of it sits above a reveal that changes the page height. The markers
+    // stay because they name *which* argument was reached, which a percentage
+    // can't.
     (function () {
       if (!('IntersectionObserver' in window)) return;
       var SECTIONS = [
@@ -503,6 +544,7 @@ const SITE = 'https://www.circuitstats.com';
         ['#info-money',    'get-started:scroll-money'],
         ['#info-example',  'get-started:scroll-example'],
         ['#info-dash',     'get-started:scroll-dashboard'],
+        ['#info-included', 'get-started:scroll-included'],
       ];
       var io = new IntersectionObserver(function (entries) {
         entries.forEach(function (en) {
@@ -572,6 +614,22 @@ const SITE = 'https://www.circuitstats.com';
         if (started) return;
         started = true;
         track('get-started:form-start');
+      });
+
+      // Per-field progress, one event per field, the first time it holds real
+      // input. form-start alone can't tell "typed a name and an email, then
+      // hesitated" from "brushed a field by accident" — and those two want
+      // opposite responses from you. Fired on the value, not on focus, so a
+      // tab-through doesn't read as filling anything in.
+      ['player', 'email'].forEach(function (key) {
+        var el = document.getElementById('gs-' + key);
+        if (!el) return;
+        var fired = false;
+        el.addEventListener('input', function () {
+          if (fired || !el.value.trim()) return;
+          fired = true;
+          track('get-started:field-' + key);
+        });
       });
 
       form.addEventListener('submit', function (e) {

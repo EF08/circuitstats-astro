@@ -390,7 +390,14 @@ const SITE = 'https://www.circuitstats.com';
     // fields in and gave up, or how far down the page anyone read. These named
     // events are what make the pitch→lead drop-off diagnosable. Labels must stay
     // in sync with a1a2-command-center/apps/circuitboard/funnel.js.
+    // Routed through Layout's csBeacon (sendBeacon) so an event fired on the way
+    // out survives the page being torn down. Layout's script runs after this one
+    // in document order, so it's resolved at call time, not definition time.
     function track(label, detail) {
+      if (window.csBeacon) {
+        window.csBeacon('/track-click', { label: label, detail: detail || null, page: location.pathname });
+        return;
+      }
       try {
         fetch(API + '/track-click', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -399,6 +406,23 @@ const SITE = 'https://www.circuitstats.com';
         }).catch(function () {});
       } catch (e) {}
     }
+
+    // Sections whose on-screen time Layout's dwell tracker should clock. Same
+    // keys as /get-started so the two landing pages stay directly comparable:
+    // a scroll marker says a block went past, this says how long it was read.
+    (function () {
+      var SECTIONS = [
+        ['money',     '.gs-stakes'],
+        ['example',   '#proof'],
+        ['dashboard', '#gs-dash'],
+        ['gs-form',   '#request'],
+      ];
+      window.__csSections = window.__csSections || [];
+      SECTIONS.forEach(function (s) {
+        var el = document.querySelector(s[1]);
+        if (el) window.__csSections.push({ key: s[0], el: el });
+      });
+    })();
 
     // Scroll depth: one event per section, the first time it comes into view,
     // so the dashboard can say how far down the pitch each visitor actually
@@ -433,6 +457,20 @@ const SITE = 'https://www.circuitstats.com';
         if (started) return;
         started = true;
         track('get-started:form-start');
+      });
+
+      // Per-field progress, one event per field, the first time it holds real
+      // input — so "filled it in and hesitated" is distinguishable from
+      // "brushed a field by accident". Fired on the value, not on focus.
+      ['player', 'email', 'notes'].forEach(function (key) {
+        var el = document.getElementById('gs-' + key);
+        if (!el) return;
+        var fired = false;
+        el.addEventListener('input', function () {
+          if (fired || !el.value.trim()) return;
+          fired = true;
+          track('get-started:field-' + key);
+        });
       });
 
       form.addEventListener('submit', function (e) {

@@ -339,6 +339,14 @@ const SITE = 'https://www.circuitstats.com';
       var mo = Math.floor(d / 30);
       return mo + 'mo' + (d % 30 ? ' ' + (d % 30) + 'd' : '');
     }
+    // "8s" / "3m 20s". Reading time is worth showing exactly — the whole point
+    // of the number is telling a bounce apart from a read.
+    function dur(s) {
+      if (s == null) return '—';
+      if (s < 60) return s + 's';
+      var m = Math.floor(s / 60), r = s % 60;
+      return m + 'm' + (r ? ' ' + r + 's' : '');
+    }
     function shortDate(iso) {
       var p = String(iso).split('-');
       return p.length === 3 ? (+p[1]) + '/' + (+p[2]) : iso;
@@ -793,9 +801,30 @@ const SITE = 'https://www.circuitstats.com';
       var formStartNote = f.form.starts > 0
         ? pct(pitchReaders ? f.form.starts / pitchReaders : 0, 0) + ' of pitch readers'
         : 'No form-starts recorded yet';
+      // Time on page has no data before the dwell beacon shipped, and "no data"
+      // must never render as a confident 0s — that would read as "everyone
+      // bounced instantly", which is the opposite of not knowing.
+      var dw = f.dwell || null;
+      var timeTile = kpi('Median time on pitch',
+        dw && dw.hasData ? dur(dw.medianSeconds) : '—',
+        '',
+        dw && dw.hasData
+          ? 'Half stayed longer, half less · ' + n(dw.bounced) + ' of ' + n(dw.people) +
+            ' left inside 5s · typical depth ' + dw.medianScrollPct + '%'
+          : 'Time tracking is new — this fills in with the next visitor.');
+      // Abandonment: the backend has computed this since the form-start event
+      // shipped and nothing has ever displayed it.
+      var abandonTile = kpi('Abandoned the form',
+        f.form.starts > 0 ? n(f.form.abandoned) : '—',
+        '',
+        f.form.starts > 0
+          ? pct(f.form.abandonRate, 0) + ' of everyone who touched a field left without submitting'
+          : 'No form-starts recorded yet');
       html += '<div class="db-kpis">' +
         kpi('Read the pitch', n(pitchReaders), '', 'Landed on /get-started and saw the price') +
+        timeTile +
         kpi('Started the form', n(f.form.starts), '', formStartNote) +
+        abandonTile +
         kpi('Requested a site', n(leadN), leadsDelta, '') +
         kpi('Viewed the example', n(f.example.people), '',
           f.example.people
@@ -820,14 +849,49 @@ const SITE = 'https://www.circuitstats.com';
         var sdSince = sd.since
           ? new Date(sd.since).toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric' })
           : null;
-        html += card('How far down the pitch people scroll',
+        html += card('How far down the pitch people get',
           sd.hasData
-            ? 'People who scrolled at least this far, as a share of everyone who opened /get-started <strong>since scroll tracking went live' +
-              (sdSince ? ' (' + sdSince + ')' : '') + '</strong> — earlier visitors were never measured and are not counted here. If the price row is small, most never even saw the offer.'
-            : 'Scroll tracking is new — rows below "Opened the page" fill in starting with the next visitor.',
+            ? 'The <strong>phone-first /get-started</strong> only' + (sdSince ? ', live since ' + sdSince : '') +
+              ', in that page\'s own reading order: the price and form are at the top, and the whole argument sits behind <em>I want more info first</em>. ' +
+              'The drop from <strong>Saw the price &amp; form</strong> to <strong>Opened the full pitch</strong> is the one to watch — everything below it only exists for people who asked.'
+            : 'No traffic to the phone-first page in this range yet.',
           barList(sd.steps.map(function (s) {
             return { label: s.label, count: s.people, share: sdOpened ? s.people / sdOpened : 0 };
-          }), { empty: 'Nobody opened the pitch page in this range.' }));
+          }), { empty: 'Nobody opened the pitch page in this range.' }),
+          disclosure('Why this only covers one page',
+            '<div class="db-note"><p>The three landing experiences read in different directions — on the long-form pages the form is at the <em>bottom</em>, on this one it is the first thing you see. Ranking them on one ladder made a visitor who never scrolled at all look like they had read to the end. Use <strong>Landing pages, compared</strong> below for the cross-version view.</p></div>'));
+      }
+
+      // ── 3a1. What they actually looked at ──
+      // Seconds on screen per section. A scroll marker fires the same whether a
+      // block was flicked past or studied; this is the difference between them,
+      // and it is the closest first-party answer to "what are their eyes on"
+      // without putting a session-replay script on every page.
+      if (dw && dw.attention && dw.attention.length) {
+        html += card('What they actually looked at',
+          'Median seconds each block spent on screen, counting only while the tab was in front. <strong>People</strong> is how many had that block on screen at all — the sections behind the reveal can only ever count people who opened it.',
+          '<div class="db-bars">' + dw.attention.map(function (a) {
+            var max = dw.attention.reduce(function (m, x) { return Math.max(m, x.medianSeconds); }, 0) || 1;
+            var w = Math.max(1.5, (a.medianSeconds / max) * 100);
+            return '<div class="db-bar-row">' +
+              '<div class="db-bar-l" title="' + esc(a.label) + '">' + esc(a.label) + '</div>' +
+              '<div class="db-bar-t"><div class="db-bar-f" data-w="' + w.toFixed(2) + '"></div></div>' +
+              '<div class="db-bar-v">' + esc(dur(a.medianSeconds)) + '<small>' + n(a.people) + ' ppl</small></div>' +
+              '</div>';
+          }).join('') + '</div>');
+      }
+
+      // ── 3a1b. Where the form loses them ──
+      // Two required fields. "Started the form" alone couldn't say whether
+      // someone typed a name and an email and hesitated, or brushed a field on
+      // the way past — and those want opposite fixes.
+      if (f.form && f.form.fields && f.form.starts > 0) {
+        var ffTop = f.form.fields[0].people || 1;
+        html += card('Where the form loses them',
+          'People who got at least this far into the request form.',
+          barList(f.form.fields.map(function (s) {
+            return { label: s.label, count: s.people, share: s.people / ffTop };
+          }), { empty: 'Nobody has touched the form in this range.' }));
       }
 
       // ── 3a2. Landing pages, separately ──
@@ -835,13 +899,16 @@ const SITE = 'https://www.circuitstats.com';
       // the /get-started-info copy, and pre-cutover v1 history.
       if (f.landingPages) {
         html += card('Landing pages, compared',
-          'Each column counts unique people on that page in this range. "Opened drawer" is the new page\'s <em>I want more info first</em> — its version of reading the pitch.',
+          'Each column counts unique people on that page in this range. "Opened drawer" is the new page\'s <em>I want more info first</em> — its version of reading the pitch. <strong>Median time</strong> is the honest test of which page holds someone.',
           table([
             { h: 'Page', v: function (r) { return r.label; } },
             { h: 'People', v: function (r) { return n(r.people); }, num: true },
+            { h: 'Median time', v: function (r) { return r.medianSeconds ? dur(r.medianSeconds) : '—'; }, num: true },
             { h: 'Opened drawer', v: function (r) { return r.key === 'v2' ? n(r.drawerOpens) : '—'; }, num: true },
             { h: 'Money section', v: function (r) { return n(r.scroll.money); }, num: true },
+            { h: 'Live example', v: function (r) { return n(r.scroll.example); }, num: true },
             { h: 'Dashboard pitch', v: function (r) { return n(r.scroll.dashboard); }, num: true },
+            { h: "What's included", v: function (r) { return r.key === 'v2' ? n(r.scroll.included) : '—'; }, num: true },
             { h: 'Started form', v: function (r) { return n(r.formStarts); }, num: true },
             { h: 'Contacted', v: function (r) { return n(r.contact); }, num: true },
             { h: 'Leads', v: function (r) { return n(r.leads); }, num: true },
@@ -874,17 +941,37 @@ const SITE = 'https://www.circuitstats.com';
           { h: 'Came from', v: function (r) { return r.cameFromPlayerPage ? 'A player page' : (r.referrer ? 'Elsewhere' : 'Direct'); } },
           { h: 'Page', v: function (r) { return r.lp || '—'; } },
           { h: 'Visits', v: function (r) { return n(r.visits); }, num: true },
+          // null = this visit predates the dwell beacon, which is a different
+          // statement from "left instantly" and must not render as 0s.
+          { h: 'Time', raw: true, v: function (r) {
+              if (r.seconds == null) return '<span style="color:var(--text-3)">—</span>';
+              var slow = r.seconds >= 30;
+              return '<span style="color:' + (slow ? 'var(--good)' : r.seconds < 5 ? 'var(--text-3)' : 'inherit') + '">' +
+                esc(dur(r.seconds)) + '</span>' +
+                (r.maxScrollPct != null ? '<span style="color:var(--text-3)"> · ' + r.maxScrollPct + '%</span>' : '');
+            } },
           { h: 'Scrolled to', raw: true, v: function (r) {
               // 'untracked' = visited before the scroll tracker existed; depth
               // was never measured. 'top' = measured, never left the opening
-              // screen. The backend draws that line, not this column.
+              // screen. The backend draws that line, not this column — and it
+              // ranks depth against the page this person actually saw, since
+              // the form is the bottom of the old page and the top of the new.
               if (r.furthest === 'untracked') return '<span style="color:var(--text-3)">Before tracking</span>';
-              return esc({ pricing: 'Price & form', dashboard: 'Dashboard pitch',
-                           example: 'Live example', money: 'Money section',
-                           top: 'Top only' }[r.furthest] || '—');
+              return esc({ pricing: 'Price & form', included: "What's included",
+                           dashboard: 'Dashboard pitch', example: 'Live example',
+                           money: 'Money section', top: 'Top only' }[r.furthest] || '—');
+            } },
+          { h: 'Form', raw: true, v: function (r) {
+              if (r.furthestField === 'submitted') return '<strong style="color:var(--good)">submitted</strong>';
+              var lbl = { notes: 'typed notes', email: 'typed email', player: 'typed name',
+                          touched: 'touched a field' }[r.furthestField];
+              // Filled fields in and left — the row you most want to be able to see.
+              return lbl ? '<span style="color:var(--bad)">' + esc(lbl) + ', left</span>'
+                         : '<span style="color:var(--text-3)">—</span>';
             } },
           { h: 'Then', v: function (r) {
               var acts = [];
+              if (r.openedDrawer) acts.push('opened the pitch');
               if (r.clickedExample) acts.push('saw the example');
               if (r.tappedWhatsApp) acts.push('tapped WhatsApp');
               if (r.tappedEmail) acts.push('tapped email');
@@ -1027,6 +1114,8 @@ const SITE = 'https://www.circuitstats.com';
           '<p style="margin-bottom:10px"><strong>Inferred</strong> (' + n((a.excluded.ownerInferred || []).length) + ') — excluded only because they share an ISP block with a proven address: <code>' +
           esc((a.excluded.ownerInferred || []).join(', ') || 'none') + '</code>. This is inference, not proof: a /24 is 256 addresses and on a large ISP it can cover more than one household. It is on because the alternative lets your own traffic back in every time your ISP reassigns you, which distorts the numbers more. Set <code>OWNER_SUBNET_MATCH=off</code> for exact addresses only, or add addresses by hand with <code>OWNER_IPS</code>.</p>' +
           '<p style="margin-bottom:10px"><strong>Internal page-to-page clicks</strong> are page views whose referrer was circuitstats.com itself. They count toward page views but never toward visits, and are never listed as a traffic source — that was making browsing look like a source of traffic.</p>' +
+          '<p style="margin-bottom:10px"><strong>Time on page</strong> counts only seconds the tab was actually in front — a page abandoned in a background tab stops the clock rather than reporting an hour of reading. It is measured by a beacon sent when the tab is hidden or closed, so a visit that predates the beacon shows <em>&mdash;</em> (never measured), which is a different statement from 0s. The same beacon carries how far down the page they got and how long each block was on screen; <strong>What they actually looked at</strong> is built from that, because a section scrolling past and a section being read are the same event to a scroll marker.</p>' +
+          '<p style="margin-bottom:10px"><strong>Reading depth is ranked per page.</strong> The request form is the <em>bottom</em> of the long-form pages and the <em>top</em> of the phone-first one, so &ldquo;how far did they get&rdquo; is scored against the page each person actually saw. Scoring everyone on one ladder — which is what happened until now — reported a phone-first visitor who never scrolled as having read to the end.</p>' +
           '<p><strong>Visits vs page views:</strong> one person reading eight player pages is 1 person, 1 visit and 8 page views. A “visit” is a session that started from outside the site; a “page view” is any single load. Leading with the 8 would overstate reach and make every conversion rate look ~8x worse than it is — so Visits is the headline, not the raw page-view count.</p>' +
           '</div>')
       );
