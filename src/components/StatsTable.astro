@@ -1,8 +1,12 @@
 ---
 // StatsTable.astro — the pre-SEO stats-table view (view-stats) as a real page.
-// Server-rendered sorted by PPG desc (the app's default), ALL rows present so
-// nothing is hidden behind JS/pagination. A client island (StatsTableInteractive)
-// layers the app's exact click-to-sort / search / name-expand back on top.
+// Server-rendered sorted by PPG desc (the app's default), ALL rows present in
+// the HTML for SEO/no-JS. Rows past the first page ship with display:none so
+// the first paint already matches what the pagination script will show —
+// without this, the browser lays out all ~3,900 rows (columns re-jiggering as
+// they stream in), then the script collapses the table to 100 in one visible
+// snap. The inline script layers the app's exact click-to-sort / search /
+// name-expand back on top.
 import { TBL_COLS, getColVal, sortCmp, fmtColVal, abbr, RANK_LABELS, PCT_MIN_MAKES, PCT_MIN_ATTEMPTS, type Player } from '../lib/stats';
 import type { League } from '../lib/leagues';
 import { rowLinks } from '../lib/links';
@@ -42,6 +46,10 @@ function tagBadge(p: Player): string {
   return '';
 }
 const total = rows.length;
+// Must match PAGE_SIZE in the client script below. Rank-jump pages show every
+// row (the highlighted player may sit anywhere), so they skip the pre-hide.
+const INITIAL_ROWS = 100;
+const shown = rjActive ? total : Math.min(INITIAL_ROWS, total);
 ---
 <div class="view active" id="view-stats">
   <div class="stats-top-bar">
@@ -59,7 +67,7 @@ const total = rows.length;
     </div>
     {rjActive
       ? <div class="tbl-meta" id="tbl-meta" set:html={`<strong style="color:var(--accent)">${rankJump!.player}</strong> &middot; <strong style="color:var(--accent)">#${rjPlayerRank}</strong> of ${total} in ${rjLabel} &nbsp;<a href="${league.urlBase}/stats" data-track="stats:rank-jump-clear" style="text-decoration:underline;color:var(--text-3)">clear</a>`} />
-      : <div class="tbl-meta" id="tbl-meta">Showing {total} of {total} player{total !== 1 ? 's' : ''} · tap column to sort</div>}
+      : <div class="tbl-meta" id="tbl-meta">Showing {shown} of {total} player{total !== 1 ? 's' : ''} · tap column to sort</div>}
   </div>
   <div class="tbl-wrap">
     <table class="tbl" id="main-table">
@@ -76,13 +84,13 @@ const total = rows.length;
         </tr>
       </thead>
       <tbody id="main-tbody">
-        {rows.map(p => {
+        {rows.map((p, i) => {
           const { playerHref, teamHref } = rowLinks(p, league);
           const rnk = RANK[rankField] && RANK[rankField][p.Player];
           const seed = standings[p.Team] ? `#${standings[p.Team].rank} ` : '';
           const hl = rjActive && p.Player === rankJump!.player;
           return (
-            <tr class={hl ? 'tbl-row-hl' : undefined}>
+            <tr class={hl ? 'tbl-row-hl' : undefined} style={!rjActive && i >= INITIAL_ROWS ? 'display:none' : undefined}>
               <td class="tbl-td player-td">
                 <a class="tbl-pname" href={playerHref} data-abbr={abbr(p.Player)} data-full={p.Player} data-track="stats:player-link">{abbr(p.Player)}{rnk && <span class="tbl-stat-rank">#{rnk}</span>}<Fragment set:html={tagBadge(p)} /></a>
                 {teamHref
