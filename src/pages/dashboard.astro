@@ -804,6 +804,22 @@ const SITE = 'https://www.circuitstats.com';
             : 'Nobody clicked through to abrifazliu.com') +
         '</div>';
 
+      // ── 3a. How far down the pitch they scroll ──
+      // Section-reach events from /get-started (see its scroll tracker). Same
+      // people-not-events counting as the funnel; the backend cascades the
+      // sets so the ladder only ever narrows.
+      var sd = f.scrollDepth;
+      if (sd) {
+        var sdOpened = sd.steps.length ? sd.steps[0].people : 0;
+        html += card('How far down the pitch people scroll',
+          sd.hasData
+            ? 'People who scrolled at least this far, as a share of everyone who opened /get-started. If the price row is small, most never even saw the offer.'
+            : 'Scroll tracking is new — rows below "Opened the page" fill in starting with the next visitor.',
+          barList(sd.steps.map(function (s) {
+            return { label: s.label, count: s.people, share: sdOpened ? s.people / sdOpened : 0 };
+          }), { empty: 'Nobody opened the pitch page in this range.' }));
+      }
+
       // ── 3b. Who actually clicked, and who they were ──
       // "How many real people clicked Get D1 offers now on Trey Johnson's page"
       // — answerable because the click listener records the page it fired on.
@@ -829,6 +845,12 @@ const SITE = 'https://www.circuitstats.com';
           { h: 'Device', v: function (r) { return r.mobile ? 'Mobile' : 'Desktop'; } },
           { h: 'Came from', v: function (r) { return r.cameFromPlayerPage ? 'A player page' : (r.referrer ? 'Elsewhere' : 'Direct'); } },
           { h: 'Visits', v: function (r) { return n(r.visits); }, num: true },
+          { h: 'Scrolled to', v: function (r) {
+              // 'top' is also what visitors from before scroll tracking show —
+              // an em dash, not a confident "read nothing".
+              return { pricing: 'Price & form', dashboard: 'Dashboard pitch',
+                       example: 'Live example', money: 'Money section' }[r.furthest] || '—';
+            } },
           { h: 'Then', v: function (r) {
               var acts = [];
               if (r.clickedExample) acts.push('saw the example');

@@ -379,28 +379,54 @@ const SITE = 'https://www.circuitstats.com';
       setTimeout(show, 4000);
     })();
 
+    // Prod goes through the Vercel rewrite (same origin); localhost dev has no
+    // rewrite, so hit the locally-running backend directly.
+    var API = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+      ? 'http://localhost:4000/a1a2-command-center' : '/a1a2-command-center';
+
+    // Funnel instrumentation, shared by the scroll tracker below and the form.
+    // The site-wide click listener in Layout already records the submit *press*,
+    // but that fires before validation and says nothing about people who filled
+    // fields in and gave up, or how far down the page anyone read. These named
+    // events are what make the pitch→lead drop-off diagnosable. Labels must stay
+    // in sync with a1a2-command-center/apps/circuitboard/funnel.js.
+    function track(label, detail) {
+      try {
+        fetch(API + '/track-click', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          keepalive: true,
+          body: JSON.stringify({ label: label, detail: detail || null, page: location.pathname }),
+        }).catch(function () {});
+      } catch (e) {}
+    }
+
+    // Scroll depth: one event per section, the first time it comes into view,
+    // so the dashboard can say how far down the pitch each visitor actually
+    // read. "In view" = the section's top clears the bottom 30% of the screen —
+    // a sliver peeking over the fold doesn't count as having read it.
+    (function () {
+      if (!('IntersectionObserver' in window)) return;
+      var SECTIONS = [
+        ['.gs-stakes', 'get-started:scroll-money'],
+        ['#proof',     'get-started:scroll-example'],
+        ['#gs-dash',   'get-started:scroll-dashboard'],
+        ['#request',   'get-started:scroll-pricing'],
+      ];
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (en) {
+          if (!en.isIntersecting) return;
+          io.unobserve(en.target);
+          track(en.target.getAttribute('data-gs-section'));
+        });
+      }, { rootMargin: '0px 0px -30% 0px' });
+      SECTIONS.forEach(function (s) {
+        var el = document.querySelector(s[0]);
+        if (el) { el.setAttribute('data-gs-section', s[1]); io.observe(el); }
+      });
+    })();
+
     (function () {
       var form = document.getElementById('gs-form');
-      // Prod goes through the Vercel rewrite (same origin); localhost dev has no
-      // rewrite, so hit the locally-running backend directly.
-      var API = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
-        ? 'http://localhost:4000/a1a2-command-center' : '/a1a2-command-center';
-
-      // Funnel instrumentation. The site-wide click listener in Layout already
-      // records the submit *press*, but that fires before validation and says
-      // nothing about people who filled fields in and gave up. These three
-      // events are what make the pitch→lead drop-off diagnosable: without
-      // form-start, "they didn't want it" and "the form lost them" look
-      // identical on the dashboard.
-      function track(label, detail) {
-        try {
-          fetch(API + '/track-click', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            keepalive: true,
-            body: JSON.stringify({ label: label, detail: detail || null, page: location.pathname }),
-          }).catch(function () {});
-        } catch (e) {}
-      }
       // One-shot: the first time any field is touched, this visitor has started.
       var started = false;
       form.addEventListener('focusin', function () {
