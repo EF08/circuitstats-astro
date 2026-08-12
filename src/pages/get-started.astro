@@ -78,15 +78,6 @@ const SITE = 'https://www.circuitstats.com';
                 </a>
               </div>
               <iframe id="iph-frame" src="https://www.abrifazliu.com" title="Live example: Abri Fazliu's recruiting website"></iframe>
-              <!-- Affordance hints: this is a live site, not a screenshot.
-                   The URL nudge is injected by JS (same recipe as abrifazliu's
-                   "Tap any stat to verify"); the scroll hint is TikTok-style —
-                   the swiping hand on touch, a mouse wheel on fine pointers. -->
-              <div class="iph-hint-scroll" aria-hidden="true">
-                <svg class="iph-hint-mouse" width="24" height="36" viewBox="0 0 24 36"><rect x="1.5" y="1.5" width="21" height="33" rx="10.5" fill="rgba(0,0,0,.35)" stroke="#fff" stroke-width="2.5"/><circle class="iph-mouse-wheel" cx="12" cy="10" r="2.6" fill="#fff"/></svg>
-                <span class="iph-hint-swipe"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 11.24V7.5C9 6.12 10.12 5 11.5 5S14 6.12 14 7.5v3.74c1.21-.81 2-2.18 2-3.74 0-2.49-2.01-4.5-4.5-4.5S7 5.01 7 7.5c0 1.56.79 2.93 2 3.74zm9.84 4.63l-4.54-2.26c-.17-.07-.35-.11-.54-.11H13v-6c0-.83-.67-1.5-1.5-1.5S10 6.67 10 7.5v10.74c-3.6-.76-3.54-.75-3.67-.75-.31 0-.59.13-.79.33l-.79.8 4.94 4.94c.27.27.65.44 1.06.44h6.79c.75 0 1.33-.55 1.44-1.28l.75-5.27c.01-.07.02-.14.02-.2 0-.62-.38-1.16-.91-1.38z"/></svg></span>
-                <span class="iph-hint-scroll-t"><span class="iph-hint-desktop">Scroll it — it's live</span><span class="iph-hint-mobile">Swipe up — it's live</span></span>
-              </div>
             </div>
           </div>
         </div>
@@ -364,16 +355,28 @@ const SITE = 'https://www.circuitstats.com';
       });
     })();
 
-    // URL nudge — same recipe as abrifazliu.com's "Tap any stat to verify":
-    // injected after a beat, gold pill with a caret pointing at the target,
-    // pulse ring on the target, dismissed with a fade on first interaction.
-    // Ours also dismisses on window blur: tapping INTO the iframe steals
-    // focus, which is the one interaction the parent page can't hear.
+    // The proof-of-life sequence. 1) When the phone enters the viewport, we
+    // ask the embedded site to scroll ITSELF down ~330px and back (postMessage
+    // — we own abrifazliu.com, so the site carries a small origin-gated demo
+    // handler; a cross-origin parent could never scroll it directly). Real
+    // content moving is the only "this is live" signal that needs no
+    // explanation, and the site's own layout stays pixel-authentic. 2) When
+    // the site reports done — or after a 6s fallback if the deployed site
+    // predates the handler — the URL nudge appears: abrifazliu.com's "Tap any
+    // stat to verify" tooltip, same recipe (gold pill, caret, pulse ring,
+    // fade on first interaction — plus window blur, since tapping INTO the
+    // iframe steals focus, the one interaction the parent can't hear).
     (function () {
+      var frame = document.getElementById('iph-frame');
       var omni = document.querySelector('.iph-omni');
       var tip = document.getElementById('iph-nudge');
-      if (!omni || !tip) return;
-      setTimeout(function () {
+      if (!frame) return;
+      var ABRI = 'https://www.abrifazliu.com';
+      var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      function showNudge() {
+        if (!omni || !tip || tip.dataset.shown) return;
+        tip.dataset.shown = '1';
         tip.textContent = window.matchMedia('(hover:none) and (pointer:coarse)').matches
           ? 'Tap to view full site' : 'Click to view full site';
         tip.hidden = false;
@@ -389,7 +392,35 @@ const SITE = 'https://www.circuitstats.com';
         document.addEventListener('click', dismiss, true);
         window.addEventListener('blur', dismiss);
         window.addEventListener('scroll', dismiss, { passive: true, once: true });
-      }, 2200);
+      }
+
+      var nudgeTimer = null;
+      window.addEventListener('message', function (e) {
+        if (e.origin === ABRI && e.data && e.data.type === 'gs-demo-done') {
+          clearTimeout(nudgeTimer);
+          setTimeout(showNudge, 400);
+        }
+      });
+
+      function demo() {
+        try { frame.contentWindow.postMessage({ type: 'gs-scroll-demo' }, ABRI); } catch (err) {}
+        nudgeTimer = setTimeout(showNudge, 6000);
+      }
+
+      if (reduce) { setTimeout(showNudge, 2000); return; }
+      // Fire only once the iframe has loaded AND the phone is in view.
+      var loaded = false, visible = false, fired = false;
+      function maybe() {
+        if (fired || !loaded || !visible) return;
+        fired = true;
+        setTimeout(demo, 700);
+      }
+      frame.addEventListener('load', function () { loaded = true; maybe(); });
+      if (!('IntersectionObserver' in window)) { visible = true; maybe(); return; }
+      var io = new IntersectionObserver(function (entries) {
+        if (entries.some(function (e) { return e.isIntersecting; })) { io.disconnect(); visible = true; maybe(); }
+      }, { threshold: 0.35 });
+      io.observe(frame);
     })();
 
     // Scroll depth: one event per section, the first time it comes into view.
@@ -620,21 +651,10 @@ const SITE = 'https://www.circuitstats.com';
   }
   .iph-omni:hover{background:#4a4a50}
   .iph-omni-url{flex:1;text-align:center;font-size:15.5px;color:#f2f2f2;letter-spacing:.01em}
+
   /* The embedded site's own scrollbar can't be styled cross-origin, so the
      screen clips it: the iframe runs one scrollbar-width wider than visible. */
   .iph-screen iframe{border:0;width:calc(100% + 16px);flex:1;display:block;background:#0a0a0b}
-
-  /* ── "It's live" hints ── device-specific copy: coarse pointers get Tap /
-     Swipe, fine pointers get Click / Scroll. Both hints self-dismiss so the
-     site underneath is never permanently covered. */
-  .iph-hint-mobile{display:none}
-  .iph-hint-swipe{display:none}
-  @media (hover:none) and (pointer:coarse){
-    .iph-hint-desktop{display:none}
-    .iph-hint-mobile{display:inline}
-    .iph-hint-mouse{display:none}
-    .iph-hint-swipe{display:block}
-  }
   /* URL nudge — abrifazliu's "Tap any stat to verify" tooltip, verbatim
      (its gold #d4a94a, pop, caret, pulse ring, fade), mirrored to hang
      below the omnibox since the status bar leaves no room above. */
@@ -670,50 +690,6 @@ const SITE = 'https://www.circuitstats.com';
   @media (prefers-reduced-motion: reduce){
     .iph-nudge{animation:none}
     .iph-omni.iph-nudge-on::before{animation:none;opacity:0}
-  }
-  .iph-hint-scroll{
-    position:absolute;bottom:84px;left:50%;transform:translateX(-50%);z-index:3;
-    display:flex;flex-direction:column;align-items:center;gap:10px;pointer-events:none;
-  }
-  .iph-hint-scroll-t{
-    background:rgba(0,0,0,.62);color:#fff;font-weight:600;font-size:13px;
-    padding:7px 13px;border-radius:999px;white-space:nowrap;
-    backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
-  }
-  /* TikTok-style swipe hand: the Material touch-app icon (same one
-     abrifazliu's demo tour uses), white with a deep drop shadow, sliding
-     up and returning like TikTok's "swipe up for more" coach mark. */
-  .iph-hint-swipe{position:relative;width:46px;height:72px;color:#fff}
-  .iph-hint-swipe svg{
-    position:absolute;left:0;bottom:0;width:46px;height:46px;
-    filter:drop-shadow(0 3px 10px rgba(0,0,0,.7));
-    transform:rotate(-8deg);
-  }
-  @media (prefers-reduced-motion: no-preference){
-    .iph-hint-scroll{animation:iphHintIn .5s 1.4s cubic-bezier(.16,1,.3,1) both,iphHintOut .7s 9s ease forwards}
-    .iph-hint-swipe svg{animation:iphTikSwipe 1.8s ease-in-out 1.8s 4 both}
-    .iph-mouse-wheel{animation:iphWheel 1.5s ease-in-out 1.8s 4}
-  }
-  /* Reduced motion: a gesture hint with no motion is noise — stays off. */
-  @media (prefers-reduced-motion: reduce){
-    .iph-hint-scroll{display:none}
-  }
-  @keyframes iphHintIn{from{opacity:0;transform:translateX(-50%) translateY(8px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
-  @keyframes iphHintOut{to{opacity:0;visibility:hidden}}
-  @keyframes iphTikSwipe{
-    0%{transform:rotate(-8deg) translateY(0);opacity:0}
-    12%{opacity:1}
-    30%{transform:rotate(-8deg) translateY(2px)}
-    62%{transform:rotate(-4deg) translateY(-26px);opacity:1}
-    80%{transform:rotate(-4deg) translateY(-30px);opacity:0}
-    100%{transform:rotate(-8deg) translateY(0);opacity:0}
-  }
-  @keyframes iphWheel{
-    0%{transform:translateY(0);opacity:1}
-    45%{transform:translateY(9px);opacity:1}
-    60%{transform:translateY(9px);opacity:0}
-    61%{transform:translateY(0);opacity:0}
-    100%{transform:translateY(0);opacity:1}
   }
   /* Side buttons: thin machined bars just proud of the frame. */
   .iph-btn{
