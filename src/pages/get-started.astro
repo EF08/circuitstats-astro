@@ -11,6 +11,13 @@
 // rewrite, ?p=&t=&l= prefill from player pages, and the same funnel labels so
 // the dashboard keeps reading (scroll-pricing now fires at the form, which is
 // deliberately in the first viewport).
+// Mobile pass (Aug 12 2026): on stacked layouts the iframe ate every
+// mid-screen swipe (page scrolled 0px — measured with a synthesized touch
+// gesture), so coarse-pointer devices get a touch shield over the screen; the
+// phone is cropped to its top ~72% on mobile so $399 + form land one short
+// flick down; a static snapshot sits behind the iframe while it loads; a
+// sticky $399 bar covers the thumb zone (label get-started:sticky-cta, picked
+// up by the site-wide [data-track] listener); inputs are 16px (iOS zoom rule).
 import Layout from '../layouts/Layout.astro';
 const SITE = 'https://www.circuitstats.com';
 ---
@@ -77,7 +84,18 @@ const SITE = 'https://www.circuitstats.com';
                   <div class="iph-nudge" id="iph-nudge" hidden></div>
                 </a>
               </div>
-              <iframe id="iph-frame" src="https://www.abrifazliu.com" title="Live example: Abri Fazliu's recruiting website"></iframe>
+              <div class="iph-view">
+                {/* Snapshot of the real site shows instantly; the live iframe
+                    fades in over it once loaded (on weak cellular the screen
+                    used to sit black). */}
+                <img class="iph-preview" id="iph-preview" src="/abri-phone-preview.webp" alt="" aria-hidden="true" />
+                <iframe id="iph-frame" src="https://www.abrifazliu.com" title="Live example: Abri Fazliu's recruiting website"></iframe>
+                {/* Touch devices only: swipes over the phone must scroll THIS
+                    page, not the site inside it — and a tap anywhere on the
+                    screen does what the nudge promises. Duplicate of the
+                    omnibox link, so hidden from the a11y tree. */}
+                <a class="iph-touch" href="https://www.abrifazliu.com" target="_blank" rel="noopener" data-track="get-started:example" aria-hidden="true" tabindex="-1"></a>
+              </div>
             </div>
           </div>
         </div>
@@ -272,6 +290,14 @@ const SITE = 'https://www.circuitstats.com';
 
     </div>
 
+    <!-- MOBILE STICKY CTA: the price + the way to the form, always in the
+         thumb zone. Appears once the visitor is past the headline, hides
+         while the form itself is on screen and for good after a submit. -->
+    <a class="gs-sticky" id="gs-sticky" href="#get" data-track="get-started:sticky-cta">
+      <span class="gs-sticky-price">$399</span>
+      <span class="gs-sticky-txt">Get yours today</span>
+    </a>
+
     <!-- FOOTER -->
     <footer class="gs-footer">
       <div class="gs-foot-brand">
@@ -317,12 +343,16 @@ const SITE = 'https://www.circuitstats.com';
       var wrap = document.getElementById('iph-fit');
       var phone = document.getElementById('iph');
       var W = 402, H = 844;
+      var CROP = window.matchMedia('(max-width:880px)');
       function fit() {
         var w = wrap.clientWidth;
         if (!w) return; // pre-layout call — the observer re-fires with the real width
         var s = Math.min(1, w / W);
         phone.style.transform = 'scale(' + s + ')';
-        wrap.style.height = Math.round(H * s) + 'px';
+        // Stacked layout shows the top ~72% of the phone — chrome, name,
+        // profile, accolades, stats: all the persuasion — so the $399 + form
+        // land one short flick down instead of a full phone-height away.
+        wrap.style.height = Math.round(H * s * (CROP.matches ? 0.72 : 1)) + 'px';
       }
       fit();
       // ResizeObserver instead of a bare resize listener: on mobile the first
@@ -331,6 +361,44 @@ const SITE = 'https://www.circuitstats.com';
       // the moment the real width exists, and on every later change.
       if ('ResizeObserver' in window) new ResizeObserver(fit).observe(wrap);
       else window.addEventListener('resize', fit);
+    })();
+
+    // Fade the live iframe in over the static snapshot once it loads. The 7s
+    // failsafe covers a load event that slipped past this listener — worst
+    // case the snapshot (same pixels as the live top) just stays.
+    (function () {
+      var frame = document.getElementById('iph-frame');
+      var pv = document.getElementById('iph-preview');
+      if (!frame || !pv) return;
+      function live() { pv.classList.add('iph-preview-off'); }
+      frame.addEventListener('load', live);
+      setTimeout(live, 7000);
+    })();
+
+    // Mobile sticky CTA: shown past the headline, hidden whenever the form is
+    // on screen (it would be pointing at itself) and permanently after a
+    // successful submit. The site-wide [data-track] listener logs the taps.
+    (function () {
+      var bar = document.getElementById('gs-sticky');
+      var get = document.getElementById('get');
+      if (!bar || !get) return;
+      var mq = window.matchMedia('(max-width:880px)');
+      var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      var formOnScreen = true; // stays true (bar hidden) until the observer reports
+      function update() {
+        bar.classList.toggle('on', mq.matches && !formOnScreen && !bar.dataset.done && window.scrollY > 250);
+      }
+      if ('IntersectionObserver' in window) {
+        new IntersectionObserver(function (entries) {
+          entries.forEach(function (en) { formOnScreen = en.isIntersecting; });
+          update();
+        }, { rootMargin: '0px 0px -40px 0px' }).observe(get);
+      } else { formOnScreen = false; }
+      window.addEventListener('scroll', update, { passive: true });
+      bar.addEventListener('click', function (e) {
+        e.preventDefault();
+        get.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+      });
     })();
 
     // "I want more info first": reveal the full pitch below the fold without
@@ -530,6 +598,9 @@ const SITE = 'https://www.circuitstats.com';
           if (window.fbq) window.fbq('track', 'Lead');
           document.getElementById('gs-formwrap').hidden = true;
           document.getElementById('gs-done').hidden = false;
+          // Lead is in — retire the sticky bar for this visit.
+          var sb = document.getElementById('gs-sticky');
+          if (sb) { sb.dataset.done = '1'; sb.classList.remove('on'); }
         }).catch(function (e) {
           track('get-started:submit-error', e && e.message);
           btn.disabled = false; btn.textContent = 'Submit';
@@ -612,6 +683,18 @@ const SITE = 'https://www.circuitstats.com';
   @media (prefers-reduced-motion: no-preference){
     .iph-fit{animation:gsRise .7s cubic-bezier(.16,1,.3,1) both}
   }
+  /* Stacked layout crops the phone to its top ~72% (height math in fit()).
+     clip-path instead of overflow so the frame's soft shadow survives on the
+     top and sides; only the bottom is cut, and the cut edge fades into the
+     page so the phone reads as continuing, not broken. */
+  @media (max-width:880px){
+    .iph-fit{clip-path:inset(-90px -90px 0 -90px)}
+    .iph-fit::after{
+      content:'';position:absolute;left:0;right:0;bottom:0;height:76px;
+      z-index:4;pointer-events:none;
+      background:linear-gradient(to bottom,rgba(7,13,26,0),#070d1a 92%);
+    }
+  }
   .iph{
     width:402px;height:844px;transform-origin:top center;
     position:absolute;top:0;left:50%;margin-left:-201px;
@@ -653,7 +736,22 @@ const SITE = 'https://www.circuitstats.com';
 
   /* The embedded site's own scrollbar can't be styled cross-origin, so the
      screen clips it: the iframe runs one scrollbar-width wider than visible. */
+  .iph-view{position:relative;flex:1;display:flex}
   .iph-screen iframe{border:0;width:calc(100% + 16px);flex:1;display:block;background:#0a0a0b}
+  /* The snapshot paints above the iframe until the live site loads. */
+  .iph-preview{
+    position:absolute;top:0;left:0;width:100%;height:100%;
+    object-fit:cover;object-position:top;pointer-events:none;
+    transition:opacity .45s ease;
+  }
+  .iph-preview-off{opacity:0}
+  /* Coarse pointers: the shield keeps swipes scrolling the page (the iframe
+     consumed every mid-screen gesture) and makes any tap open the real site. */
+  .iph-touch{display:none;position:absolute;inset:0;z-index:3}
+  @media (hover:none) and (pointer:coarse){
+    .iph-touch{display:block}
+    .iph-screen iframe{pointer-events:none}
+  }
   /* URL nudge — abrifazliu's "Tap any stat to verify" tooltip, verbatim
      (its gold #d4a94a, pop, caret, pulse ring, fade), mirrored to hang
      below the omnibox since the status bar leaves no room above. */
@@ -720,7 +818,9 @@ const SITE = 'https://www.circuitstats.com';
   .gs-req-star{color:#f2a83b}
   .gs-inp{
     background:#0a1122;border:1px solid #1b2740;border-radius:9px;padding:13px 14px;
-    color:#e9eef8;font-size:15px;font-family:'Archivo',sans-serif;outline:none;width:100%;
+    /* 16px, not 15px: iOS Safari auto-zooms the whole page on focus for any
+       input rendering below 16px — same rule as .srch-inp in global.css. */
+    color:#e9eef8;font-size:16px;font-family:'Archivo',sans-serif;outline:none;width:100%;
     caret-color:#f2a83b;transition:border-color .15s;
   }
   .gs-inp::placeholder{color:#6d7c9c}
@@ -734,6 +834,16 @@ const SITE = 'https://www.circuitstats.com';
     transition:color .15s;
   }
   .gs-wa-link:hover{color:#fff}
+  /* Phones: these parents live in WhatsApp — the talk-first path becomes a
+     real button under Submit (48px target), not a footnote link. */
+  @media (max-width:880px){
+    .gs-wa-link{
+      align-self:stretch;display:flex;align-items:center;justify-content:center;
+      min-height:48px;padding:12px;border:1px solid #22304f;border-radius:10px;
+      color:#c8d2e8;font-size:15px;text-decoration:none;
+    }
+    .gs-wa-link:active{background:rgba(255,255,255,.04)}
+  }
   .gs-err{font-size:12.5px;color:#f87171;min-height:15px}
 
   .gs-done{display:flex;flex-direction:column;align-items:flex-start;gap:14px;padding:24px 0;border-top:1px solid #16223c}
@@ -903,6 +1013,28 @@ const SITE = 'https://www.circuitstats.com';
   /* The drawer's single exit: centered, echoing the Submit column's axis. */
   .gs-back-btn{display:flex;width:fit-content;margin:38px auto 0}
 
+  /* ── MOBILE STICKY CTA ── the whole bar is the tap target, parked in the
+     thumb zone. Desktop never renders it. */
+  .gs-sticky{
+    position:fixed;left:0;right:0;bottom:0;z-index:60;
+    display:none;align-items:baseline;justify-content:center;gap:12px;
+    padding:14px 16px calc(14px + env(safe-area-inset-bottom));
+    background:rgba(7,13,26,.92);
+    backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+    border-top:1px solid #131d33;
+    transform:translateY(105%);opacity:0;pointer-events:none;
+    transition:transform .3s cubic-bezier(.16,1,.3,1),opacity .3s;
+  }
+  @media (max-width:880px){.gs-sticky{display:flex}}
+  .gs-sticky.on{transform:none;opacity:1;pointer-events:auto}
+  .gs-sticky-price{font-size:22px;font-weight:900;color:#f2a83b;letter-spacing:-.02em;line-height:1}
+  .gs-sticky-txt{
+    font-size:15.5px;font-weight:700;color:#fff;
+    text-decoration:underline;text-underline-offset:4px;text-decoration-thickness:1px;
+    text-decoration-color:rgba(255,255,255,.4);
+  }
+  @media (prefers-reduced-motion: reduce){.gs-sticky{transition:opacity .2s}}
+
   /* ── FOOTER ── */
   .gs-footer{
     border-top:1px solid #131d33;padding:28px clamp(20px,5vw,64px);
@@ -916,6 +1048,17 @@ const SITE = 'https://www.circuitstats.com';
   .gs-foot-q{margin-right:9px}
   .gs-foot-contact a{color:#f2a83b;text-decoration:underline;text-underline-offset:3px;transition:color .15s}
   .gs-foot-contact a:hover{color:#f7ba60}
+  @media (max-width:880px){
+    /* Clear the sticky bar, and give the contact links thumb-sized targets. */
+    .gs-footer{padding-bottom:96px}
+    .gs-foot-contact{font-size:14px}
+    .gs-foot-contact a{display:inline-block;padding:10px 4px}
+  }
+  /* Small phones: hand the gutters to the phone mockup — every pixel of
+     column width is legibility for the site inside it. */
+  @media (max-width:400px){
+    .gs-main{padding-left:12px;padding-right:12px}
+  }
 
   /* ── DESKTOP TYPE FLOORS ── same rule as the info page: reading text ≥17px
      on desktop, fine print ≥13.5px; only styled mono labels go smaller. */
@@ -926,7 +1069,6 @@ const SITE = 'https://www.circuitstats.com';
     .gs-check{font-size:17px}
     .gs-price-alt{font-size:17px}
     .gs-done-d{font-size:17px}
-    .gs-inp{font-size:16px}
     .gs-wa-link{font-size:15px}
     .gs-more-btn{font-size:15px}
     .gs-roi-l{font-size:15px}
