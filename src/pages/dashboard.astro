@@ -817,9 +817,13 @@ const SITE = 'https://www.circuitstats.com';
       var sd = f.scrollDepth;
       if (sd) {
         var sdOpened = sd.steps.length ? sd.steps[0].people : 0;
+        var sdSince = sd.since
+          ? new Date(sd.since).toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric' })
+          : null;
         html += card('How far down the pitch people scroll',
           sd.hasData
-            ? 'People who scrolled at least this far, as a share of everyone who opened /get-started. If the price row is small, most never even saw the offer.'
+            ? 'People who scrolled at least this far, as a share of everyone who opened /get-started <strong>since scroll tracking went live' +
+              (sdSince ? ' (' + sdSince + ')' : '') + '</strong> — earlier visitors were never measured and are not counted here. If the price row is small, most never even saw the offer.'
             : 'Scroll tracking is new — rows below "Opened the page" fill in starting with the next visitor.',
           barList(sd.steps.map(function (s) {
             return { label: s.label, count: s.people, share: sdOpened ? s.people / sdOpened : 0 };
