@@ -1,0 +1,831 @@
+---
+// get-started.astro — conversion landing for player websites, the destination
+// of the "Get D1 offers now" hero CTA. Implements the Claude Design redesign
+// ("Player Websites Sales Page"): own sticky nav (site header hidden) → hero →
+// what's-on-the-line money section → live Google-search demo + the real
+// abrifazliu.com embedded in a browser frame (interactive) →
+// private-dashboard section → pricing + request form. Prefills
+// player/team/league from query params (?p=&t=&l=) and POSTs to the
+// circuitboard backend (/website-request), which stores the lead and emails
+// Andy.
+import Layout from '../layouts/Layout.astro';
+import { liveLabel } from '../lib/liveLabel.js';
+const SITE = 'https://www.circuitstats.com';
+---
+<Layout
+  title="Get Your Player's Website | Circuit Stats"
+  trackTitle="Get Started — Player Website (Info)"
+  description="A professional recruiting website for your player: his own domain, highlight film, verified stats that update after every session, and a private dashboard showing which coaches opened his site and what they watched. $399 to build, then $39/month."
+  subLabel="Player Websites"
+  pillLabel="ALL"
+  pageBase="/rankings"
+  activeTab={null}
+  canonical={`${SITE}/get-started-info`}
+  hideNav
+  hideHeader
+>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <div class="gs-page">
+
+    <!-- NAV -->
+    <nav class="gs-nav">
+      <a class="gs-brand" href="/" data-track="get-started:logo">
+        <div class="hdr-logo gs-nav-logo" role="img" aria-label="Circuit Stats logo"></div>
+        <span class="gs-brand-txt">
+          <span class="gs-brand-t">Circuit Stats</span>
+          <span class="gs-brand-s">Player Websites</span>
+        </span>
+      </a>
+      <a class="gs-nav-link" href="#request" data-track="get-started:nav-cta">Request my website</a>
+    </nav>
+
+    <!-- HERO -->
+    <header class="gs-hero">
+      <div class="gs-live" data-live-label style={liveLabel() ? undefined : 'display:none'}>{liveLabel()}</div>
+      <div class="gs-eyebrow">RECRUITING WEBSITES · BUILT AND RUN FOR YOU</div>
+      <h1 class="gs-h1">If a coach can't find you in 10 seconds, you don't exist.</h1>
+      <p class="gs-hero-p1">We build your player a professional recruiting site on his own domain — <strong class="gs-domain">www.hisrealname.com</strong> — <strong>and it shows up at the top of Google when his name is searched.</strong> Organized film, verified stats, accolades and a private dashboard showing exactly which coaches are watching, and for how long.</p>
+      <p class="gs-hero-p2">You send film and info once. We do everything else, forever.</p>
+      <div class="gs-hero-ctas">
+        <a class="gs-btn gs-btn-lg" href="#request" data-track="get-started:hero-cta">Request my website</a>
+        <a class="gs-ghost" href="https://www.abrifazliu.com" target="_blank" rel="noopener" data-track="get-started:see-proof">See a real player's site ↗</a>
+      </div>
+    </header>
+
+    <!-- WHAT'S ON THE LINE -->
+    <section class="gs-stakes">
+      <div class="gs-eyebrow gs-eyebrow-dim">WHAT'S ACTUALLY ON THE LINE</div>
+      <h2 class="gs-h2 gs-stakes-h2">A D1 roster spot is now worth more than most houses.</h2>
+      <div class="gs-money">
+        <div class="gs-mrow">
+          <div class="gs-mnum gs-mnum-1">$20.5M</div>
+          <div class="gs-mtxt">
+            <div class="gs-mt">Per school, per year</div>
+            <div class="gs-md">What each school can now pay athletes directly under the <a class="gs-src-link" href="https://en.wikipedia.org/wiki/House_v._NCAA" target="_blank" rel="noopener">House v. NCAA settlement</a>. 310 of 364 D1 schools are in.<sup>2</sup></div>
+          </div>
+        </div>
+        <div class="gs-mrow">
+          <div class="gs-mnum gs-mnum-2">$240–360K</div>
+          <div class="gs-mtxt">
+            <div class="gs-mt">One full D1 scholarship</div>
+            <div class="gs-md">Tuition, room, board and fees at a major program run $60–90K a year — over a 4-year career.<sup>1</sup></div>
+          </div>
+        </div>
+        <div class="gs-mrow">
+          <div class="gs-mnum gs-mnum-3">$65,853</div>
+          <div class="gs-mtxt">
+            <div class="gs-mt">Average NIL, per player</div>
+            <div class="gs-md">What the average men's college basketball player earned in NIL in 2025 — on top of the scholarship.<sup>3</sup></div>
+          </div>
+        </div>
+      </div>
+      <p class="gs-callout-t">The coaches who decide who gets this money are already recruiting on <a class="gs-cs-link" href="/" target="_blank" rel="noopener" data-track="get-started:circuitstats-link">Circuit Stats</a>, the national stats site for EYBL, UAA &amp; 3SSB. From the site's visitor log:</p>
+      <div class="gs-vlog">
+        <div class="gs-vrow">
+          <div class="gs-vtop"><div class="gs-vorg">University of North Carolina at Chapel Hill</div><div class="gs-vtime">recently</div></div>
+          <div class="gs-vsub">Chapel Hill, NC · viewed Xavier Young, Texas Impact film, U17 scoring leaders</div>
+        </div>
+        <div class="gs-vrow">
+          <div class="gs-vtop"><div class="gs-vorg">University of Michigan</div><div class="gs-vtime">recently</div></div>
+          <div class="gs-vsub">New Hudson, MI · viewed Merrick Ham</div>
+        </div>
+        <div class="gs-vrow">
+          <div class="gs-vtop"><div class="gs-vorg">Cleveland Cavaliers</div><div class="gs-vtime">2d ago</div></div>
+          <div class="gs-vsub">Cleveland, OH · viewed Flory Kuminga, EYBL U15 stats</div>
+        </div>
+        <div class="gs-vrow">
+          <div class="gs-vtop"><div class="gs-vorg">Illinois State University</div><div class="gs-vtime">3d ago</div></div>
+          <div class="gs-vsub">Normal, IL · viewed Alexander Sirbu</div>
+        </div>
+      </div>
+      <div class="gs-vnote">Real visits from the tracking log — the organization is identified from the network the visit came from; the names are the players they viewed.</div>
+      <p class="gs-callout-t gs-callout-close">We build his website on his own domain, then put his website link on <a class="gs-cs-link" href="/" target="_blank" rel="noopener" data-track="get-started:circuitstats-link">Circuit Stats</a> — so the next player they find is him. <a class="gs-callout-link" href="#request" data-track="get-started:stakes-cta">Create yours today.</a></p>
+      <div class="gs-sources">
+        <sup>1</sup> <a class="gs-src-link" href="https://floridacoastalprep.com/d1-basketball-scholarship-guide/" target="_blank" rel="noopener">Florida Coastal Prep, D1 Basketball Scholarship Guide 2026</a> &nbsp;·&nbsp; <sup>2</sup> <a class="gs-src-link" href="https://en.wikipedia.org/wiki/House_v._NCAA" target="_blank" rel="noopener">House v. NCAA settlement, effective July 1 2025</a> &nbsp;·&nbsp; <sup>3</sup> <a class="gs-src-link" href="https://gameplannil.substack.com/p/nil-market-rate-insights-2025" target="_blank" rel="noopener">NIL Athlete Network, NIL Market Rate Insights 2025</a>
+      </div>
+    </section>
+
+    <!-- PROOF: GOOGLE DEMO + LIVE SITE MOCK -->
+    <section class="gs-proof" id="proof">
+      <div class="gs-proof-head">
+        <h2 class="gs-h2">This is a real player's live site.</h2>
+        <div class="gs-proof-note"><strong class="gs-offers">Multiple offers</strong> came from his website.</div>
+      </div>
+      <div class="gs-google" id="gs-google">
+        <div class="gs-glogo"><span style="color:#4285F4">G</span><span style="color:#EA4335">o</span><span style="color:#FBBC05">o</span><span style="color:#4285F4">g</span><span style="color:#34A853">l</span><span style="color:#EA4335">e</span></div>
+        <div class="gs-gbox">
+          <div class="gs-glens"></div>
+          <div class="gs-gquery"><span id="gs-typed"></span><span class="gs-caret"></span></div>
+        </div>
+        <div class="gs-gresults" id="gs-gresults" hidden>
+          <div class="gs-gres1">
+            <div class="gs-gr-title">Abri Fazliu | Class of 2029 PG</div>
+            <div class="gs-gr-url">https://abrifazliu.com</div>
+            <div class="gs-gr-snip">6'2 PG from Toronto (Class of 2029). Elite defense and off-ball instincts. Toronto, CA/ 2010 Born 6'2 PG/ 6'5 WS/ 194 LB Player Profile "Luka Doncic with ...</div>
+          </div>
+          <div class="gs-gres2">
+            <div class="gs-gr2-site">instagram.com</div>
+            <div class="gs-gr2-title">@abri.faz · Instagram</div>
+          </div>
+        </div>
+      </div>
+      <div class="gs-eyebrow gs-eyebrow-dim gs-proof-arrow">…ONE CLICK LATER, THE COACH LANDS HERE ↓</div>
+      <div class="gs-frame">
+        <div class="gs-frame-bar">
+          <div class="gs-dots"><span class="gs-dot"></span><span class="gs-dot"></span><span class="gs-dot"></span></div>
+          <div class="gs-url">abrifazliu.com</div>
+          <a class="gs-frame-open" href="https://www.abrifazliu.com" target="_blank" rel="noopener" data-track="get-started:example">View full site ↗</a>
+        </div>
+        <div class="gs-embed-wrap" id="gs-embed-wrap">
+          <iframe id="gs-embed" src="https://www.abrifazliu.com" title="Live example: Abri Fazliu's recruiting website" loading="lazy"></iframe>
+        </div>
+      </div>
+    </section>
+
+    <!-- PRIVATE DASHBOARD -->
+    <section class="gs-dash" id="gs-dash">
+      <div class="gs-dash-inner">
+        <div class="gs-dash-eyebrow"><span class="gs-dash-dot"></span>HIS PRIVATE DASHBOARD · WHAT ONLY YOU GET TO SEE</div>
+        <h2 class="gs-dash-h2">See which coaches are watching — before anyone calls.</h2>
+        <p class="gs-dash-p">Every site includes a private dashboard: who opened it, where they came from, and how long they watched film. Interest stops being a guess. It becomes a number.</p>
+        <div class="gs-dash-grid">
+          <div class="gs-watch">
+            <div class="gs-watch-head">COACHES · WATCH TIME</div>
+            <div class="gs-watch-list">
+              <div class="gs-wrow gs-wrow-hot">
+                <div class="gs-wtop"><div class="gs-wname">duke-blue-devils</div><div class="gs-wtime">40m 57s</div></div>
+                <div class="gs-wtrack"><div class="gs-wfill" style="width:100%"></div></div>
+              </div>
+              <div class="gs-wrow">
+                <div class="gs-wtop"><div class="gs-wname">montverde-academy</div><div class="gs-wtime">28m 12s</div></div>
+                <div class="gs-wtrack"><div class="gs-wfill" style="width:69%"></div></div>
+              </div>
+              <div class="gs-wrow">
+                <div class="gs-wtop"><div class="gs-wname">kansas-jayhawks</div><div class="gs-wtime">19m 44s</div></div>
+                <div class="gs-wtrack"><div class="gs-wfill" style="width:48%"></div></div>
+              </div>
+              <div class="gs-wrow">
+                <div class="gs-wtop"><div class="gs-wname">unc-tar-heels</div><div class="gs-wtime">14m 08s</div></div>
+                <div class="gs-wtrack"><div class="gs-wfill" style="width:34%"></div></div>
+              </div>
+              <div class="gs-wrow">
+                <div class="gs-wtop"><div class="gs-wname">gonzaga-bulldogs</div><div class="gs-wtime">8m 51s</div></div>
+                <div class="gs-wtrack"><div class="gs-wfill" style="width:22%"></div></div>
+              </div>
+              <div class="gs-wrow">
+                <div class="gs-wtop"><div class="gs-wname">uconn-huskies</div><div class="gs-wtime">2m 36s</div></div>
+                <div class="gs-wtrack"><div class="gs-wfill" style="width:6.4%"></div></div>
+              </div>
+            </div>
+          </div>
+          <div class="gs-dash-col">
+            <div class="gs-duke">
+              <div class="gs-duke-eyebrow">WHAT 40 MINUTES MEANS</div>
+              <div class="gs-duke-t">A Duke coach watched 41 minutes of this kid's film.</div>
+              <div class="gs-duke-d">Nobody watches 41 minutes out of politeness. That's a coach doing homework. His family knew the interest was real — and how deep it ran — before the first call came. That's leverage no highlight tape gives you.</div>
+            </div>
+            <div class="gs-tiles">
+              <div class="gs-tile"><div class="gs-tile-v">196</div><div class="gs-tile-l">REAL VISITORS</div></div>
+              <div class="gs-tile"><div class="gs-tile-v">10h 42m</div><div class="gs-tile-l">FILM WATCHED</div></div>
+              <div class="gs-tile"><div class="gs-tile-v">22</div><div class="gs-tile-l">COUNTRIES</div></div>
+            </div>
+            <div class="gs-dash-note">Example dashboard — actual school names were changed to protect the player's anonymity. Bots and family visits excluded; every count is a real person.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PRICING + REQUEST FORM -->
+    <section class="gs-request" id="request">
+      <div class="gs-req-grid">
+        <div class="gs-price-panel">
+          <div class="gs-eyebrow">THE WHOLE THING, HANDLED</div>
+          <div class="gs-price-row">
+            <div class="gs-price-main">$399</div>
+            <div class="gs-price-alt">to build, then $39/month</div>
+          </div>
+          <div class="gs-checks">
+            <div class="gs-check"><span>✓</span> Connect website to Circuit Stats, where D1 &amp; NBA teams scout</div>
+            <div class="gs-check"><span>✓</span> Ranks at the top of Google for his name</div>
+            <div class="gs-check"><span>✓</span> His own domain, registered to him</div>
+            <div class="gs-check"><span>✓</span> His film, edited and organized</div>
+            <div class="gs-check"><span>✓</span> Verified stats, updated every session</div>
+            <div class="gs-check"><span>✓</span> Private dashboard: coach visits &amp; watch time</div>
+            <div class="gs-check"><span>✓</span> Hosting and upkeep handled forever</div>
+            <div class="gs-check"><span>✓</span> Cancel anytime</div>
+          </div>
+          <div class="gs-roi" id="gs-roi">
+            <div class="gs-roi-item">
+              <div class="gs-roi-top"><div class="gs-roi-l">THIS WEBSITE</div><div class="gs-roi-v">$399</div></div>
+              <div class="gs-roi-track"><div class="gs-roi-fill gs-roi-fill-site"></div></div>
+            </div>
+            <div class="gs-roi-item">
+              <div class="gs-roi-top"><div class="gs-roi-l">ONE D1 OFFER &nbsp;<span class="gs-roi-sub">4-yr scholarship + average NIL</span></div><div class="gs-roi-v gs-roi-v-accent">$500K+</div></div>
+              <div class="gs-roi-track"><div class="gs-roi-fill gs-roi-fill-offer"></div></div>
+            </div>
+            <div class="gs-roi-return">= a 1,250× return</div>
+            <div class="gs-roi-note">*No guarantee he goes D1 — that part's on him.</div>
+          </div>
+        </div>
+        <div class="gs-form-panel">
+          <div id="gs-formwrap">
+            <h3 class="gs-h3">Request the website</h3>
+            <div class="gs-form-sub">You'll hear back within a few hours.</div>
+            <form id="gs-form">
+              <div class="gs-2col">
+                <label class="gs-lbl"><span>PLAYER NAME <span class="gs-req-star">*</span></span><input class="gs-inp" id="gs-player" name="playerName" type="text" required maxlength="120" placeholder="e.g. Cayden Daughtry" /></label>
+                <label class="gs-lbl"><span>YOUR EMAIL <span class="gs-req-star">*</span></span><input class="gs-inp" id="gs-email" name="email" type="email" required maxlength="160" placeholder="you@email.com" /></label>
+              </div>
+              {/* Kept hidden so the ?t=&l= prefill from player pages still reaches the lead. */}
+              <input type="hidden" id="gs-team" name="teamLeague" />
+              <label class="gs-lbl"><span>CHANGES OR ADDITIONS YOU'D WANT (OPTIONAL)</span><textarea class="gs-inp gs-ta" id="gs-notes" name="notes" maxlength="1500" rows="3" placeholder="I want it like abrifazliu.com but with... team colors, a different film order, an academics section, etc."></textarea></label>
+              <button class="gs-btn gs-btn-lg gs-submit" id="gs-submit" type="submit" data-track="get-started:submit">Request my website</button>
+              <a class="gs-wa-btn" href="https://wa.me/16476079935?text=Hi%2C%20I%27m%20interested%20in%20a%20player%20website." target="_blank" rel="noopener" data-track="get-started:whatsapp-form">Prefer to talk first? WhatsApp us</a>
+              <div class="gs-form-note">No payment now. We confirm details first, then build.</div>
+              <div class="gs-err" id="gs-err"></div>
+            </form>
+          </div>
+          <div class="gs-done" id="gs-done" hidden>
+            <div class="gs-done-ico">✓</div>
+            <h3 class="gs-done-t">Request received.</h3>
+            <div class="gs-done-d">We'll reply within a few hours with next steps and what film to send. His site is usually live within days.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="gs-footer">
+      <div class="gs-foot-brand">
+        <div class="hdr-logo gs-foot-logo" role="img" aria-label="Circuit Stats logo"></div>
+        <span class="gs-foot-txt"><strong>Circuit Stats</strong> · Player Websites</span>
+      </div>
+      <div class="gs-foot-contact">Questions? <a href="mailto:andyfazliu@gmail.com" data-track="get-started:contact">Email us</a> &nbsp;·&nbsp; <a href="tel:+16476079935" data-track="get-started:call">Call us</a> &nbsp;·&nbsp; <a href="https://wa.me/16476079935" target="_blank" rel="noopener" data-track="get-started:whatsapp">WhatsApp call</a></div>
+      <div class="gs-foot-sources">Sources: Florida Coastal Prep 2026 · House v. NCAA settlement · NIL Market Rate Insights 2025</div>
+    </footer>
+
+  </div>
+
+  <script>
+    // Correct the badge to the visitor's actual date — this static page may
+    // have been built in a different month than it's being viewed in. Outside
+    // live periods the badge hides entirely (inline style: the class's
+    // display:flex would override the hidden attribute).
+    import { liveLabel } from '../lib/liveLabel.js';
+    const t = liveLabel();
+    document.querySelectorAll('[data-live-label]').forEach(el => {
+      el.textContent = t;
+      el.style.display = t ? '' : 'none';
+    });
+  </script>
+  <script is:inline>
+    // Prefill from the player page that linked here (?p=&t=&l=).
+    (function () {
+      var q = new URLSearchParams(location.search);
+      var p = q.get('p'), t = q.get('t'), l = q.get('l');
+      if (p) {
+        document.getElementById('gs-player').value = p;
+        // Personalize the example domain: "Leartist Williams Jr" -> www.leartistwilliams.com
+        var parts = p.trim().split(/\s+/);
+        var dom = ((parts[0] || '') + (parts[1] || '')).normalize('NFKD').replace(/[^a-zA-Z]/g, '').toLowerCase();
+        if (dom) document.querySelectorAll('.gs-domain').forEach(function (el) { el.textContent = 'www.' + dom + '.com'; });
+      }
+      var tl = [t, l].filter(Boolean).join(', ');
+      if (tl) document.getElementById('gs-team').value = tl;
+    })();
+
+    // Fit the live-example iframe: desktop renders the real desktop site scaled
+    // to the container; narrow screens get the site's own responsive layout.
+    (function () {
+      var wrap = document.getElementById('gs-embed-wrap');
+      var frame = document.getElementById('gs-embed');
+      var DESK = 1180;
+      function fit() {
+        var w = wrap.clientWidth;
+        if (w < 620) {
+          frame.style.width = '100%';
+          frame.style.height = wrap.clientHeight + 'px';
+          frame.style.transform = 'none';
+        } else {
+          var s = w / DESK;
+          frame.style.width = DESK + 'px';
+          frame.style.height = Math.round(wrap.clientHeight / s) + 'px';
+          frame.style.transform = 'scale(' + s + ')';
+        }
+      }
+      fit();
+      window.addEventListener('resize', fit);
+    })();
+
+    // Google-search demo: when the card scrolls into view, type the player's
+    // name, surface the results, then "click" the top one (highlight + the site
+    // frame below lights up). Reduced motion jumps straight to the final state.
+    (function () {
+      var google = document.getElementById('gs-google');
+      var typed = document.getElementById('gs-typed');
+      var results = document.getElementById('gs-gresults');
+      var proof = document.getElementById('proof');
+      var Q = 'abri fazliu';
+      var started = false;
+      function finish() { typed.textContent = Q; results.hidden = false; proof.classList.add('gs-clicked'); }
+      function run() {
+        if (started) return;
+        started = true;
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { finish(); return; }
+        var i = 0;
+        var timer = setInterval(function () {
+          i++;
+          typed.textContent = Q.slice(0, i);
+          if (i >= Q.length) {
+            clearInterval(timer);
+            setTimeout(function () { results.hidden = false; }, 350);
+            setTimeout(function () { proof.classList.add('gs-clicked'); }, 1500);
+          }
+        }, 110);
+      }
+      if (!('IntersectionObserver' in window)) { finish(); return; }
+      var io = new IntersectionObserver(function (entries) {
+        if (entries.some(function (e) { return e.isIntersecting; })) { io.disconnect(); run(); }
+      }, { threshold: 0.35 });
+      io.observe(google);
+    })();
+
+    // Dashboard watch-time bars grow when the section scrolls into view.
+    (function () {
+      var dash = document.getElementById('gs-dash');
+      function show() { dash.classList.add('in'); }
+      if (!('IntersectionObserver' in window)) { show(); return; }
+      var io = new IntersectionObserver(function (entries) {
+        if (entries.some(function (e) { return e.isIntersecting; })) { io.disconnect(); show(); }
+      }, { threshold: 0.25 });
+      io.observe(dash);
+      // Safety net: never leave the bars invisible.
+      setTimeout(show, 4000);
+    })();
+
+    // ROI comparison bars grow when the pricing block scrolls into view.
+    (function () {
+      var roi = document.getElementById('gs-roi');
+      function show() { roi.classList.add('in'); }
+      if (!('IntersectionObserver' in window)) { show(); return; }
+      var io = new IntersectionObserver(function (entries) {
+        if (entries.some(function (e) { return e.isIntersecting; })) { io.disconnect(); show(); }
+      }, { threshold: 0.4 });
+      io.observe(roi);
+      // Safety net: never leave the bars invisible.
+      setTimeout(show, 4000);
+    })();
+
+    // Prod goes through the Vercel rewrite (same origin); localhost dev has no
+    // rewrite, so hit the locally-running backend directly.
+    var API = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+      ? 'http://localhost:4000/a1a2-command-center' : '/a1a2-command-center';
+
+    // Funnel instrumentation, shared by the scroll tracker below and the form.
+    // The site-wide click listener in Layout already records the submit *press*,
+    // but that fires before validation and says nothing about people who filled
+    // fields in and gave up, or how far down the page anyone read. These named
+    // events are what make the pitch→lead drop-off diagnosable. Labels must stay
+    // in sync with a1a2-command-center/apps/circuitboard/funnel.js.
+    function track(label, detail) {
+      try {
+        fetch(API + '/track-click', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          keepalive: true,
+          body: JSON.stringify({ label: label, detail: detail || null, page: location.pathname }),
+        }).catch(function () {});
+      } catch (e) {}
+    }
+
+    // Scroll depth: one event per section, the first time it comes into view,
+    // so the dashboard can say how far down the pitch each visitor actually
+    // read. "In view" = the section's top clears the bottom 30% of the screen —
+    // a sliver peeking over the fold doesn't count as having read it.
+    (function () {
+      if (!('IntersectionObserver' in window)) return;
+      var SECTIONS = [
+        ['.gs-stakes', 'get-started:scroll-money'],
+        ['#proof',     'get-started:scroll-example'],
+        ['#gs-dash',   'get-started:scroll-dashboard'],
+        ['#request',   'get-started:scroll-pricing'],
+      ];
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (en) {
+          if (!en.isIntersecting) return;
+          io.unobserve(en.target);
+          track(en.target.getAttribute('data-gs-section'));
+        });
+      }, { rootMargin: '0px 0px -30% 0px' });
+      SECTIONS.forEach(function (s) {
+        var el = document.querySelector(s[0]);
+        if (el) { el.setAttribute('data-gs-section', s[1]); io.observe(el); }
+      });
+    })();
+
+    (function () {
+      var form = document.getElementById('gs-form');
+      // One-shot: the first time any field is touched, this visitor has started.
+      var started = false;
+      form.addEventListener('focusin', function () {
+        if (started) return;
+        started = true;
+        track('get-started:form-start');
+      });
+
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var btn = document.getElementById('gs-submit');
+        var err = document.getElementById('gs-err');
+        err.textContent = '';
+        btn.disabled = true; btn.textContent = 'Sending…';
+        fetch(API + '/website-request', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            playerName: form.playerName.value.trim(),
+            teamLeague: form.teamLeague.value.trim(),
+            parentName: form.parentName ? form.parentName.value.trim() : '',
+            email: form.email.value.trim(),
+            phone: form.phone ? form.phone.value.trim() : '',
+            notes: form.notes.value.trim(),
+            fromPage: document.referrer || location.href,
+          }),
+        }).then(function (r) {
+          if (!r.ok) throw new Error('status ' + r.status);
+          track('get-started:submit-success');
+          // Meta ads conversion: a completed request is the Lead event the ad
+          // campaigns optimize toward. No-op until the pixel is live (MetaPixel.astro).
+          if (window.fbq) window.fbq('track', 'Lead');
+          document.getElementById('gs-formwrap').hidden = true;
+          document.getElementById('gs-done').hidden = false;
+        }).catch(function (e) {
+          // A failed submit is a lost lead that looks like a non-attempt unless
+          // it's recorded — worth knowing separately from "never tried".
+          track('get-started:submit-error', e && e.message);
+          btn.disabled = false; btn.textContent = 'Request my website';
+          err.textContent = "Couldn't send. Please try again, or email andyfazliu@hotmail.com";
+        });
+      });
+    })();
+  </script>
+</Layout>
+
+<style>
+  /* global.css zooms the whole site 1.3x on desktop (html{zoom:1.3}, tuned for
+     the stats app). This page's typography is already desktop-sized by its own
+     clamp() scales, so the zoom made everything enormous — neutralize it here.
+     html:root outranks the plain html selector regardless of bundle order. */
+  @media (min-width:1024px){
+    :global(html:root){zoom:1}
+  }
+
+  .gs-page{
+    background:#070d1a;min-height:100vh;color:#e9eef8;
+    font-family:'Archivo',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  }
+  .gs-page ::selection{background:rgba(242,168,59,.3);color:#fff}
+  .gs-page a:focus-visible,.gs-page button:focus-visible{outline:2px solid rgba(242,168,59,.75);outline-offset:3px;border-radius:6px}
+  /* Eyebrows are quiet slate, not accent orange — gold is reserved for the
+     numbers, the price, and the two buttons. */
+  .gs-eyebrow{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;letter-spacing:.18em;color:#8fa0c0}
+  .gs-eyebrow-dim{color:#8fa0c0}
+  .gs-h2{font-size:clamp(24px,3.4vw,34px);font-weight:800;letter-spacing:-.015em;margin:0}
+  .gs-domain{color:#fff}
+
+  @keyframes gsPulse{0%,100%{opacity:1}50%{opacity:.35}}
+  @keyframes gsBarGrow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+
+  /* ── BUTTONS ── flat gold, no glow. Two on the whole page: hero + submit. */
+  .gs-btn{
+    display:inline-flex;align-items:center;justify-content:center;border:none;cursor:pointer;
+    background:#f2a83b;color:#1c1200;font-weight:700;
+    font-family:inherit;border-radius:9px;transition:background .15s,transform .12s;
+    white-space:nowrap;
+  }
+  .gs-btn:hover{background:#f7ba60}
+  .gs-btn:active{transform:scale(.985)}
+  .gs-btn-lg{font-size:16px;padding:15px 30px;border-radius:10px}
+
+  /* ── NAV ── */
+  .gs-nav{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+    padding:16px clamp(20px,5vw,64px);border-bottom:1px solid #131d33;
+    position:sticky;top:0;background:rgba(7,13,26,.92);
+    backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);z-index:50;
+  }
+  .gs-brand{display:flex;align-items:center;gap:12px;color:inherit}
+  /* Real Circuit Stats logo (global .hdr-logo image), sized per spot. */
+  .gs-nav .gs-nav-logo{width:32px;height:32px;border-radius:8px}
+  .gs-footer .gs-foot-logo{width:26px;height:26px;border-radius:6px}
+  .gs-brand-txt{display:flex;flex-direction:column}
+  .gs-brand-t{font-weight:700;font-size:15.5px;line-height:1.1}
+  .gs-brand-s{font-size:11.5px;color:#8fa0c0;line-height:1.2}
+  .gs-nav-link{font-size:14px;font-weight:600;color:#b8c3da;padding:8px 2px;transition:color .15s}
+  .gs-nav-link:hover{color:#fff}
+
+  /* ── HERO ── */
+  .gs-hero{max-width:1080px;margin:0 auto;padding:clamp(56px,9vw,110px) clamp(20px,5vw,64px) clamp(40px,6vw,72px)}
+  .gs-live{
+    display:inline-flex;align-items:center;gap:8px;margin-bottom:12px;
+    font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;font-weight:600;
+    letter-spacing:.18em;color:#f2a83b;text-transform:uppercase;
+  }
+  .gs-live::before{content:'';width:7px;height:7px;border-radius:50%;background:#f2a83b;box-shadow:0 0 8px #f2a83b}
+  @media (prefers-reduced-motion: no-preference){.gs-live::before{animation:gsPulse 1.5s ease-in-out infinite}}
+  .gs-hero .gs-eyebrow{margin-bottom:22px;display:block}
+  .gs-h1{
+    font-size:clamp(38px,6vw,66px);line-height:1.04;font-weight:900;letter-spacing:-.02em;
+    margin:0 0 22px;max-width:19ch;text-wrap:balance;
+  }
+  .gs-hero-p1{font-size:clamp(17px,2vw,19px);line-height:1.6;color:#b8c3da;max-width:58ch;margin:0 0 12px;text-wrap:pretty}
+  .gs-hero-p1 strong{color:#fff;font-weight:700}
+  .gs-hero-p2{font-size:clamp(15px,1.8vw,17px);line-height:1.55;color:#8b9ab5;max-width:58ch;margin:0 0 36px}
+  .gs-hero-ctas{display:flex;flex-wrap:wrap;gap:10px 26px;align-items:center}
+  .gs-ghost{color:#b8c3da;font-weight:600;font-size:15px;padding:15px 2px;transition:color .15s}
+  .gs-ghost:hover{color:#fff}
+
+  /* ── WHAT'S ON THE LINE ── open editorial list on the page itself — no card,
+     no inner card. Hairlines carry the structure. */
+  .gs-stakes{max-width:1080px;margin:0 auto;padding:clamp(24px,4vw,40px) clamp(20px,5vw,64px) clamp(56px,8vw,96px)}
+  .gs-stakes .gs-eyebrow-dim{margin-bottom:10px}
+  .gs-stakes-h2{margin-bottom:24px;max-width:30ch;text-wrap:balance}
+  .gs-money{border-top:1px solid #16223c}
+  .gs-mrow{
+    display:grid;grid-template-columns:minmax(150px,250px) 1fr;gap:6px 44px;
+    align-items:baseline;padding:clamp(20px,3vw,28px) 0;border-bottom:1px solid #16223c;
+  }
+  .gs-mnum{font-weight:900;color:#f2a83b;letter-spacing:-.02em;line-height:1}
+  .gs-mnum-1{font-size:clamp(38px,5vw,54px)}
+  .gs-mnum-2{font-size:clamp(31px,4vw,42px)}
+  .gs-mnum-3{font-size:clamp(26px,3.2vw,33px)}
+  .gs-mt{font-weight:700;font-size:16px}
+  .gs-md{font-size:14px;color:#8b9ab5;line-height:1.55;margin-top:4px;max-width:62ch}
+  .gs-md sup{color:#8b9ab5}
+  .gs-callout-t{margin:36px 0 0;font-size:clamp(17px,2.2vw,21px);font-weight:800;color:#fff;line-height:1.45;max-width:46ch;text-wrap:pretty}
+  .gs-callout-link{color:#f2a83b;text-decoration:underline;text-underline-offset:4px;text-decoration-thickness:1.5px;transition:color .15s}
+  .gs-callout-link:hover{color:#f7ba60}
+  .gs-callout-close{margin-top:26px}
+  /* Reference links (what is Circuit Stats / sources): blue for "go look",
+     keeping gold links exclusively for conversion actions. */
+  .gs-cs-link{color:#5f9bf8;text-decoration:underline;text-underline-offset:4px;text-decoration-thickness:1.5px;transition:color .15s}
+  .gs-cs-link:hover{color:#8ab5fa}
+  .gs-src-link{color:inherit;text-decoration:underline;text-underline-offset:3px;transition:color .15s}
+  .gs-src-link:hover{color:#b8c3da}
+  /* Visitor log: real programs from the tracking dashboard, rendered in the
+     page's own row idiom (not screenshots), ordered most→least impressive. */
+  .gs-vlog{margin-top:18px;border-top:1px solid #131f38}
+  .gs-vrow{padding:13px 0;border-bottom:1px solid #131f38}
+  .gs-vtop{display:flex;justify-content:space-between;gap:12px;align-items:baseline}
+  .gs-vorg{font-weight:700;font-size:15px;color:#e9eef8}
+  .gs-vtime{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12.5px;color:#8fa0c0;white-space:nowrap}
+  .gs-vsub{margin-top:4px;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12.5px;color:#6d7c9c;line-height:1.6}
+  .gs-vnote{margin-top:10px;font-size:11.5px;color:#6d7c9c;line-height:1.6}
+  .gs-sources{margin-top:20px;font-size:11.5px;color:#6d7c9c;line-height:1.7}
+  .gs-sources sup{color:inherit}
+  @media (max-width:560px){.gs-mrow{grid-template-columns:1fr;gap:8px}}
+
+  /* ── PROOF ── */
+  .gs-proof{max-width:1080px;margin:0 auto;padding:0 clamp(20px,5vw,64px) clamp(56px,8vw,96px);scroll-margin-top:80px}
+  .gs-proof-head{display:flex;flex-wrap:wrap;gap:8px 20px;align-items:baseline;margin-bottom:20px}
+  .gs-proof-note{font-size:15px;color:#b8c3da}
+  .gs-offers{color:#f2a83b;font-style:italic}
+
+  .gs-google{
+    background:#fdfdfd;border-radius:16px;padding:clamp(18px,3vw,28px);
+    max-width:680px;margin:0 0 18px;box-shadow:0 12px 40px rgba(0,0,0,.35);
+  }
+  .gs-glogo{font-family:arial,sans-serif;font-size:24px;font-weight:700;letter-spacing:-.02em;margin-bottom:14px}
+  .gs-gbox{
+    border:1px solid #dfe1e5;border-radius:24px;padding:11px 18px;
+    display:flex;align-items:center;gap:12px;box-shadow:0 1px 6px rgba(32,33,36,.15);
+  }
+  .gs-glens{width:13px;height:13px;border:2px solid #9aa0a6;border-radius:50%;flex-shrink:0}
+  .gs-gquery{font-family:arial,sans-serif;font-size:16px;color:#202124;min-height:20px}
+  .gs-caret{
+    display:inline-block;width:1.5px;height:17px;background:#202124;
+    vertical-align:text-bottom;margin-left:1px;
+  }
+  @media (prefers-reduced-motion: no-preference){.gs-caret{animation:gsPulse 1s steps(2) infinite}}
+  .gs-gresults{margin-top:18px;font-family:arial,sans-serif}
+  .gs-gres1{padding:12px 14px;border-radius:10px;background:#fdfdfd;transition:background .4s,box-shadow .4s}
+  .gs-gr-title{font-size:19px;color:#1a0dab;margin:0 0 2px}
+  .gs-gr-url{font-size:12.5px;color:#006621;margin:1px 0 4px}
+  .gs-gr-snip{font-size:13.5px;color:#4d5156;line-height:1.5}
+  .gs-gres2{padding:12px 14px;opacity:.45}
+  .gs-gr2-site{font-size:13px;color:#202124}
+  .gs-gr2-title{font-size:17px;color:#1a0dab;margin:2px 0}
+  .gs-clicked .gs-gres1{background:rgba(242,168,59,.22);box-shadow:0 0 0 2px #e8931f}
+
+  .gs-proof-arrow{letter-spacing:.14em;margin:0 0 14px}
+
+  .gs-frame{
+    border:1px solid #1b2740;border-radius:14px;overflow:hidden;background:#0d1528;
+    box-shadow:0 18px 48px rgba(0,0,0,.38);transition:box-shadow .5s;
+  }
+  .gs-clicked .gs-frame{box-shadow:0 0 0 2px rgba(242,168,59,.6),0 18px 48px rgba(0,0,0,.38)}
+  .gs-frame-bar{display:flex;align-items:center;gap:12px;padding:12px 16px;background:#0a1122;border-bottom:1px solid #1b2740}
+  .gs-dots{display:flex;gap:6px}
+  .gs-dot{width:10px;height:10px;border-radius:50%;background:#2a3a5c}
+  .gs-url{
+    flex:1;min-width:0;background:#101a30;border:1px solid #1b2740;border-radius:8px;padding:7px 14px;
+    font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:13px;color:#c8d2e8;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .gs-frame-open{font-size:13px;font-weight:700;color:#f2a83b;white-space:nowrap}
+  .gs-frame-open:hover{text-decoration:underline;text-underline-offset:3px}
+
+  .gs-embed-wrap{position:relative;height:560px;overflow:hidden;background:#0a0a0b}
+  .gs-embed-wrap iframe{border:0;transform-origin:top left;display:block}
+  /* The embedded site has its own fixed bottom nav, which pins to the bottom of
+     the iframe viewport and reads as a rendering glitch. Fade the preview out
+     over it — the cut looks deliberate and the floating bar disappears. */
+  .gs-embed-wrap::after{
+    content:'';position:absolute;left:0;right:0;bottom:0;height:130px;pointer-events:none;
+    background:linear-gradient(to bottom,rgba(10,10,11,0) 0%,rgba(10,10,11,.82) 55%,#0a0a0b 100%);
+  }
+  @media (max-width:640px){.gs-embed-wrap{height:480px}.gs-embed-wrap::after{height:110px}}
+
+  /* ── DASHBOARD ── */
+  .gs-dash{background:#0a0a09;border-top:1px solid #262320;border-bottom:1px solid #262320}
+  .gs-dash-inner{max-width:1080px;margin:0 auto;padding:clamp(56px,8vw,96px) clamp(20px,5vw,64px)}
+  .gs-dash-eyebrow{
+    display:flex;align-items:center;gap:10px;margin-bottom:8px;
+    font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;letter-spacing:.18em;color:#d8b878;
+  }
+  .gs-dash-dot{width:8px;height:8px;border-radius:50%;background:#d8b878;flex-shrink:0}
+  @media (prefers-reduced-motion: no-preference){.gs-dash-dot{animation:gsPulse 2.4s ease-in-out infinite}}
+  .gs-dash-h2{
+    font-size:clamp(26px,3.8vw,40px);font-weight:900;letter-spacing:-.01em;
+    margin:0 0 14px;color:#f3e9d2;max-width:24ch;text-wrap:balance;
+  }
+  .gs-dash-p{font-size:clamp(15px,1.9vw,17px);line-height:1.6;color:#b3ab96;max-width:60ch;margin:0 0 32px;text-wrap:pretty}
+  .gs-dash-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:clamp(28px,4vw,56px);align-items:start}
+  .gs-watch{border:1px solid #262320;border-radius:14px;background:#0f0e0c;overflow:hidden}
+  .gs-watch-head{
+    padding:16px 20px;border-bottom:1px solid #262320;
+    font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;letter-spacing:.12em;color:#8f8878;
+  }
+  .gs-watch-list{padding:8px 20px 16px}
+  .gs-wrow{padding:11px 0;border-bottom:1px solid #1c1a16}
+  .gs-wtop{display:flex;justify-content:space-between;gap:12px;align-items:baseline;margin-bottom:7px}
+  .gs-wname,.gs-wtime{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:13px;color:#8f8878}
+  .gs-wtime{white-space:nowrap}
+  .gs-wrow-hot .gs-wname{color:#d8b878;font-weight:600}
+  .gs-wrow-hot .gs-wtime{color:#d8b878}
+  .gs-wtrack{height:5px;border-radius:3px;background:#1c1a16;overflow:hidden}
+  .gs-wfill{height:100%;border-radius:3px;background:#4a443a;transform-origin:left}
+  .gs-wrow-hot .gs-wfill{background:linear-gradient(90deg,#d8b878,#f0d9a8)}
+  @media (prefers-reduced-motion: no-preference){
+    .gs-dash:not(.in) .gs-wfill{transform:scaleX(0)}
+    .gs-dash.in .gs-wfill{animation:gsBarGrow 1s ease-out both}
+  }
+  /* Right column is flat text and a hairline stat row — the dashboard mock on
+     the left is the only boxed object in this section. */
+  .gs-dash-col{display:flex;flex-direction:column;gap:26px}
+  .gs-duke-eyebrow{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;letter-spacing:.12em;color:#d8b878;margin-bottom:10px}
+  .gs-duke-t{font-size:clamp(17px,2.2vw,20px);font-weight:800;color:#f3e9d2;line-height:1.45;margin-bottom:8px}
+  .gs-duke-d{font-size:14.5px;color:#b3ab96;line-height:1.65;text-wrap:pretty;max-width:52ch}
+  .gs-tiles{display:flex;flex-wrap:wrap;border-top:1px solid #262320;border-bottom:1px solid #262320;padding:16px 0}
+  .gs-tile{flex:1;min-width:90px;padding-right:24px}
+  .gs-tile + .gs-tile{border-left:1px solid #262320;padding-left:24px}
+  .gs-tile-v{font-size:23px;font-weight:900;color:#d8b878;letter-spacing:-.01em}
+  .gs-tile-l{font-size:11px;letter-spacing:.08em;color:#8f8878;margin-top:5px;font-family:'IBM Plex Mono',ui-monospace,monospace}
+  .gs-dash-note{font-size:12.5px;color:#877e69;line-height:1.6;max-width:52ch}
+
+  /* ── PRICING + FORM ── open two-column layout under one hairline; no mega-card,
+     no gradient panel. The page itself is the surface. */
+  .gs-request{
+    max-width:1080px;margin:0 auto;
+    padding:clamp(56px,8vw,96px) clamp(20px,5vw,64px) clamp(72px,9vw,120px);
+    scroll-margin-top:80px;
+  }
+  .gs-req-grid{
+    display:grid;grid-template-columns:1fr 1fr;gap:clamp(40px,6vw,80px);
+    align-items:start;border-top:1px solid #16223c;padding-top:clamp(36px,5vw,56px);
+  }
+  @media (max-width:840px){.gs-req-grid{grid-template-columns:1fr;gap:48px}}
+  .gs-price-panel .gs-eyebrow{display:block;margin-bottom:16px}
+  .gs-price-row{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+  .gs-price-main{font-size:clamp(42px,5.4vw,56px);font-weight:900;color:#f2a83b;letter-spacing:-.02em;line-height:1}
+  .gs-price-alt{font-size:16px;font-weight:600;color:#b8c3da}
+  .gs-checks{margin:26px 0 0;display:flex;flex-direction:column;border-top:1px solid #131f38}
+  .gs-check{display:flex;gap:12px;font-size:14.5px;color:#c8d2e8;padding:10px 0;border-bottom:1px solid #131f38}
+  .gs-check span{color:#f2a83b;font-weight:700}
+  .gs-roi{margin-top:30px}
+  .gs-roi-item{padding:11px 0 13px;border-bottom:1px solid #131f38}
+  .gs-roi-item:first-child{border-top:1px solid #131f38}
+  .gs-roi-top{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+  /* Comparison bars: the $399 sliver in site gold vs the offer in green.
+     The widths are the point — don't scale them to be "fair". */
+  .gs-roi-track{margin-top:9px;height:6px;border-radius:3px;background:#0e1830;overflow:hidden}
+  .gs-roi-fill{height:100%;border-radius:3px;transform-origin:left}
+  .gs-roi-fill-site{width:6px;background:#f2a83b}
+  .gs-roi-fill-offer{width:100%;background:#34d399}
+  @media (prefers-reduced-motion: no-preference){
+    .gs-roi:not(.in) .gs-roi-fill{transform:scaleX(0)}
+    .gs-roi.in .gs-roi-fill{animation:gsBarGrow .9s ease-out both}
+    .gs-roi.in .gs-roi-fill-offer{animation-delay:.18s}
+  }
+  .gs-roi-l{font-size:12px;font-weight:700;letter-spacing:.08em;color:#8b9ab5}
+  .gs-roi-sub{color:#6d7c9c;font-weight:600;letter-spacing:0}
+  .gs-roi-v{font-size:15px;font-weight:700;color:#c8d2e8;white-space:nowrap}
+  .gs-roi-v-accent{color:#f2a83b}
+  .gs-roi-return{margin-top:14px;font-size:14px;font-weight:800;color:#f2a83b}
+  .gs-roi-note{margin-top:5px;font-size:11.5px;color:#6d7c9c}
+
+  .gs-h3{font-size:23px;font-weight:800;margin:0 0 6px;letter-spacing:-.01em}
+  .gs-form-sub{font-size:14.5px;color:#8b9ab5;margin-bottom:26px}
+  .gs-form-panel form{display:flex;flex-direction:column;gap:16px}
+  .gs-2col{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px}
+  .gs-lbl{display:flex;flex-direction:column;gap:7px;font-size:11.5px;font-weight:700;letter-spacing:.08em;color:#8b9ab5}
+  .gs-req-star{color:#f2a83b}
+  .gs-inp{
+    background:#0a1122;border:1px solid #1b2740;border-radius:9px;padding:12px 14px;
+    color:#e9eef8;font-size:15px;font-family:'Archivo',sans-serif;outline:none;width:100%;
+    caret-color:#f2a83b;transition:border-color .15s;
+  }
+  .gs-inp::placeholder{color:#6d7c9c}
+  .gs-inp:focus{border-color:#f2a83b}
+  .gs-ta{resize:vertical;min-height:72px}
+  .gs-submit{margin-top:6px;align-self:flex-start}
+  /* Quiet secondary next step: talk to a human before committing. */
+  .gs-wa-btn{
+    display:inline-flex;align-items:center;justify-content:center;
+    border:1px solid #1b2740;border-radius:10px;background:none;
+    color:#b8c3da;font-weight:600;font-size:14.5px;padding:12px 22px;
+    align-self:flex-start;transition:border-color .15s,color .15s;
+  }
+  .gs-wa-btn:hover{border-color:#2a3f62;color:#fff}
+  @media (max-width:560px){.gs-submit{align-self:stretch}.gs-wa-btn{align-self:stretch}}
+  .gs-btn:disabled{opacity:.55;cursor:not-allowed}
+  .gs-form-note{font-size:12.5px;color:#6d7c9c}
+  .gs-err{font-size:12.5px;color:#f87171;min-height:15px}
+
+  .gs-done{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;height:100%;gap:14px;padding:20px 0}
+  .gs-done-ico{
+    width:48px;height:48px;border-radius:50%;
+    border:1px solid rgba(242,168,59,.55);
+    display:flex;align-items:center;justify-content:center;font-size:22px;color:#f2a83b;
+  }
+  .gs-done[hidden]{display:none}
+  .gs-done-t{font-size:25px;font-weight:800;margin:0}
+  .gs-done-d{font-size:15.5px;color:#b8c3da;line-height:1.6;max-width:40ch}
+
+  /* ── FOOTER ── */
+  .gs-footer{
+    border-top:1px solid #131d33;padding:28px clamp(20px,5vw,64px);
+    display:flex;flex-wrap:wrap;gap:12px 24px;justify-content:space-between;align-items:center;
+    max-width:1080px;margin:0 auto;
+  }
+  .gs-foot-brand{display:flex;align-items:center;gap:10px}
+  .gs-foot-txt{font-size:13.5px;color:#8b9ab5}
+  .gs-foot-txt strong{color:#c8d2e8}
+  .gs-foot-contact{font-size:12.5px;color:#8b9ab5}
+  .gs-foot-contact a{color:#f2a83b;text-decoration:underline;text-underline-offset:3px;transition:color .15s}
+  .gs-foot-contact a:hover{color:#f7ba60}
+  .gs-foot-sources{font-size:12.5px;color:#5a6884}
+
+  /* ── DESKTOP TYPE FLOORS ── the large-size compression now lives in the base
+     clamp() values; this block only enforces the floors on big screens. Mobile
+     keeps the design's original sizes.
+     THE RULE (Andy, applies to every site): on desktop, reading/content text
+     is never below 17px — the size of .gs-dash-p ("Every site includes a
+     private dashboard…"). Fine print (disclaimers, footnotes) floors at
+     13.5px. Only styled small-caps labels/eyebrows may go smaller. */
+  @media (min-width:1024px){
+    /* body/content floor: 17px */
+    .gs-ghost{font-size:17px}                      /* was 15px */
+    .gs-nav-link{font-size:15px}                   /* control label, matches old nav button */
+    .gs-proof-note{font-size:18px}                 /* was 15px */
+    .gs-mt{font-size:18px}                         /* was 16px (stays above .gs-md) */
+    .gs-md{font-size:17px}                         /* was 14px */
+    .gs-duke-d{font-size:17px}                     /* was 14.5px */
+    .gs-check{font-size:17px}                      /* was 14.5px */
+    .gs-price-alt{font-size:17px}                  /* was 16px */
+    .gs-form-sub{font-size:17px}                   /* was 14.5px */
+    .gs-done-d{font-size:17px}                     /* was 15.5px */
+    .gs-inp{font-size:16px}                        /* was 15px (form control) */
+    .gs-wa-btn{font-size:15px}
+    /* ROI comparison block: caps labels read ~1px bigger */
+    .gs-roi-l{font-size:15px}
+    .gs-roi-sub{font-size:14px}                    /* secondary detail inside the label */
+    .gs-roi-v{font-size:17px}                      /* was 15px */
+    .gs-roi-return{font-size:16px}
+    .gs-vorg{font-size:17px}
+    .gs-vtime{font-size:13.5px}
+    .gs-vsub{font-size:13.5px}
+    /* fine-print floor: 13.5px */
+    .gs-vnote{font-size:13.5px}
+    .gs-foot-contact{font-size:13.5px}
+    .gs-brand-s{font-size:13.5px}                  /* was 11.5px */
+    .gs-tile-l{font-size:13px}                     /* was 11px */
+    .gs-sources{font-size:13.5px}                  /* was 11.5px */
+    .gs-roi-note{font-size:13.5px}                 /* was 11.5px */
+    .gs-dash-note{font-size:13.5px}                /* was 12.5px */
+    .gs-form-note{font-size:13.5px}                /* was 12.5px */
+    .gs-err{font-size:13.5px}                      /* was 12.5px */
+  }
+</style>
