@@ -802,6 +802,12 @@ const SITE = 'https://www.circuitstats.com';
             ? pct(f.example.ofPitchReaders, 0) + ' of pitch readers clicked through to abrifazliu.com' +
               (f.example.converted ? ' · ' + n(f.example.converted) + ' of them converted' : '')
             : 'Nobody clicked through to abrifazliu.com') +
+        (f.contact ? kpi('Reached out directly', n(f.contact.people), '',
+          f.contact.people
+            ? [f.contact.whatsapp ? n(f.contact.whatsapp) + ' WhatsApp' : '',
+               f.contact.email ? n(f.contact.email) + ' email' : '',
+               f.contact.call ? n(f.contact.call) + ' call' : ''].filter(Boolean).join(' · ')
+            : 'Nobody tapped WhatsApp, email, or call') : '') +
         '</div>';
 
       // ── 3a. How far down the pitch they scroll ──
@@ -854,6 +860,9 @@ const SITE = 'https://www.circuitstats.com';
           { h: 'Then', v: function (r) {
               var acts = [];
               if (r.clickedExample) acts.push('saw the example');
+              if (r.tappedWhatsApp) acts.push('tapped WhatsApp');
+              if (r.tappedEmail) acts.push('tapped email');
+              if (r.tappedCall) acts.push('tapped call');
               if (r.submitted) acts.push('REQUESTED');
               return acts.length ? acts.join(', ') : '—';
             } },
