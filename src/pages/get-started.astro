@@ -76,6 +76,15 @@ const SITE = 'https://www.circuitstats.com';
                 </a>
               </div>
               <iframe id="iph-frame" src="https://www.abrifazliu.com" title="Live example: Abri Fazliu's recruiting website"></iframe>
+              <!-- Affordance hints: this is a live site, not a screenshot.
+                   Device-specific wording/graphics via pointer media queries;
+                   both appear after a beat and fade themselves out. -->
+              <a class="iph-hint-url" href="https://www.abrifazliu.com" target="_blank" rel="noopener" data-track="get-started:example"><span class="iph-hint-desktop">Click to view full site</span><span class="iph-hint-mobile">Tap to view full site</span></a>
+              <div class="iph-hint-scroll" aria-hidden="true">
+                <svg class="iph-hint-mouse" width="24" height="36" viewBox="0 0 24 36"><rect x="1.5" y="1.5" width="21" height="33" rx="10.5" fill="rgba(0,0,0,.35)" stroke="#fff" stroke-width="2.5"/><circle class="iph-mouse-wheel" cx="12" cy="10" r="2.6" fill="#fff"/></svg>
+                <span class="iph-hint-swipe"><span class="iph-swipe-dot"></span></span>
+                <span class="iph-hint-scroll-t"><span class="iph-hint-desktop">Scroll it — it's live</span><span class="iph-hint-mobile">Swipe it — it's live</span></span>
+              </div>
             </div>
           </div>
         </div>
@@ -584,6 +593,71 @@ const SITE = 'https://www.circuitstats.com';
   /* The embedded site's own scrollbar can't be styled cross-origin, so the
      screen clips it: the iframe runs one scrollbar-width wider than visible. */
   .iph-screen iframe{border:0;width:calc(100% + 16px);flex:1;display:block;background:#0a0a0b}
+
+  /* ── "It's live" hints ── device-specific copy: coarse pointers get Tap /
+     Swipe, fine pointers get Click / Scroll. Both hints self-dismiss so the
+     site underneath is never permanently covered. */
+  .iph-hint-mobile{display:none}
+  .iph-hint-swipe{display:none}
+  @media (hover:none) and (pointer:coarse){
+    .iph-hint-desktop{display:none}
+    .iph-hint-mobile{display:inline}
+    .iph-hint-mouse{display:none}
+    .iph-hint-swipe{display:block}
+  }
+  /* Gold bubble hanging off the omnibox — same visual language as the
+     "Tap any stat to verify" tooltip inside the embedded site. */
+  .iph-hint-url{
+    position:absolute;top:112px;left:50%;transform:translateX(-50%);z-index:3;
+    background:#f2a83b;color:#1c1200;font-weight:700;font-size:13.5px;
+    padding:9px 15px;border-radius:10px;white-space:nowrap;
+    box-shadow:0 6px 18px rgba(0,0,0,.45);
+  }
+  .iph-hint-url::before{
+    content:'';position:absolute;top:-4px;left:50%;margin-left:-5px;
+    width:10px;height:10px;background:#f2a83b;transform:rotate(45deg);border-radius:2px;
+  }
+  .iph-hint-scroll{
+    position:absolute;bottom:84px;left:50%;transform:translateX(-50%);z-index:3;
+    display:flex;flex-direction:column;align-items:center;gap:10px;pointer-events:none;
+  }
+  .iph-hint-scroll-t{
+    background:rgba(0,0,0,.62);color:#fff;font-weight:600;font-size:13px;
+    padding:7px 13px;border-radius:999px;white-space:nowrap;
+    backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
+  }
+  .iph-hint-swipe{position:relative;width:34px;height:56px}
+  .iph-swipe-dot{
+    position:absolute;left:50%;bottom:4px;margin-left:-14px;
+    width:28px;height:28px;border:2.5px solid #fff;border-radius:50%;
+    background:rgba(255,255,255,.28);box-shadow:0 2px 8px rgba(0,0,0,.4);
+  }
+  @media (prefers-reduced-motion: no-preference){
+    .iph-hint-url{animation:iphHintIn .5s .9s cubic-bezier(.16,1,.3,1) both,iphHintOut .7s 7.5s ease forwards}
+    .iph-hint-scroll{animation:iphHintIn .5s 1.4s cubic-bezier(.16,1,.3,1) both,iphHintOut .7s 8s ease forwards}
+    .iph-swipe-dot{animation:iphSwipe 1.7s ease-in-out 1.8s 3 both}
+    .iph-mouse-wheel{animation:iphWheel 1.5s ease-in-out 1.8s 3}
+  }
+  /* Reduced motion: the URL bubble simply shows (no timers); the gesture
+     graphic is meaningless without motion, so it stays off. */
+  @media (prefers-reduced-motion: reduce){
+    .iph-hint-scroll{display:none}
+  }
+  @keyframes iphHintIn{from{opacity:0;transform:translateX(-50%) translateY(8px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+  @keyframes iphHintOut{to{opacity:0;visibility:hidden}}
+  @keyframes iphSwipe{
+    0%{transform:translateY(0);opacity:0}
+    20%{opacity:1}
+    75%{transform:translateY(-26px);opacity:1}
+    100%{transform:translateY(-30px);opacity:0}
+  }
+  @keyframes iphWheel{
+    0%{transform:translateY(0);opacity:1}
+    45%{transform:translateY(9px);opacity:1}
+    60%{transform:translateY(9px);opacity:0}
+    61%{transform:translateY(0);opacity:0}
+    100%{transform:translateY(0);opacity:1}
+  }
   /* Side buttons: thin machined bars just proud of the frame. */
   .iph-btn{
     position:absolute;width:3px;border-radius:2px;
