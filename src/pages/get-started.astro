@@ -124,6 +124,25 @@ const SITE = 'https://www.circuitstats.com';
           <div class="gs-done-d">We'll reply within a few hours with next steps and what film to send. Your site is usually live within days.</div>
         </div>
 
+        {/* The one-line case for the price, moved up out of the reveal (Aug 2026):
+            it was the last thing in the full pitch, which meant only the small
+            minority who opened "I want more info first" AND read to the bottom
+            ever saw it. Under the form it fills the dead space the screenshot
+            showed between WhatsApp and the reveal button, and it answers the
+            objection the price raises at the moment the price is on screen. */}
+        <div class="gs-roi" id="gs-roi">
+          <div class="gs-roi-item">
+            <div class="gs-roi-top"><div class="gs-roi-l">THIS WEBSITE</div><div class="gs-roi-v">$399</div></div>
+            <div class="gs-roi-track"><div class="gs-roi-fill gs-roi-fill-site"></div></div>
+          </div>
+          <div class="gs-roi-item">
+            <div class="gs-roi-top"><div class="gs-roi-l">ONE D1 OFFER &nbsp;<span class="gs-roi-sub">4-yr scholarship + average NIL</span></div><div class="gs-roi-v gs-roi-v-accent">$500K+</div></div>
+            <div class="gs-roi-track"><div class="gs-roi-fill gs-roi-fill-offer"></div></div>
+          </div>
+          <div class="gs-roi-return">= a 1,250× return</div>
+          <div class="gs-roi-note">*No guarantee of going D1 — that's on you.</div>
+        </div>
+
         <button class="gs-more-btn" id="gs-more-btn" type="button" data-track="get-started:more-info">I want more info first</button>
       </div>
 
@@ -273,18 +292,6 @@ const SITE = 'https://www.circuitstats.com';
           <div class="gs-check"><span>✓</span> Hosting and upkeep handled forever</div>
           <div class="gs-check"><span>✓</span> Cancel anytime</div>
         </div>
-        <div class="gs-roi" id="gs-roi">
-          <div class="gs-roi-item">
-            <div class="gs-roi-top"><div class="gs-roi-l">THIS WEBSITE</div><div class="gs-roi-v">$399</div></div>
-            <div class="gs-roi-track"><div class="gs-roi-fill gs-roi-fill-site"></div></div>
-          </div>
-          <div class="gs-roi-item">
-            <div class="gs-roi-top"><div class="gs-roi-l">ONE D1 OFFER &nbsp;<span class="gs-roi-sub">4-yr scholarship + average NIL</span></div><div class="gs-roi-v gs-roi-v-accent">$500K+</div></div>
-            <div class="gs-roi-track"><div class="gs-roi-fill gs-roi-fill-offer"></div></div>
-          </div>
-          <div class="gs-roi-return">= a 1,250× return</div>
-          <div class="gs-roi-note">*No guarantee of going D1 — that's on you.</div>
-        </div>
         <a class="gs-btn gs-btn-lg gs-back-btn" href="#get" data-track="get-started:info-cta">Get your website today</a>
       </section>
 
@@ -345,6 +352,7 @@ const SITE = 'https://www.circuitstats.com';
       var SECTIONS = [
         ['gs-phone',   '.gs-phone-col'],   // the live site in the iPhone
         ['gs-form',    '#get'],            // price + request form
+        ['roi',        '#gs-roi'],         // $399 vs $500K, under the form
         ['money',      '#info-money'],
         ['example',    '#info-example'],
         ['dashboard',  '#info-dash'],
