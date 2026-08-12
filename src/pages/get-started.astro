@@ -740,11 +740,21 @@ const SITE = 'https://www.circuitstats.com';
      WIDTH and cancels the +16px scrollbar clip below. */
   .iph-view{position:relative;flex:1;display:flex;flex-direction:column}
   .iph-screen iframe{border:0;width:calc(100% + 16px);flex:1;display:block;background:#0a0a0b}
-  /* The snapshot paints above the iframe until the live site loads. */
+  /* The snapshot paints above the iframe until the live site loads — but
+     only on phones/tablets. There overlay scrollbars give the live site the
+     same 396px layout width the snapshot was shot at, and left-top pinning
+     hides the same 16px right strip the iframe clip does, so the crossfade
+     is pixel-aligned. Desktop's classic scrollbar lays the live site out
+     ~17px narrower — every line rewraps under the fade ("shifty") — and
+     desktop connections never needed the placeholder anyway. */
   .iph-preview{
+    display:none;
     position:absolute;top:0;left:0;width:100%;height:100%;
-    object-fit:cover;object-position:top;pointer-events:none;
-    transition:opacity .45s ease;
+    object-fit:cover;object-position:left top;pointer-events:none;
+    transition:opacity .3s ease;
+  }
+  @media (hover:none) and (pointer:coarse){
+    .iph-preview{display:block}
   }
   .iph-preview-off{opacity:0}
   /* Coarse pointers: the shield keeps swipes scrolling the page (the iframe
