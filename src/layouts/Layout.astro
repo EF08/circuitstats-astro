@@ -1,9 +1,10 @@
 ---
-// Layout.astro — the exact chrome from the pre-SEO app (header + bottom nav),
-// with every navigation turned into a real link instead of a hash toggle.
-// Appearance is byte-for-byte the original: same DOM classes, same CSS, same
-// logo. Only the hrefs changed (hash -> real URLs) and the league dropdown
-// items are now <a> links (native, JS-free), the pill toggled by a 6-line script.
+// Layout.astro — the app chrome (header + bottom nav), every navigation a real
+// link instead of a hash toggle. Header (Aug 2026): the league switcher lives on
+// the scope sub-line under the wordmark (the old right-side "ALL ▼" pill and the
+// "Questions?" mailto are gone), and the top-right slot is the site-wide
+// "Get D1 offers" CTA to /get-started. Dropdown items are <a> links (native,
+// JS-free), the trigger toggled by a small inline script.
 import '../styles/global.css';
 import { LEAGUES, SESSION_LEAGUES } from '../lib/leagues';
 import GateModal from '../components/GateModal.astro';
@@ -12,8 +13,8 @@ import MetaPixel from '../components/MetaPixel.astro';
 export interface Props {
   title: string;
   description?: string;
-  subLabel: string;          // header sub line (scope)
-  pillLabel: string;         // header pill text (short league label)
+  subLabel: string;          // header sub line (scope) — doubles as the league-switcher trigger
+  pillLabel: string;         // legacy short league label — no longer rendered (kept so call sites don't all need touching)
   pageBase: string;          // url base for the 4 nav tabs, e.g. '/uaa/u15'
   activeTab: 'stats' | 'leaders' | 'compare' | 'teams' | null;
   canonical?: string;
@@ -141,23 +142,20 @@ const navIcons: Record<string, string> = {
 <body>
 <GateModal />
 {!hideHeader && <header class="hdr">
-  <a class="hdr-home" id="hdr-home" href="/" data-track="header:logo">
+  <a class="hdr-brand" id="hdr-home" href="/" data-track="header:logo" aria-label="Circuit Stats — home">
     <div class="hdr-logo" id="hdr-logo" role="img" aria-label="Circuit Stats logo"></div>
-    <div class="hdr-info">
-      <div class="hdr-title" id="hdr-title">Circuit Stats</div>
-      <div class="hdr-sub" id="hdr-sub">{subLabel}</div>
-    </div>
   </a>
-  <a class="hdr-contact" href="mailto:andyfazliu@gmail.com?subject=UAA U15 League Stats" data-track="header:contact" aria-label="Contact us">
-    Questions?
-  </a>
-  <div class="hdr-pill" id="league-pill" onclick="toggleLeagueDropdown(event)" title="Switch mode" data-track="header:league-pill">
-    <span id="league-pill-label">{pillLabel}</span><span class="hdr-pill-caret">▼</span>
-    <div class="league-dropdown" id="league-dropdown">
-      {SESSION_LEAGUES.map(sl => <a class="ld-item" href={`${sl.urlBase}/${activeTab === 'leaders' ? 'leaders/ppg' : activeTab === 'compare' ? 'compare' : activeTab === 'teams' ? 'teams' : 'stats'}`} data-track={`header:league-switch:${sl.key}`}>{sl.label.replace(' · Session ', ' S')}</a>)}
-      {LEAGUES.map(l => <a class="ld-item" href={`${l.urlBase}/${activeTab === 'leaders' ? 'leaders/ppg' : activeTab === 'compare' ? 'compare' : activeTab === 'teams' ? 'teams' : 'stats'}`} data-track={`header:league-switch:${l.key}`}>{l.label}</a>)}
+  <div class="hdr-info">
+    <a class="hdr-title" id="hdr-title" href="/" data-track="header:logo">Circuit Stats</a>
+    <div class="hdr-scope" id="league-pill" role="button" tabindex="0" aria-haspopup="true" aria-expanded="false" onclick="toggleLeagueDropdown(event)" title="Switch league / age group" data-track="header:league-pill">
+      <span class="hdr-scope-label" id="league-pill-label">{subLabel}</span><span class="hdr-scope-caret">▼</span>
+      <div class="league-dropdown" id="league-dropdown">
+        {SESSION_LEAGUES.map(sl => <a class="ld-item" href={`${sl.urlBase}/${activeTab === 'leaders' ? 'leaders/ppg' : activeTab === 'compare' ? 'compare' : activeTab === 'teams' ? 'teams' : 'stats'}`} data-track={`header:league-switch:${sl.key}`}>{sl.label.replace(' · Session ', ' S')}</a>)}
+        {LEAGUES.map(l => <a class="ld-item" href={`${l.urlBase}/${activeTab === 'leaders' ? 'leaders/ppg' : activeTab === 'compare' ? 'compare' : activeTab === 'teams' ? 'teams' : 'stats'}`} data-track={`header:league-switch:${l.key}`}>{l.label}</a>)}
+      </div>
     </div>
   </div>
+  <a class="hdr-cta" href="/get-started" data-track="header:get-offers">Get D1 offers</a>
 </header>}
 
 <main class:list={["main", { "main-no-nav": hideNav, "main-no-hdr": hideHeader }]}>
@@ -192,11 +190,24 @@ const navIcons: Record<string, string> = {
   // needs it there.
   window.toggleLeagueDropdown = function (e) {
     e.stopPropagation();
-    document.getElementById('league-dropdown').classList.toggle('open');
+    var open = document.getElementById('league-dropdown').classList.toggle('open');
+    var trigger = document.getElementById('league-pill');
+    if (trigger) trigger.setAttribute('aria-expanded', open ? 'true' : 'false');
   };
+  // The scope line is a div acting as the dropdown trigger — give it the
+  // keyboard behavior a real button would have.
+  (function () {
+    var trigger = document.getElementById('league-pill');
+    if (!trigger) return;
+    trigger.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); window.toggleLeagueDropdown(e); }
+    });
+  })();
   document.addEventListener('click', function () {
     var dd = document.getElementById('league-dropdown');
     if (dd) dd.classList.remove('open');
+    var trigger = document.getElementById('league-pill');
+    if (trigger) trigger.setAttribute('aria-expanded', 'false');
     // Close any open "min. N makes to qualify" tooltip — verbatim from the app.
     // The button's own onclick calls stopPropagation() so opening one doesn't
     // immediately re-close it here.
