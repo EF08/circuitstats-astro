@@ -9,8 +9,8 @@
 // /get-started-info for reference and comparison.
 // Same backend contract as before: POST /website-request via the Vercel
 // rewrite, ?p=&t=&l= prefill from player pages, and the same funnel labels so
-// the dashboard keeps reading (scroll-pricing now fires at the form, which is
-// deliberately in the first viewport).
+// the dashboard keeps reading (scroll-pricing is now anchored to the price line
+// itself — see the tracker below for why the form block was the wrong anchor).
 // Mobile pass (Aug 12 2026): on stacked layouts the iframe ate every
 // mid-screen swipe (page scrolled 0px — measured with a synthesized touch
 // gesture), so coarse-pointer devices get a touch shield over the screen; the
@@ -357,6 +357,7 @@ const SITE = 'https://www.circuitstats.com';
     (function () {
       var SECTIONS = [
         ['gs-phone',   '.gs-phone-col'],   // the live site in the iPhone
+        ['price',      '.gs-price-row'],   // the $399 / $39-a-month line itself
         ['gs-form',    '#get'],            // price + request form
         ['roi',        '#gs-roi'],         // $399 vs $500K, under the form
         ['money',      '#info-money'],
@@ -541,20 +542,59 @@ const SITE = 'https://www.circuitstats.com';
       io.observe(frame);
     })();
 
-    // Scroll depth: one event per section, the first time it comes into view.
-    // scroll-pricing is the form block (first viewport by design); the rest
-    // live inside the reveal, so they only ever fire for people who asked for
-    // the info. Labels sync with circuitboard/funnel.js.
+    // "Saw the price" — the one fact this page exists to establish, so it gets
+    // its own observer watching the price line itself rather than the block
+    // around it.
+    //
+    // It used to ride the section observer below, anchored to #get with that
+    // observer's -30% bottom margin. On desktop those are the same event; on
+    // mobile they are not, and mobile is the traffic. Measured on the real
+    // stacked layout (390x664): the $399 row sits at y=816 with the page at
+    // rest, so it crosses the fold at 152px of scroll and is fully readable at
+    // 221px — but #get only cleared the -30% margin at 311px. Anyone who
+    // scrolled into that 152-311px band read the price, decided against it,
+    // and left a record identical to someone who never moved a pixel. The
+    // dwell section above (key 'price') has the same anchor, so how long the
+    // price was on screen is measured against the same thing the marker fires
+    // on.
+    //
+    // Threshold, not rootMargin: the whole 69px row has to be in view, which
+    // is a claim worth making ("the price and the $39/month line were both
+    // legible"). 0.9 rather than 1.0 because fractional layout pixels can keep
+    // a full-visibility threshold from ever firing.
+    //
+    // NOTE the definition of get-started:scroll-pricing changed here (Aug 12
+    // 2026) and it now fires for strictly more people than before. Counts step
+    // up at that date for a reason that isn't the page performing better.
+    (function () {
+      if (!('IntersectionObserver' in window)) return;
+      var price = document.querySelector('.gs-price-row');
+      if (!price) return;
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (en) {
+          if (!en.isIntersecting) return;
+          io.disconnect();
+          track('get-started:scroll-pricing');
+        });
+      }, { threshold: 0.9 });
+      io.observe(price);
+    })();
+
+    // Scroll depth through the argument: one event per section, the first time
+    // it comes into view. These all live inside the reveal, so they only ever
+    // fire for people who asked for the info. Labels sync with
+    // circuitboard/funnel.js.
     //
     // These markers are coarse by nature — the continuous max-scroll figure in
     // Layout's dwell beacon is what actually measures depth on this page, since
     // most of it sits above a reveal that changes the page height. The markers
     // stay because they name *which* argument was reached, which a percentage
-    // can't.
+    // can't. The -30% bottom margin suits these blocks (each is a full screen
+    // of argument, so a sliver at the bottom edge is not a read) and is exactly
+    // what made it wrong for a 69px price line.
     (function () {
       if (!('IntersectionObserver' in window)) return;
       var SECTIONS = [
-        ['#get',           'get-started:scroll-pricing'],
         ['#info-money',    'get-started:scroll-money'],
         ['#info-example',  'get-started:scroll-example'],
         ['#info-dash',     'get-started:scroll-dashboard'],
