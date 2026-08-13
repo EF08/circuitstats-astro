@@ -130,28 +130,21 @@ const SITE = 'https://www.circuitstats.com';
             ever saw it. Under the form it fills the dead space the screenshot
             showed between WhatsApp and the reveal button, and it answers the
             objection the price raises at the moment the price is on screen. */}
-        {/* Two magnitudes on one shared scale. The figures and their bars both
-            advance at the same dollars-per-millisecond, so the cost is finished
-            before the eye catches it while the prize keeps travelling — the
-            duration does the comparing, which is why no ratio is stated and why
-            the timing is linear (any easing would break the equal pace).
-            Values here are the resting state, so no-JS, crawlers and
-            reduced-motion all get the true figures; the counter zeroes them
-            only when it is actually about to run. */}
+        {/* Two magnitudes, stated plainly. No motion and no ratio line — the
+            two figures and the length of the two bars carry it. */}
         <div class="gs-roi" id="gs-roi">
           <div class="gs-roi-item gs-roi-cost">
             <div class="gs-roi-top">
-              <div class="gs-roi-l">THIS WEBSITE</div>
-              <div class="gs-roi-v" data-to="399" data-final="$399">$399</div>
+              <div class="gs-roi-l">WEBSITE COST</div>
+              <div class="gs-roi-v">$399</div>
             </div>
             <div class="gs-roi-track"><div class="gs-roi-fill"></div></div>
           </div>
           <div class="gs-roi-item gs-roi-prize">
             <div class="gs-roi-top">
-              <div class="gs-roi-l">ONE D1 OFFER</div>
-              <div class="gs-roi-v" data-to="500000" data-final="$500K+">$500K+</div>
+              <div class="gs-roi-l">ONE D1 OFFER<span class="gs-roi-sub">(4-yr scholarship + average NIL)</span></div>
+              <div class="gs-roi-v">$500K+</div>
             </div>
-            <div class="gs-roi-sub">4-yr scholarship + average NIL</div>
             <div class="gs-roi-track"><div class="gs-roi-fill"></div></div>
           </div>
         </div>
@@ -627,74 +620,6 @@ const SITE = 'https://www.circuitstats.com';
       });
     })();
 
-    // Cost vs prize, counted at one pace.
-    //
-    // Every row advances at the SAME dollars-per-millisecond. That is the whole
-    // idea: $399 is 0.08% of $500,000, so at a shared rate the cost is over
-    // before it can be read while the prize keeps climbing for the best part of
-    // two seconds. The gap is felt as duration instead of being asserted as a
-    // multiple, which is both more persuasive and a claim we can actually
-    // stand behind.
-    //
-    // Consequences worth keeping: the easing must be linear (any curve makes
-    // the rates differ moment to moment), and both rows must be seen at $0
-    // first — hence the short hold — or the instant row looks static rather
-    // than instantaneous.
-    (function () {
-      var roi = document.getElementById('gs-roi');
-      if (!roi) return;
-      var rows = [].slice.call(roi.querySelectorAll('.gs-roi-item')).map(function (item) {
-        var val = item.querySelector('.gs-roi-v');
-        return { val: val, fill: item.querySelector('.gs-roi-fill'),
-                 to: parseFloat(val.getAttribute('data-to')) || 0,
-                 final: val.getAttribute('data-final') || val.textContent };
-      });
-      if (!rows.length) return;
-
-      var MAX = rows.reduce(function (m, r) { return Math.max(m, r.to); }, 0);
-      var SPAN = 1900;            // ms for the largest figure to complete
-      var RATE = MAX / SPAN;      // dollars per ms — identical for every row
-      var HOLD = 420;             // long enough to register both rows at $0
-
-      // 4px floor so the cost still reads as a mark rather than an empty track;
-      // true proportion would be sub-pixel. The figure carries the precision.
-      function paint(r, v, done) {
-        r.val.textContent = done ? r.final
-          : v >= 1000 ? '$' + Math.round(v / 1000) + 'K'
-          : '$' + Math.round(v);
-        r.fill.style.width = v <= 0 ? '0px'
-          : 'max(4px, ' + ((v / MAX) * 100).toFixed(4) + '%)';
-      }
-
-      function run() {
-        var t0 = null;
-        (function frame(ts) {
-          if (t0 === null) t0 = ts;
-          var spent = ts - t0, running = false;
-          rows.forEach(function (r) {
-            var v = spent * RATE;                    // one rate, every row
-            if (v < r.to) running = true;
-            paint(r, Math.min(v, r.to), v >= r.to);
-          });
-          if (running) requestAnimationFrame(frame);
-        })(performance.now());
-      }
-
-      // Resting markup already holds the true figures, so anything that never
-      // reaches the animation — no JS, reduced motion, a crawler — is correct
-      // as authored. Only zero them once we know we are about to count.
-      if (!('IntersectionObserver' in window)
-        || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-
-      var io = new IntersectionObserver(function (entries) {
-        if (!entries.some(function (e) { return e.isIntersecting; })) return;
-        io.disconnect();
-        rows.forEach(function (r) { paint(r, 0, false); });
-        setTimeout(run, HOLD);
-      }, { threshold: 0.6 });
-      io.observe(roi);
-    })();
-
     (function () {
       var form = document.getElementById('gs-form');
       // One-shot: the first time any field is touched, this visitor has started.
@@ -1145,31 +1070,35 @@ const SITE = 'https://www.circuitstats.com';
   .gs-checks{display:flex;flex-direction:column;border-top:1px solid #131f38}
   .gs-check{display:flex;gap:12px;font-size:14.5px;color:#c8d2e8;padding:10px 0;border-bottom:1px solid #131f38}
   .gs-check span{color:#f2a83b;font-weight:700}
-  /* One hairline, at the top only. With two rows, space separates them better
-     than rules did — and the old bottom rule sat a few pixels from the form's
-     own divider, reading as a stutter rather than a boundary. */
-  /* 22px, not 34: the form already leaves ~31px below the WhatsApp link (its
-     own gap plus the error slot that stays reserved to stop a validation
-     message shifting the page), and the rule does the separating from there. */
+  /* One hairline, at the top only — with two rows, space separates them better
+     than rules did. 22px above it, not more: the form already leaves ~31px
+     below the WhatsApp link (its own gap plus the error slot kept reserved so a
+     validation message can't shift the page), and the rule separates from
+     there. */
   .gs-roi{margin-top:22px;padding-top:22px;border-top:1px solid #1b2740}
   .gs-roi-item + .gs-roi-item{margin-top:24px}
-  .gs-roi-top{display:flex;justify-content:space-between;align-items:baseline;gap:14px}
-  .gs-roi-l{font-size:12px;font-weight:700;letter-spacing:.08em;color:#8b9ab5}
-  /* Own line rather than trailing the label: on a phone the label, this
-     qualifier and a 19px figure cannot share a row without crushing. */
-  .gs-roi-sub{margin-top:5px;font-size:12px;font-weight:600;color:#6d7c9c}
-  /* tabular-nums is load-bearing: proportional digits make a counting figure
-     jitter on every tick. */
+  .gs-roi-top{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+  /* The label and its qualifier stay on one line with the figure, which at
+     390px is a 283px string in a 279px slot — hence the tighter tracking, the
+     11px qualifier, and the margin standing in for the old &nbsp;. Below 400px
+     the figure gives up 2px too (see the small-phone block). */
+  /* nowrap keeps the one-line rule; the ellipsis is the safety net, since an
+     overrun would otherwise run under the figure instead of wrapping. Headroom
+     at 360px is only ~4px, so a fallback font with wider metrics has somewhere
+     to fail gracefully. */
+  .gs-roi-l{font-size:12px;font-weight:700;letter-spacing:.05em;color:#8b9ab5;
+    white-space:nowrap;min-width:0;overflow:hidden;text-overflow:ellipsis}
+  .gs-roi-sub{margin-left:6px;font-size:11px;color:#6d7c9c;font-weight:600;letter-spacing:0}
   .gs-roi-v{font-size:19px;font-weight:800;letter-spacing:-.01em;white-space:nowrap;
     font-variant-numeric:tabular-nums;color:#93a3c0}
   .gs-roi-prize .gs-roi-v{color:#34d399}
+  /* The unfilled groove stays: it is the scale both bars are measured against,
+     and without it the cost's 4px mark floats with nothing to be small next to. */
   .gs-roi-track{margin-top:12px;height:3px;border-radius:2px;background:#22334f;overflow:hidden}
   .gs-roi-fill{height:100%;border-radius:2px}
   /* Each figure and its bar carry one colour, so the eye pairs them without
-     being told — previously the $399 sat white above an orange bar while
-     $500K+ sat orange above a green one, and neither pair read as a pair.
-     No orange at all in this block: it belongs to the Submit button and the
-     $399 headline, and a third claim on it flattened all three.
+     being told. No orange at all in this block: it belongs to the Submit button
+     and the $399 headline, and a third claim on it flattened all three.
      The cost bar's 4px is a legibility floor, not a measurement — true scale
      would be a third of a pixel. The figure beside it is exact. */
   .gs-roi-cost .gs-roi-fill{width:4px;background:#93a3c0}
@@ -1222,6 +1151,8 @@ const SITE = 'https://www.circuitstats.com';
      column width is legibility for the site inside it. */
   @media (max-width:400px){
     .gs-main{padding-left:12px;padding-right:12px}
+    /* Last 2px needed to keep "ONE D1 OFFER (…)" and its figure on one line. */
+    .gs-roi-v{font-size:17px}
   }
 
   /* ── DESKTOP TYPE FLOORS ── same rule as the info page: reading text ≥17px
