@@ -708,8 +708,19 @@ const SITE = 'https://www.circuitstats.com';
           if (!r.ok) throw new Error('status ' + r.status);
           track('get-started:submit-success');
           // Meta ads conversion: a completed request is the Lead event the ad
-          // campaigns optimize toward. No-op until the pixel is live (MetaPixel.astro).
-          if (window.fbq) window.fbq('track', 'Lead');
+          // campaigns optimize toward. The re-init is manual advanced matching —
+          // fbevents.js normalizes and SHA-256 hashes the email client-side, and
+          // the Lead then carries ud[em] so Meta can match it to an ad click.
+          // (Re-initing an already-loaded pixel ID only logs a benign console
+          // warning; it's the documented pattern for data known after page load.)
+          if (window.fbq) {
+            if (window.META_PIXEL_ID) {
+              window.fbq('init', window.META_PIXEL_ID, {
+                em: form.email.value.trim().toLowerCase(),
+              });
+            }
+            window.fbq('track', 'Lead');
+          }
           document.getElementById('gs-formwrap').hidden = true;
           document.getElementById('gs-done').hidden = false;
           // Lead is in — retire the sticky bar for this visit.

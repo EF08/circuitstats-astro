@@ -1,10 +1,8 @@
 ---
-// Meta (Facebook) pixel. INERT until PIXEL_ID is filled in — renders nothing
-// while the ID is empty, so this is safe to ship ahead of the ads launch.
-// Setup: create the pixel in Meta Events Manager (business.facebook.com/events_manager),
-// paste its numeric ID below, deploy, then confirm PageView fires with the
-// "Meta Pixel Helper" Chrome extension. The get-started form fires a 'Lead'
-// event on successful submit (see get-started.astro).
+// Meta (Facebook) pixel — LIVE. Fires PageView on every page and 'Contact' on
+// any WhatsApp (wa.me) link tap; the get-started form fires 'Lead' with manual
+// advanced matching (hashed email) on successful submit (see get-started.astro).
+// Emptying PIXEL_ID renders nothing and turns all of this off.
 const PIXEL_ID = '1402096628471311';
 ---
 {PIXEL_ID && (
@@ -19,6 +17,19 @@ const PIXEL_ID = '1402096628471311';
     'https://connect.facebook.net/en_US/fbevents.js');
     fbq('init', PIXEL_ID);
     fbq('track', 'PageView');
+
+    // get-started.astro re-inits the pixel with the submitted email for manual
+    // advanced matching — expose the ID so it stays single-sourced here.
+    window.META_PIXEL_ID = PIXEL_ID;
+
+    // These parents live in WhatsApp: a wa.me tap is a real lead path, so it
+    // must be visible to Meta's ad optimization, not just the internal funnel.
+    // One delegated listener covers every WhatsApp link on every page; capture
+    // phase so a handler's stopPropagation() can't hide the tap.
+    document.addEventListener('click', function (e) {
+      var a = e.target.closest && e.target.closest('a[href*="wa.me"]');
+      if (a) fbq('track', 'Contact');
+    }, true);
   </script>
 )}
 {PIXEL_ID && (
