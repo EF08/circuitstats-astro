@@ -1169,23 +1169,36 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
       var host = document.getElementById('wz-bill');
       var lines = billLines();
       var total = lines.reduce(function (s, l) { return s + l[1]; }, 0);
+      var itemised = lines.length > 1;
       host.innerHTML = '';
       // One line is just the base price, which the row underneath already
       // states — an itemised list of one item is a table pretending to be busy.
-      if (lines.length > 1) {
-        lines.forEach(function (l) {
+      if (itemised) {
+        lines.forEach(function (l, i) {
           var r = document.createElement('div');
           r.className = 'wz-bill-r';
           var n = document.createElement('span'); n.className = 'wz-bill-n'; n.textContent = l[0];
-          var v = document.createElement('span'); v.className = 'wz-bill-v'; v.textContent = money(l[1]);
+          var v = document.createElement('span'); v.className = 'wz-bill-v';
+          // The discount belongs on the line it actually applies to. Against a
+          // total that now includes add-ons, a struck CA$399 would be comparing
+          // two different things — against the website row it is the same thing,
+          // before and after.
+          if (i === 0) {
+            var s = document.createElement('s');
+            s.className = 'wz-bill-was'; s.textContent = 'CA$399';
+            v.appendChild(s);
+          }
+          v.appendChild(document.createTextNode(money(l[1])));
           r.appendChild(n); r.appendChild(v);
           host.appendChild(r);
         });
       }
       document.getElementById('wz-charge-v').textContent = money(total);
-      // The struck list price only makes sense against the base build; once
-      // extras are on the total it is comparing two different things.
-      document.getElementById('wz-charge-was').hidden = lines.length > 1;
+      // Both of these belong to the plain single-price case. Once the bill is
+      // itemised the struck total is wrong, and the seat bar is a second
+      // argument competing with a number the buyer is trying to check.
+      document.getElementById('wz-charge-was').hidden = itemised;
+      document.querySelector('.wz-seats').hidden = itemised;
     }
 
     // ── domain + review ──────────────────────────────────────────────────────
@@ -1752,7 +1765,12 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
   .wz-charge-n .wz-charge-was{font-size:12.5px;margin-right:3px;font-weight:600}
 
   /* Seat bar, same vocabulary as the pitch page's — 50 marks, gold for gone. */
+  .wz-bill :global(.wz-bill-was){
+    margin-right:8px;font-weight:600;color:#7c8aa8;
+    text-decoration:line-through;text-decoration-color:rgba(242,168,59,.85);
+  }
   .wz-seats{flex:none;margin-top:18px}
+  .wz-seats[hidden]{display:none}
   .wz-seats-top{display:flex;justify-content:flex-end;margin-bottom:8px}
   .wz-seats-r,.wz-seats-then{
     font-family:'IBM Plex Mono',ui-monospace,monospace;
