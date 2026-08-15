@@ -19,7 +19,28 @@
 // sticky $399 bar covers the thumb zone (label get-started:sticky-cta, picked
 // up by the site-wide [data-track] listener); inputs are 16px (iOS zoom rule).
 import Layout from '../layouts/Layout.astro';
+import IntakeWizard from '../components/IntakeWizard.astro';
 const SITE = 'https://www.circuitstats.com';
+
+// LAUNCH PRICE (Aug 2026) — the first 50 websites go at $99 + $9/month instead
+// of $399 + $39. Struck figures carry the drop, so the price itself is the
+// claim and no badge has to announce one.
+//
+// Scarcity by count, not by clock: the offer ends when the seats do. That means
+// one number to maintain and no deadline that can quietly expire on a page
+// nobody rebuilt. Move SEATS_TAKEN as websites sell.
+//
+// At SEATS_TAKEN = SEATS_TOTAL the whole thing folds on the next build: the
+// label, the seat bar and every struck figure stop rendering and the page
+// quotes $399 again. Nothing else to undo.
+// The $99-vs-$500K comparison under the form, parked Aug 15 2026. Set back to
+// true to bring it and its two tracking keys back unchanged.
+const SHOW_ROI = false;
+
+const SEATS_TOTAL = 50;
+const SEATS_TAKEN = 37;
+const SEATS_LEFT = SEATS_TOTAL - SEATS_TAKEN;
+const SALE_ON = SEATS_LEFT > 0;
 ---
 <Layout
   title="Get Your Player's Website | Circuit Stats"
@@ -102,26 +123,64 @@ const SITE = 'https://www.circuitstats.com';
       </div>
 
       <div class="gs-form-col" id="get">
-        <h2 class="gs-h2">Get yours today</h2>
+        {/* One title in two parts. The offer belongs to the heading rather than
+            sitting above it as its own row — that row is what got cut for
+            crowding the block, and the h1's gold italic already established how
+            this page emphasises a phrase inside a heading. */}
+        <h2 class="gs-h2">Get yours today{SALE_ON && <em class="gs-offers gs-h2-sub">first 50 customers only!</em>}</h2>
         <div class="gs-price-row">
-          <div class="gs-price-main">$399</div>
-          <div class="gs-price-alt">to build, then $39/month to host · cancel anytime</div>
+          <div class="gs-price-main">{SALE_ON ? '$99' : '$399'}{SALE_ON && <s class="gs-was">$399</s>}</div>
+          <div class="gs-price-alt">to build, then {SALE_ON ? (<><s class="gs-was">$39</s><span class="gs-now">$9/month</span></>) : '$39/month'} to host · cancel anytime</div>
         </div>
+        {SALE_ON && (
+          /* A unit chart, not a progress bar: 50 marks, one per website at this
+             price, countable by eye. On a site made of measured quantities a
+             single filled sliver would have been the vaguer claim — and the
+             only edge that matters, where gold stops, is exactly what the
+             visitor is being asked to beat. Figures above the bar and the bar
+             below them, same order as the cost-vs-prize block further down, so
+             the page reads one way throughout. */
+          <div class="gs-seats">
+            {/* The count and what happens after it are one thought, so they're
+                one line. Gold stops at "left" and the consequence goes slate —
+                the colour break does the work a second row used to.
+                Right-aligned: the line ends at the bar's right edge, over the
+                unclaimed marks it's counting. */}
+            <div class="gs-seats-top">
+              <span class="gs-seats-r">{SEATS_LEFT} left</span><span class="gs-seats-then">, then $399</span>
+            </div>
+            {/* Every fact the marks carry is in text around them — how many are
+                left here, the cap and the price after it in the line below — so
+                fifty empty spans are noise to a screen reader. */}
+            <div class="gs-seats-bar" aria-hidden="true">
+              {Array.from({ length: SEATS_TOTAL }, (_, i) => (
+                <span class={i < SEATS_TAKEN ? 'gs-seat gs-seat-on' : 'gs-seat'}></span>
+              ))}
+            </div>
+          </div>
+        )}
+        {/* The two-field form became the wizard's first slide, unchanged — same
+            ask, same Lead event, same place in the funnel. What sits here now is
+            only the door to it. */}
         <div id="gs-formwrap">
-          <form id="gs-form">
-            <label class="gs-lbl"><span>PLAYER NAME <span class="gs-req-star">*</span></span><input class="gs-inp" id="gs-player" name="playerName" type="text" required maxlength="120" /></label>
-            <label class="gs-lbl"><span>EMAIL <span class="gs-req-star">*</span></span><input class="gs-inp" id="gs-email" name="email" type="email" required maxlength="160" /></label>
-            {/* Kept hidden so the ?t=&l= prefill from player pages still reaches the lead. */}
-            <input type="hidden" id="gs-team" name="teamLeague" />
-            <button class="gs-btn gs-btn-lg gs-submit" id="gs-submit" type="submit" data-track="get-started:submit">Submit</button>
-            <a class="gs-wa-link" href="https://wa.me/16476079935?text=Hi%2C%20I%27m%20interested%20in%20a%20player%20website." target="_blank" rel="noopener" data-track="get-started:whatsapp-form">Prefer to talk first? WhatsApp us</a>
-            <div class="gs-err" id="gs-err"></div>
-          </form>
+          <button class="gs-btn gs-btn-lg gs-submit" id="gs-start" type="button" data-intake-open data-track="get-started:start">Build your website</button>
+          <a class="gs-wa-link" href="https://wa.me/16476079935?text=Hi%2C%20I%27m%20interested%20in%20a%20player%20website." target="_blank" rel="noopener" data-track="get-started:whatsapp-form">Prefer to talk first? WhatsApp us</a>
         </div>
-        <div class="gs-done" id="gs-done" hidden>
-          <div class="gs-done-ico">✓</div>
-          <h3 class="gs-done-t">Request received.</h3>
-          <div class="gs-done-d">We'll reply within a few hours with next steps and what film to send. Your site is usually live within days.</div>
+
+        {/* Where Stripe sends them back to. Both outcomes land here rather than
+            on their own routes, because the brief was already filed before
+            checkout opened — so neither state is a form to fill in again, just
+            a different sentence about the same finished submission. */}
+        <div class="gs-back" id="gs-paid" hidden>
+          <div class="gs-back-ico">✓</div>
+          <h3 class="gs-back-t">You're in.</h3>
+          <p class="gs-back-d">Payment received and everything you sent is with us. We'll reply within a few hours with next steps — his site is usually live within days.</p>
+        </div>
+        <div class="gs-back" id="gs-unpaid" hidden>
+          <div class="gs-back-ico gs-back-ico-wait">•</div>
+          <h3 class="gs-back-t">Everything's saved.</h3>
+          <p class="gs-back-d">We have his details and his film — nothing is lost. You can finish paying whenever you're ready.</p>
+          <button class="gs-btn gs-btn-lg gs-submit" id="gs-repay" type="button" data-track="get-started:resume-checkout">Finish payment</button>
         </div>
 
         {/* The one-line case for the price, moved up out of the reveal (Aug 2026):
@@ -132,11 +191,20 @@ const SITE = 'https://www.circuitstats.com';
             objection the price raises at the moment the price is on screen. */}
         {/* Two magnitudes, stated plainly. No motion and no ratio line — the
             two figures and the length of the two bars carry it. */}
+        {/* PARKED Aug 15 2026, not removed — flip SHOW_ROI back to true and it
+            returns exactly as it was. While it's off the 'roi' dwell key stops
+            reporting (the registration below skips anything it can't find), so
+            that one series goes to zero from this date rather than tapering.
+            No scroll marker was ever anchored here, so nothing else changes. */}
+        {SHOW_ROI && (
         <div class="gs-roi" id="gs-roi">
           <div class="gs-roi-item gs-roi-cost">
             <div class="gs-roi-top">
               <div class="gs-roi-l">WEBSITE COST</div>
-              <div class="gs-roi-v">$399</div>
+              {/* No strike here: this row is a comparison of magnitudes, and a
+                  second figure in it would be a third claim on a two-claim
+                  block. The current price is the one that belongs. */}
+              <div class="gs-roi-v">{SALE_ON ? '$99' : '$399'}</div>
             </div>
             <div class="gs-roi-track"><div class="gs-roi-fill"></div></div>
           </div>
@@ -148,6 +216,7 @@ const SITE = 'https://www.circuitstats.com';
             <div class="gs-roi-track"><div class="gs-roi-fill"></div></div>
           </div>
         </div>
+        )}
 
         <button class="gs-more-btn" id="gs-more-btn" type="button" data-track="get-started:more-info">I want more info first</button>
       </div>
@@ -307,7 +376,7 @@ const SITE = 'https://www.circuitstats.com';
          thumb zone. Appears once the visitor is past the headline, hides
          while the form itself is on screen and for good after a submit. -->
     <a class="gs-sticky" id="gs-sticky" href="#get" data-track="get-started:sticky-cta">
-      <span class="gs-sticky-price">$399</span>
+      <span class="gs-sticky-price">{SALE_ON ? '$99' : '$399'}{SALE_ON && <s class="gs-was">$399</s>}</span>
       <span class="gs-sticky-txt">Get yours today</span>
     </a>
 
@@ -321,6 +390,9 @@ const SITE = 'https://www.circuitstats.com';
     </footer>
 
   </div>
+
+  {/* Fixed-position takeover, so it sits outside the page's flow entirely. */}
+  <IntakeWizard />
 
   <script is:inline>
     // Prod goes through the Vercel rewrite (same origin); localhost dev has no
@@ -660,78 +732,78 @@ const SITE = 'https://www.circuitstats.com';
       });
     })();
 
+    // The form's own instrumentation moved into the wizard, where the fields now
+    // live: get-started:form-start became intake-open, and the per-field events
+    // became intake-step-N, which say strictly more (every step, not two fields).
+    // The Lead event and its advanced matching didn't move at all — they still
+    // fire on the same two values, now at the end of slide 1.
+    //
+    // Exposed rather than re-implemented inside the component: one funnel
+    // contract, one beacon path, one place where labels are kept in sync with
+    // circuitboard/funnel.js.
+    window.csTrack = track;
+
+    // The door's label depends on whether there's a draft waiting behind it —
+    // offering "Build the website" to someone who is eight slides in reads as
+    // losing their work.
     (function () {
-      var form = document.getElementById('gs-form');
-      // One-shot: the first time any field is touched, this visitor has started.
-      var started = false;
-      form.addEventListener('focusin', function () {
-        if (started) return;
-        started = true;
-        track('get-started:form-start');
-      });
+      var btn = document.getElementById('gs-start');
+      if (!btn) return;
+      function sync() {
+        var has = window.csIntakeHasDraft && window.csIntakeHasDraft();
+        btn.textContent = has ? 'Continue' : 'Build your website';
+      }
+      window.csIntakeSyncCta = sync;
+      sync();
 
-      // Per-field progress, one event per field, the first time it holds real
-      // input. form-start alone can't tell "typed a name and an email, then
-      // hesitated" from "brushed a field by accident" — and those two want
-      // opposite responses from you. Fired on the value, not on focus, so a
-      // tab-through doesn't read as filling anything in.
-      ['player', 'email'].forEach(function (key) {
-        var el = document.getElementById('gs-' + key);
-        if (!el) return;
-        var fired = false;
-        el.addEventListener('input', function () {
-          if (fired || !el.value.trim()) return;
-          fired = true;
-          track('get-started:field-' + key);
-        });
-      });
+      // ── back from Stripe ──
+      var q = new URLSearchParams(location.search);
+      var paid = q.get('paid') === '1';
+      var resume = q.get('resume') === '1';
+      if (!paid && !resume) return;
 
-      form.addEventListener('submit', function (e) {
-        e.preventDefault();
-        var btn = document.getElementById('gs-submit');
-        var err = document.getElementById('gs-err');
-        err.textContent = '';
-        btn.disabled = true; btn.textContent = 'Sending…';
-        fetch(API + '/website-request', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            playerName: form.playerName.value.trim(),
-            teamLeague: form.teamLeague.value.trim(),
-            parentName: '',
-            email: form.email.value.trim(),
-            phone: '',
-            notes: '',
-            fromPage: document.referrer || location.href,
-          }),
-        }).then(function (r) {
-          if (!r.ok) throw new Error('status ' + r.status);
-          track('get-started:submit-success');
-          // Meta ads conversion: a completed request is the Lead event the ad
-          // campaigns optimize toward. The re-init is manual advanced matching —
-          // fbevents.js normalizes and SHA-256 hashes the email client-side, and
-          // the Lead then carries ud[em] so Meta can match it to an ad click.
-          // (Re-initing an already-loaded pixel ID only logs a benign console
-          // warning; it's the documented pattern for data known after page load.)
-          if (window.fbq) {
-            if (window.META_PIXEL_ID) {
-              window.fbq('init', window.META_PIXEL_ID, {
-                em: form.email.value.trim().toLowerCase(),
-              });
-            }
-            window.fbq('track', 'Lead');
-          }
-          document.getElementById('gs-formwrap').hidden = true;
-          document.getElementById('gs-done').hidden = false;
-          // Lead is in — retire the sticky bar for this visit.
-          var sb = document.getElementById('gs-sticky');
-          if (sb) { sb.dataset.done = '1'; sb.classList.remove('on'); }
-        }).catch(function (e) {
-          track('get-started:submit-error', e && e.message);
-          btn.disabled = false; btn.textContent = 'Submit';
-          err.textContent = "Couldn't send. Please try again, or email andyfazliu@hotmail.com";
+      var pending = null;
+      try { pending = JSON.parse(localStorage.getItem('cs-intake-pending') || 'null'); } catch (e) {}
+
+      document.getElementById('gs-formwrap').hidden = true;
+      var sb = document.getElementById('gs-sticky');
+      if (sb) { sb.dataset.done = '1'; sb.classList.remove('on'); }
+
+      if (paid) {
+        document.getElementById('gs-paid').hidden = false;
+        try { localStorage.removeItem('cs-intake-pending'); } catch (e) {}
+        track('get-started:intake-paid');
+        // The money event. Also sent server-side from the webhook, because a
+        // browser returning from a redirect after a long session is exactly
+        // where client-side attribution goes missing — and if they close the
+        // tab on Stripe's screen, this half never fires at all.
+        //
+        // eventID is Stripe's session id and the webhook sends the same one, so
+        // Meta collapses the pair into one conversion. Without it the two
+        // halves would double-count every sale.
+        if (window.fbq) {
+          var sid = q.get('sid');
+          window.fbq('track', 'Purchase', { value: 99, currency: 'CAD' }, sid ? { eventID: sid } : undefined);
+        }
+      } else {
+        document.getElementById('gs-unpaid').hidden = false;
+        track('get-started:intake-checkout-abandon');
+        var again = document.getElementById('gs-repay');
+        again.addEventListener('click', function () {
+          if (!pending || !pending.token) { location.href = '/get-started'; return; }
+          again.disabled = true; again.textContent = 'Opening checkout…';
+          fetch(API + '/intake/' + pending.token + '/checkout', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}',
+          }).then(function (r) { return r.json(); })
+            .then(function (o) { if (o.url) location.href = o.url; else throw new Error('no_url'); })
+            .catch(function () {
+              again.disabled = false; again.textContent = 'Finish payment';
+            });
         });
-      });
+      }
+      // Clean the query string so a refresh or a shared link doesn't replay
+      // either state — and, for the paid branch, doesn't re-fire Purchase.
+      history.replaceState({}, '', '/get-started');
     })();
   </script>
 </Layout>
@@ -947,24 +1019,73 @@ const SITE = 'https://www.circuitstats.com';
      rest of the site's structure. */
   .gs-form-col{scroll-margin-top:90px}
   .gs-form-col .gs-h2{margin-bottom:14px}
+  /* Second line of the same heading, not a subtitle bolted under it: block so
+     it always breaks cleanly instead of wrapping at whatever word the column
+     width lands on. Sized in absolute terms rather than an em of the h2 — at
+     the 24px mobile floor a proportional step would have dropped it under the
+     body text it sits above. */
+  .gs-h2-sub{
+    display:block;margin-top:4px;
+    font-size:clamp(15.5px,1.9vw,19px);font-weight:700;letter-spacing:-.005em;
+  }
   .gs-price-row{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:24px}
   .gs-price-main{font-size:clamp(40px,5vw,52px);font-weight:900;color:#f2a83b;letter-spacing:-.02em;line-height:1}
   .gs-price-alt{font-size:16px;font-weight:600;color:#b8c3da}
-  .gs-form-col form{display:flex;flex-direction:column;gap:16px;border-top:1px solid #16223c;padding-top:24px}
-  .gs-lbl{display:flex;flex-direction:column;gap:7px;font-size:11.5px;font-weight:700;letter-spacing:.08em;color:#8b9ab5}
-  .gs-req-star{color:#f2a83b}
-  .gs-inp{
-    background:#0a1122;border:1px solid #1b2740;border-radius:9px;padding:13px 14px;
-    /* 16px, not 15px: iOS Safari auto-zooms the whole page on focus for any
-       input rendering below 16px — same rule as .srch-inp in global.css. */
-    color:#e9eef8;font-size:16px;font-family:'Archivo',sans-serif;outline:none;width:100%;
-    caret-color:#f2a83b;transition:border-color .15s;
+
+  /* ── LAUNCH PRICE ── The old figure is evidence, not a second price — muted to
+     the same slate as the rest of the secondary text, with only the rule itself
+     in gold so the cut registers before the numbers are read. */
+  .gs-was{
+    font-weight:800;color:#7c8aa8;
+    text-decoration:line-through;text-decoration-color:rgba(242,168,59,.85);
   }
-  .gs-inp::placeholder{color:#6d7c9c}
-  .gs-inp:focus{border-color:#f2a83b}
-  /* Full-width submit lines up with the inputs above it — one column, gold
-     primary; WhatsApp rides below it as the bordered secondary. */
-  .gs-submit{margin-top:6px;align-self:stretch}
+  /* Trailing the new price, so it wants to be unmistakably second: .42em and
+     slate against a 900-weight gold figure. */
+  .gs-price-main .gs-was{margin-left:14px;font-size:.42em;text-decoration-thickness:.055em}
+  .gs-price-alt .gs-was{margin-right:6px;font-weight:600;text-decoration-thickness:1.5px}
+  /* The new monthly lifts to near-white: in a 600-weight slate line it would
+     otherwise read as the same rank as the figure it replaced. */
+  .gs-price-alt .gs-now{color:#e9eefb;font-weight:700}
+  /* ── SEATS ── Figure on top, bar beneath: the same shape as the cost-vs-prize
+     block under the form, so the page has one way of showing a quantity rather
+     than two. */
+  /* The price and its seat bar are one statement, so they sit closer than the
+     24px the row otherwise keeps to the form's hairline. */
+  .gs-price-row:has(+ .gs-seats){margin-bottom:15px}
+  .gs-seats{margin-bottom:24px}
+  .gs-seats-top{display:flex;justify-content:flex-end;margin-bottom:9px}
+  /* Mono with tabular figures: a count, and 13 → 12 shouldn't shift it off the
+     end of the bar it's pinned to. */
+  .gs-seats-r,.gs-seats-then{
+    font-family:'IBM Plex Mono',ui-monospace,monospace;
+    font-size:13.5px;font-weight:600;letter-spacing:.01em;
+    font-variant-numeric:tabular-nums;white-space:nowrap;
+  }
+  .gs-seats-r{color:#f2a83b}
+  .gs-seats-then{color:#8b9ab5}
+  /* Fifty marks that flex to whatever the column gives: ~5px each at 360px,
+     ~7px on a wide desktop, and the 2px gutters keep them countable at both.
+     Height 13 over the cost bar's 3 because these are units, not a level. */
+  .gs-seats-bar{display:flex;gap:2px;height:13px}
+  .gs-seat{flex:1 1 0;min-width:0;border-radius:2px;background:#22334f}
+  .gs-seat-on{background:#f2a83b}
+  /* The hairline the form used to carry, now on the wrapper that replaced it —
+     it separates the price statement above from the way in below, and that job
+     outlived the fields. */
+  #gs-formwrap{display:flex;flex-direction:column;gap:16px;border-top:1px solid #16223c;padding-top:24px}
+  .gs-submit{align-self:stretch}
+  /* Return states. Same column, same hairline — the page doesn't reshape around
+     a person coming back from Stripe. */
+  .gs-back{display:flex;flex-direction:column;align-items:flex-start;gap:14px;padding-top:24px;border-top:1px solid #16223c}
+  .gs-back[hidden]{display:none}
+  .gs-back-ico{
+    width:48px;height:48px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;
+    background:rgba(52,211,153,.14);color:#34d399;
+  }
+  .gs-back-ico-wait{background:rgba(242,168,59,.14);color:#f2a83b;font-size:30px}
+  .gs-back-t{font-size:25px;font-weight:800;margin:0}
+  .gs-back-d{font-size:15.5px;color:#b8c3da;line-height:1.6;max-width:42ch;margin:0}
   /* These parents live in WhatsApp — the talk-first path is a real secondary
      button under Submit (48px target) on every screen size. */
   .gs-wa-link{
@@ -975,17 +1096,6 @@ const SITE = 'https://www.circuitstats.com';
   }
   .gs-wa-link:hover{color:#fff;border-color:#2e4066;background:rgba(255,255,255,.03)}
   .gs-wa-link:active{background:rgba(255,255,255,.04)}
-  .gs-err{font-size:12.5px;color:#f87171;min-height:15px}
-
-  .gs-done{display:flex;flex-direction:column;align-items:flex-start;gap:14px;padding:24px 0;border-top:1px solid #16223c}
-  .gs-done-ico{
-    width:48px;height:48px;border-radius:50%;
-    border:1px solid rgba(242,168,59,.55);
-    display:flex;align-items:center;justify-content:center;font-size:22px;color:#f2a83b;
-  }
-  .gs-done[hidden]{display:none}
-  .gs-done-t{font-size:25px;font-weight:800;margin:0}
-  .gs-done-d{font-size:15.5px;color:#b8c3da;line-height:1.6;max-width:40ch}
 
   /* ── "I want more info first" ── quiet, but unmistakably a door. */
   .gs-more-btn{
@@ -1172,6 +1282,11 @@ const SITE = 'https://www.circuitstats.com';
   @media (max-width:880px){.gs-sticky{display:flex}}
   .gs-sticky.on{transform:none;opacity:1;pointer-events:auto}
   .gs-sticky-price{font-size:22px;font-weight:900;color:#f2a83b;letter-spacing:-.02em;line-height:1}
+  /* Lighter slate than the price block's strike: this bar is a translucent
+     rgba(7,13,26,.92) read at arm's length, and #7c8aa8 goes to mush at
+     13.5px on a phone. margin-left, not right — the strike trails the price
+     here the same way it does in the block above. */
+  .gs-sticky-price .gs-was{margin-left:9px;font-size:13.5px;color:#93a3c0;text-decoration-thickness:1.5px}
   .gs-sticky-txt{
     font-size:15.5px;font-weight:700;color:#fff;
     text-decoration:underline;text-underline-offset:4px;text-decoration-thickness:1px;
@@ -1214,7 +1329,6 @@ const SITE = 'https://www.circuitstats.com';
     .gs-duke-d{font-size:17px}
     .gs-check{font-size:17px}
     .gs-price-alt{font-size:17px}
-    .gs-done-d{font-size:17px}
     .gs-more-btn{font-size:15px}
     .gs-roi-l{font-size:15px}
     .gs-roi-sub{font-size:14px}
@@ -1229,6 +1343,5 @@ const SITE = 'https://www.circuitstats.com';
     .gs-tile-l{font-size:13px}
     .gs-sources{font-size:13.5px}
     .gs-dash-note{font-size:13.5px}
-    .gs-err{font-size:13.5px}
   }
 </style>

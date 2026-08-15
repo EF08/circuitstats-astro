@@ -9,9 +9,30 @@ Circuit Stats is **not the product — it is the top of the funnel.** It is give
 Free users / traffic: AAU coaches scouting opponents, recruiters and college scouts, parents checking their kid's standing, program directors. The **buyer** is narrower: **parents of players** (and players themselves) who want their kid seen by college programs. Coaches and scouts are traffic and credibility, not revenue. Marketing and on-site CTAs are aimed at the parent segment.
 
 ## Monetization (LIVE since July 2026)
-Professional player recruiting websites: **$399 to build, then $39/month** hosting (exact copy on `/get-started`: "his own domain, highlight film, verified stats that update after every session, and a private dashboard showing which coaches opened his site and what they watched"). The dashboard (visitor log, visitors over time, film watch time — like abrifazliu's) is a standard included feature as of Aug 2026.
+Professional player recruiting websites. List price is **$399 to build, then $39/month** hosting; a **launch offer runs the first 50 websites at $99 + $9/month**. Included copy on `/get-started`: "his own domain, highlight film, verified stats that update after every session, and a private dashboard showing which coaches opened his site and what they watched". The dashboard (visitor log, visitors over time, film watch time — like abrifazliu's) is a standard included feature as of Aug 2026.
 
-The funnel is live end-to-end: player pages → CTA card → `/get-started` form → `website_requests` in the backend (`a1a2-command-center/apps/circuitboard`) + email notification to Andy. An urgency badge on the player-page CTA and `/get-started` hero (`src/lib/liveLabel.js`) shows only during the real NCAA live periods (April and July); other months it hides entirely — don't "fix" its absence.
+**The launch offer is one constant.** `SEATS_TAKEN` in `src/pages/get-started.astro` drives the price, the struck-through figures, the seat bar and the heading's second line. Set it to `SEATS_TOTAL` and the whole offer folds on the next build — the page quotes $399 again with nothing else to undo. Scarcity is by count, not by clock: there is no deadline that can silently expire on a page nobody rebuilt.
+
+**Currency is CAD.** Stripe charges CA$99 (CA$90 setup + the first CA$9 month on one invoice), then CA$9/mo. The page says "$99" unqualified and most traffic is American — a known, deliberate gap, not a bug to fix without asking.
+
+**No free trial, ever.** A trial subscription falls under the card networks' trial rules: a mandatory pre-charge reminder, and Stripe appending `* TRIAL OVER` to the statement descriptor, which overwrites everything past the 10th character and mangles `PLAYER WEBSITE`. See `scripts/create-player-website-link.js` in the backend.
+
+### The funnel (Aug 15 2026 — the intake wizard)
+Player pages → CTA card → `/get-started` → **intake wizard** → `website_requests` + `website_intakes` + email to Andy → Stripe checkout.
+
+The two-field form is gone; it is now **slide 1 of the wizard**, with the same two fields, so the `Lead` event fires in the same place at the same rate and the ad optimisation sees no change. Slides 2–9 collect the player; then one film slide per chosen strength; then checkout. Film uploads browser → Cloudflare R2 directly, never through the backend — a submission is 12–30 clips and 150–500MB, and a Mongo doc caps at 16MB.
+
+- One question per screen, and **nothing scrolls**; slides are budgeted against a 320×568 phone. That rule is why eighteen screens feel shorter than one long form — don't add fields to a slide without re-checking it.
+- Answers persist in `localStorage`, so the exit confirm promises the draft rather than warning it will be lost.
+- **The brief is filed and emailed BEFORE Stripe opens.** An abandoned payment still leaves a complete submission with all its film, which is worth more than the $99. Never reorder this.
+- `website_intakes` is deliberately separate from `website_requests` — that collection is the funnel's final stage and every dashboard number leans on its shape. They join on `requestId` / `intakeToken`.
+- Clip size is capped **after** upload (`r2.js` HEADs and deletes oversized objects): an S3-style presigned PUT cannot limit a body.
+
+Pixel: `StartIntake` (open) → `Lead` (slide 1, with advanced matching) → `InitiateCheckout` → `Purchase`. Optimize campaigns on `Lead`; read `CompleteRegistration` as lead quality.
+
+Funnel labels changed with the wizard, and both readers were updated to union old-or-new so nothing resets to zero across the cutover: `funnel.js` (dashboard) and `pitchDropoff.js` (the `/ad-read` skill). Old labels are kept, not retired — they are the only way to read anything before Aug 15 2026.
+
+An urgency badge on the player-page CTA and `/get-started` hero (`src/lib/liveLabel.js`) shows only during the real NCAA live periods (April and July); other months it hides entirely — don't "fix" its absence.
 
 Still open: how the offer is pitched/marketed beyond the site itself, and whether sites are templated or custom-built.
 

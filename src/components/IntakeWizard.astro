@@ -1,0 +1,1895 @@
+---
+// IntakeWizard.astro — the player-website intake, stage 1 of 3.
+//
+// Replaces the two-field form on /get-started. The whole design is subordinate
+// to one rule: ONE QUESTION PER SCREEN, thumb at the bottom, nothing scrolls.
+// That is what makes eighteen screens feel shorter than one long form, and it
+// is why slides are budgeted against a 320x568 viewport rather than laid out and
+// hoped for.
+//
+// Slide 1 is deliberately the exact ask the old form made — player name and
+// email — so the Lead event fires in the same place, at the same rate, for the
+// same people. Everything after slide 1 is upside; nothing about the funnel's
+// existing numbers depends on any of it.
+//
+// STAGE 1 covers slides 1-9 (the player). The film slides and Stripe checkout
+// land in stages 2 and 3; until then the last slide submits what it has to the
+// existing /website-request endpoint, so this is shippable on its own and no
+// lead is ever worse off than it was before.
+//
+// Progress survives leaving: answers go to localStorage on every change, so the
+// exit confirm can promise the work is kept rather than warn that it's lost. A
+// fifteen-minute form with no draft is a form that loses paid leads to a
+// mis-tap.
+const GRAD_YEARS = [2026, 2027, 2028, 2029, 2030, 2031, 2032, 2033];
+const POSITIONS = ['PG', 'SG', 'SF', 'PF', 'C'];
+// The nine presets Andy specified, in his order. "Add your own" is a real
+// escape hatch, not decoration — the preset list can't anticipate every game.
+const STRENGTHS = [
+  'Athleticism', 'Size', 'High IQ', '3PT shooting', 'Handle',
+  'Defense', 'Strength', 'Footwork', 'Control & balance',
+];
+const STRENGTH_MIN = 3;
+const STRENGTH_MAX = 5;
+const TAGLINE_MAX = 140;
+// Film is built and tested but parked until Cloudflare R2 is wired up (four
+// CB_R2_* vars + scripts/r2-smoke.js). Flipping this to true restores the
+// per-strength upload run exactly as it was — the slide, the slot grid, the
+// duration gate, the background uploader and the server's size check are all
+// still here and still covered.
+//
+// Off, the run is nine questions plus the four below, film is collected by
+// email afterwards, and the wizard needs no bucket to work end to end.
+const FILM_ENABLED = false;
+// Everything after the film block. Named rather than numbered because their
+// step numbers depend on how many strengths the parent picked.
+const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
+---
+
+<div class="wz" id="wz" hidden role="dialog" aria-modal="true" aria-labelledby="wz-live-head">
+
+  <div class="wz-panel">
+
+    <!-- Rail + exit. The rail is the only progress signal: a "step 4 of 18"
+         counter reads as a sentence to a parent deciding whether to start. -->
+    <header class="wz-top">
+      <span class="wz-stage" id="wz-stage">Player</span>
+      <button class="wz-x" id="wz-x" type="button" aria-label="Close">
+        <svg width="15" height="15" viewBox="0 0 15 15" aria-hidden="true"><path d="M1 1 L14 14 M14 1 L1 14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      </button>
+      <div class="wz-rail"><div class="wz-rail-fill" id="wz-rail"></div></div>
+    </header>
+
+    <div class="wz-body" id="wz-body">
+      <!-- Screen-reader announcement of each new slide; sighted users get the
+           heading itself, which is why this is visually hidden rather than a
+           second visible title. -->
+      <h2 class="wz-sr" id="wz-live-head" aria-live="polite"></h2>
+
+      <!-- 1 — the old form, verbatim. Lead fires on Next. -->
+      <section class="wz-slide" data-step="1" hidden>
+        <h3 class="wz-h">Who are we building for?</h3>
+        <p class="wz-sub">Two things now — the rest can wait.</p>
+        <label class="wz-lbl" for="wz-playerName">Player's full name</label>
+        <input class="wz-inp" id="wz-playerName" data-field="playerName" type="text" maxlength="120" autocomplete="off" enterkeyhint="next" />
+        <label class="wz-lbl" for="wz-email">Your email</label>
+        <input class="wz-inp" id="wz-email" data-field="email" type="email" maxlength="160" autocomplete="email" inputmode="email" enterkeyhint="next" />
+      </section>
+
+      <!-- 2 -->
+      <section class="wz-slide" data-step="2" hidden>
+        <h3 class="wz-h">What year does he graduate?</h3>
+        <p class="wz-sub">This heads the site, the way recruiters read it.</p>
+        <div class="wz-bubbles" id="wz-classYear" data-field="classYear" data-single role="radiogroup" aria-label="Graduation year">
+          {GRAD_YEARS.map(y => (
+            <button class="wz-bub" type="button" role="radio" aria-checked="false" data-val={String(y)}>{y}</button>
+          ))}
+        </div>
+        <label class="wz-lbl" for="wz-birthYear">Birth year</label>
+        <input class="wz-inp wz-inp-s" id="wz-birthYear" data-field="birthYear" type="text" inputmode="numeric" maxlength="4" placeholder="2010" autocomplete="off" />
+      </section>
+
+      <!-- 3 -->
+      <section class="wz-slide" data-step="3" hidden>
+        <h3 class="wz-h">Where's he from?</h3>
+        <p class="wz-sub">Coaches filter by region before anything else.</p>
+        <label class="wz-lbl" for="wz-city">City</label>
+        <input class="wz-inp" id="wz-city" data-field="city" type="text" maxlength="80" autocomplete="address-level2" />
+        <label class="wz-lbl" for="wz-region">State / Province</label>
+        <input class="wz-inp" id="wz-region" data-field="region" type="text" maxlength="40" placeholder="GA" autocomplete="address-level1" />
+      </section>
+
+      <!-- 4 — three short inputs share a row so the slide still fits a 568px
+           phone; wingspan and weight are optional and say so. -->
+      <section class="wz-slide" data-step="4" hidden>
+        <h3 class="wz-h">His measurables</h3>
+        {/* Multi-select: most of these kids are listed at two spots, and a
+            combo guard who has to choose between PG and SG has been made to
+            describe himself worse than the truth. No cap — five selected is
+            meaningless but harmless, and a limit here would only produce an
+            error message for a problem nobody has. */}
+        <div class="wz-bubbles" id="wz-position" data-field="position" role="group" aria-label="Position">
+          {POSITIONS.map(p => (
+            <button class="wz-bub" type="button" aria-pressed="false" data-val={p}>{p}</button>
+          ))}
+        </div>
+        <div class="wz-row3">
+          <div>
+            <label class="wz-lbl" for="wz-height">Height</label>
+            <input class="wz-inp" id="wz-height" data-field="height" type="text" maxlength="8" placeholder="6'2" autocomplete="off" />
+          </div>
+          <div>
+            <label class="wz-lbl" for="wz-wingspan">Wingspan</label>
+            <input class="wz-inp" id="wz-wingspan" data-field="wingspan" type="text" maxlength="8" placeholder="6'5" autocomplete="off" />
+          </div>
+          <div>
+            <label class="wz-lbl" for="wz-weight">Weight</label>
+            <input class="wz-inp" id="wz-weight" data-field="weight" type="text" maxlength="8" placeholder="194 lbs" inputmode="numeric" autocomplete="off" />
+          </div>
+        </div>
+      </section>
+
+      <!-- 5 — the one step no competitor can offer. A match wires the site's
+           stat tiles and national ranks straight from our data. -->
+      <section class="wz-slide" data-step="5" hidden>
+        <h3 class="wz-h">Find him on Circuit Stats</h3>
+        <p class="wz-sub">His verified stats and national rankings fill in on their own.</p>
+        <input class="wz-inp" id="wz-csq" type="text" maxlength="60" placeholder="Start typing his name" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="wz-cslist" aria-label="Search players" />
+        <div class="wz-results" id="wz-cslist" role="listbox" aria-label="Matching players"></div>
+        <div class="wz-picked" id="wz-cspicked" hidden>
+          <div>
+            <div class="wz-picked-n" id="wz-cspicked-n"></div>
+            <div class="wz-picked-m" id="wz-cspicked-m"></div>
+          </div>
+          <button class="wz-picked-x" id="wz-cspicked-x" type="button">Change</button>
+        </div>
+      </section>
+
+      <!-- 6 — the strongest thing on Abri's page, so the real example is on
+           screen rather than described. -->
+      <section class="wz-slide" data-step="6" hidden>
+        <h3 class="wz-h">Describe his game in one line</h3>
+        <p class="wz-sub">The first thing a coach reads. Comparisons work well.</p>
+        <textarea class="wz-inp wz-ta" id="wz-tagline" data-field="tagline" rows="3" maxlength={TAGLINE_MAX} placeholder="Luka Doncic with elite defense, a +45% three ball, and great off-ball instincts"></textarea>
+        <div class="wz-count"><span id="wz-tagline-n">0</span>/{TAGLINE_MAX}</div>
+      </section>
+
+      <!-- 7 -->
+      <section class="wz-slide" data-step="7" hidden>
+        <h3 class="wz-h">Where can they follow him?</h3>
+        <p class="wz-sub">Optional — skip if he doesn't post.</p>
+        {/* The @ is furniture, not something to type. Making it a required
+            keystroke would only mean some handles arrive with it and some
+            without; showing it says "handle, not a URL" and the field cleans up
+            a pasted profile link anyway. */}
+        <label class="wz-lbl" for="wz-ig">Instagram</label>
+        <div class="wz-at">
+          <span class="wz-at-s" aria-hidden="true">@</span>
+          <input class="wz-inp wz-inp-at" id="wz-ig" data-field="ig" data-handle type="text" maxlength="60" placeholder="abri.faz" autocomplete="off" spellcheck="false" autocapitalize="none" />
+        </div>
+        <label class="wz-lbl" for="wz-tiktok">TikTok</label>
+        <div class="wz-at">
+          <span class="wz-at-s" aria-hidden="true">@</span>
+          <input class="wz-inp wz-inp-at" id="wz-tiktok" data-field="tiktok" data-handle type="text" maxlength="60" placeholder=".babyluka" autocomplete="off" spellcheck="false" autocapitalize="none" />
+        </div>
+      </section>
+
+      <!-- 8 — the one slide that can genuinely overflow, so the LIST scrolls
+           inside a fixed frame while the slide itself never does. -->
+      <section class="wz-slide" data-step="8" hidden>
+        <h3 class="wz-h">Any accolades?</h3>
+        <p class="wz-sub">MVPs, all-star teams, all-tournament. One at a time.</p>
+        <div class="wz-add">
+          <input class="wz-inp" id="wz-acc-inp" type="text" maxlength="80" placeholder="North Pole Hoops MVP" autocomplete="off" enterkeyhint="done" />
+          <button class="wz-add-btn" id="wz-acc-add" type="button">Add</button>
+        </div>
+        <div class="wz-chips" id="wz-acc-list"></div>
+      </section>
+
+      <!-- 9 -->
+      <section class="wz-slide" data-step="9" hidden>
+        <h3 class="wz-h">Pick his strengths</h3>
+        <p class="wz-sub">Choose {STRENGTH_MIN}–{STRENGTH_MAX}. {FILM_ENABLED
+          ? 'Each one becomes a film section on the site.'
+          : "Each becomes a section on his site — we'll ask for the clips by email."}</p>
+        <div class="wz-bubbles" id="wz-strengths" data-field="strengths" data-max={STRENGTH_MAX} role="group" aria-label="Strengths">
+          {STRENGTHS.map(s => (
+            <button class="wz-bub" type="button" aria-pressed="false" data-val={s}>{s}</button>
+          ))}
+          <button class="wz-bub wz-bub-add" id="wz-str-add" type="button">+ Add your own</button>
+        </div>
+        <div class="wz-count wz-count-c"><span id="wz-str-n">0</span> of {STRENGTH_MAX} chosen</div>
+      </section>
+
+      <!-- FILM — one screen per chosen strength, so the run is 3-5 slides long
+           and its length is something the parent chose. Six slots in a 3x2
+           grid: countable at a glance, and the empty ones are the instruction.
+
+           Clips upload the moment they are picked, while the parent keeps
+           moving. Deferring 150-500MB to a Send button is where a form like
+           this dies — at realistic mobile speeds that is an eight-minute wall
+           in front of the one action that matters. -->
+      <section class="wz-slide wz-slide-film" data-step="film" hidden>
+        <h3 class="wz-h" id="wz-film-h"></h3>
+        <p class="wz-sub">4–6 clips, 10 seconds max each. Aim for 5.</p>
+        <div class="wz-slots" id="wz-slots"></div>
+        <input class="wz-file" id="wz-file" type="file" accept="video/*" hidden />
+        <div class="wz-film-foot">
+          <span class="wz-film-n" id="wz-film-n"></span>
+          <span class="wz-film-up" id="wz-film-up" hidden></span>
+        </div>
+      </section>
+
+      <!-- Full game. A link, not an upload: a full game is 1-2GB and would take
+           longer than the rest of the form put together. -->
+      {/* Up to five, because a player with three good games has three good
+          games. No "optional" note — the Skip button in the footer is the
+          statement, and saying it twice just fills the screen. */}
+      <section class="wz-slide" data-step="fullgame" hidden>
+        <h3 class="wz-h">Got a full game on film?</h3>
+        <p class="wz-sub">Coaches watch whole games, not just highlights. Paste a link — YouTube, Hudl, Drive, anything.</p>
+        <label class="wz-lbl" for="wz-fg-inp">Link</label>
+        <div class="wz-add" id="wz-fg-add-row">
+          <input class="wz-inp" id="wz-fg-inp" type="url" maxlength="400" placeholder="https://" autocomplete="off" inputmode="url" enterkeyhint="done" />
+          <button class="wz-add-btn" id="wz-fg-add" type="button">Add</button>
+        </div>
+        <div class="wz-links" id="wz-fg-list"></div>
+      </section>
+
+      <!-- Domain. Prefilled from his name, because the answer is almost always
+           his name and typing it twice is a tax. -->
+      <section class="wz-slide" data-step="domain" hidden>
+        <h3 class="wz-h">His web address</h3>
+        <p class="wz-sub">We register it in your name and set it up. Change it if you'd rather have something else.</p>
+        <label class="wz-lbl" for="wz-domain">Domain</label>
+        {/* Checked live against RDAP. The verdict goes IN the field, where the
+            eye already is after typing — a line underneath is read second, if
+            at all. Never blocks Next: a taken name might be one they already
+            own, or one they want a variant of. */}
+        <div class="wz-field">
+          <input class="wz-inp wz-inp-end" id="wz-domain" data-field="domain" type="text" maxlength="80" autocomplete="off" spellcheck="false" autocapitalize="none" inputmode="url" />
+          <span class="wz-field-end" id="wz-dom-ico" hidden></span>
+        </div>
+        <div class="wz-dom" id="wz-dom" role="status" hidden></div>
+      </section>
+
+      <!-- Custom requests. The cost warning sits ON this slide rather than in a
+           footnote somewhere: it is the whole reason the slide exists. -->
+      <section class="wz-slide" data-step="custom" hidden>
+        <h3 class="wz-h">Anything you want done differently?</h3>
+        <p class="wz-sub">Everything you've filled in is covered by the price. This is for anything beyond it.</p>
+        <textarea class="wz-inp wz-ta" id="wz-custom" data-field="custom" rows="4" maxlength="900" placeholder="e.g. a page for his academics, a different colour scheme, a section for club history"></textarea>
+        {/* Priced live rather than left hanging. The old copy told them
+            something extra might cost extra and then made them wait days to
+            find out how much — this answers it before they've left the slide. */}
+        <div class="wz-quote" id="wz-quote" role="status" hidden></div>
+        <div class="wz-warn" id="wz-warn">
+          <strong>Bigger custom work is quoted separately.</strong>
+          Small tweaks are included. Anything larger we'll price for you here before you pay.
+        </div>
+      </section>
+
+      {/* Add-ons, last thing before the summary: they only make sense once the
+          site itself is decided, and putting them earlier would read as an
+          upsell blocking the thing they came for. */}
+      <section class="wz-slide" data-step="addons" hidden>
+        <h3 class="wz-h">Want us to go further?</h3>
+        <p class="wz-sub">All optional, all one-time. Skip if you just want the site.</p>
+        <div class="wz-addons" id="wz-addons"></div>
+      </section>
+
+      <!-- Review. The one screen that is allowed to scroll inside itself: it is
+           a list of what they said, and hiding half of it to honour a layout
+           rule would defeat the point of a last look. -->
+      <section class="wz-slide" data-step="review" hidden>
+        <h3 class="wz-h">Check it over</h3>
+        <p class="wz-sub">Tap anything to change it.</p>
+        <div class="wz-review" id="wz-review"></div>
+        {/* Itemised, because by here the total can be four things. The struck
+            list price stays — same fact as the top of the page, at the moment
+            the card comes out. The seat meter deliberately does NOT: someone
+            on this screen has already spent ten minutes and is reaching for a
+            card, and scarcity at that point is a shove, not information. */}
+        <div class="wz-bill" id="wz-bill"></div>
+        <div class="wz-charge">
+          <span class="wz-charge-l">Today</span>
+          <span class="wz-charge-v"><s class="wz-charge-was" id="wz-charge-was">CA$399</s><span id="wz-charge-v">CA$99</span></span>
+        </div>
+        <p class="wz-charge-n">then <s class="wz-charge-was">CA$39</s> CA$9/month for hosting · cancel anytime</p>
+      </section>
+
+      <section class="wz-slide wz-slide-done" data-step="done" hidden>
+        <div class="wz-done-ico">✓</div>
+        <h3 class="wz-h">Got it.</h3>
+        <p class="wz-sub">We'll reply within a few hours with next steps. His site is usually live within days.</p>
+      </section>
+    </div>
+
+    <footer class="wz-foot">
+      <div class="wz-err" id="wz-err" role="alert"></div>
+      <div class="wz-acts">
+        <button class="wz-back" id="wz-back" type="button">Back</button>
+        <button class="wz-next" id="wz-next" type="button">Next</button>
+        <button class="wz-skip" id="wz-skip" type="button" hidden>Skip</button>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Exit confirm. It promises the draft rather than threatening its loss,
+       which is only honest because the answers really are saved. -->
+  <div class="wz-sheet" id="wz-confirm" hidden role="alertdialog" aria-labelledby="wz-confirm-h">
+    <div class="wz-sheet-in">
+      <h3 class="wz-sheet-h" id="wz-confirm-h">Leave for now?</h3>
+      <p class="wz-sheet-d">We'll keep everything you've filled in on this device, so you can pick up where you left off.</p>
+      <button class="wz-next wz-sheet-stay" id="wz-stay" type="button">Keep going</button>
+      <button class="wz-sheet-go" id="wz-leave" type="button">Leave</button>
+    </div>
+  </div>
+</div>
+
+<script is:inline define:vars={{ STRENGTH_MIN, STRENGTH_MAX, TAGLINE_MAX, FILM_ENABLED, TAIL, POSITIONS }}>
+  (function () {
+    var wz = document.getElementById('wz');
+    if (!wz) return;
+
+    var API = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+      ? 'http://localhost:4000/a1a2-command-center' : '/a1a2-command-center';
+    var KEY = 'cs-intake-v1';
+    // Nine fixed questions, then one film screen per strength the parent chose,
+    // then the sent screen. The run's length is therefore something they picked,
+    // not a number this file knows: 12 slides for three strengths, 14 for five.
+    var FIXED = 9;
+    var MAX_CLIPS = 6, MAX_SECONDS = 10;
+    function filmCount() { return FILM_ENABLED ? d.strengths.length : 0; }
+    function filmEnd()   { return FIXED + filmCount(); }
+    function lastStep()  { return filmEnd() + TAIL.length; }   // 'review'
+    function doneStep()  { return lastStep() + 1; }
+    function filmIndex(n) { return n > FIXED && n <= filmEnd() ? n - FIXED - 1 : -1; }
+    function tailIndex(n) { return n > filmEnd() && n <= lastStep() ? n - filmEnd() - 1 : -1; }
+    // Slides that carry nothing required. Everything else gates Next, so the
+    // parent can never reach the end with a hole in the submission.
+    var OPTIONAL = { 5: 1, 7: 1, 8: 1 };
+    function optionalAt(n) {
+      var t = tailIndex(n);
+      if (t > -1) return TAIL[t] === 'fullgame' || TAIL[t] === 'custom';
+      return !!OPTIONAL[n];
+    }
+
+    // Funnel + pixel go through the page's own helpers when they exist, so this
+    // component never owns a second copy of either contract.
+    function track(label, detail) { if (window.csTrack) window.csTrack(label, detail); }
+
+    var d = {
+      playerName: '', email: '', classYear: '', birthYear: '', city: '', region: '',
+      position: [], height: '', wingspan: '', weight: '', csPlayer: null,
+      tagline: '', ig: '', tiktok: '', accolades: [], strengths: [],
+      fullGames: [], domain: '', custom: '', addons: [],
+      // The quote the parent was shown, mirrored from the server so the review
+      // total and the checkout can never disagree about what was agreed.
+      quote: null,
+      // One entry per filled slot: { strengthIdx, clipIdx, key, seconds, thumb }.
+      // Only clips that R2 confirmed and the server verified land here, so a
+      // resumed draft can never show film that isn't really there.
+      clips: [], intakeToken: null,
+    };
+    var step = 1;
+    var leadFired = false;
+    // In-flight uploads, keyed s{i}c{j}. Deliberately NOT in `d` — an XHR can't
+    // be serialised, and a half-finished upload is not a fact about the
+    // submission, it's a fact about this tab.
+    var live = {};
+    // Set when the server reports storage unavailable. Degrades film from
+    // required to impossible-but-skippable rather than letting the run dead-end.
+    var filmDown = false;
+
+    // ── draft ────────────────────────────────────────────────────────────────
+    function save() {
+      try { localStorage.setItem(KEY, JSON.stringify({ step: step, d: d, leadFired: leadFired })); } catch (e) {}
+    }
+    function load() {
+      try {
+        var raw = localStorage.getItem(KEY);
+        if (!raw) return false;
+        var o = JSON.parse(raw);
+        if (!o || !o.d) return false;
+        Object.keys(d).forEach(function (k) { if (o.d[k] != null) d[k] = o.d[k]; });
+        // Position was a single string before it became multi-select. A draft
+        // written by the old build would otherwise hand an array-shaped field a
+        // string, which survives .length and .indexOf just long enough to blow
+        // up on the first .push.
+        if (typeof d.position === 'string') d.position = d.position ? [d.position] : [];
+        // Same story for the full-game link, which was one string before it
+        // became a list.
+        if (typeof o.d.fullGame === 'string' && o.d.fullGame && !d.fullGames.length) d.fullGames = [o.d.fullGame];
+        if (!Array.isArray(d.fullGames)) d.fullGames = [];
+        step = Math.min(Math.max(1, o.step || 1), lastStep());
+        leadFired = !!o.leadFired;
+        return true;
+      } catch (e) { return false; }
+    }
+    function clearDraft() { try { localStorage.removeItem(KEY); } catch (e) {} }
+    window.csIntakeHasDraft = function () {
+      try { var o = JSON.parse(localStorage.getItem(KEY) || 'null'); return !!(o && o.d && o.d.playerName); }
+      catch (e) { return false; }
+    };
+
+    // ── validity ─────────────────────────────────────────────────────────────
+    var EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    function valid(n) {
+      if (n === 1) return !!d.playerName.trim() && EMAIL.test(d.email.trim());
+      if (n === 2) return !!d.classYear && /^\d{4}$/.test(d.birthYear.trim());
+      if (n === 3) return !!d.city.trim() && !!d.region.trim();
+      if (n === 4) return d.position.length > 0 && !!d.height.trim();
+      if (n === 6) return d.tagline.trim().length >= 10;
+      if (n === 9) return d.strengths.length >= STRENGTH_MIN && d.strengths.length <= STRENGTH_MAX;
+      var fi = filmIndex(n);
+      if (fi > -1) {
+        // If the bucket isn't reachable, film cannot be a requirement — the
+        // alternative is a parent who has answered nine questions and now
+        // cannot move forward or back out with anything saved. The submission
+        // goes through without clips and says so.
+        if (filmDown) return true;
+        // One clip, not four. Four-to-six is the advice on screen and it's what
+        // makes a good section; blocking on it would trade real submissions for
+        // a rule nobody outside this file agreed to. A strength with NO film
+        // would render an empty section on the built site, so that is the floor.
+        // Uploads still in flight don't block either — they finish while the
+        // parent moves, and Send is what waits.
+        return clipsFor(fi).length >= 1;
+      }
+      var t = tailIndex(n);
+      if (t > -1) {
+        // Prefilled from his name, so this is normally already satisfied — but
+        // an empty address would mean building a site with nowhere to put it.
+        if (TAIL[t] === 'domain') return d.domain.trim().length >= 4;
+        return true;   // fullgame, custom, review
+      }
+      return true;
+    }
+    function clipsFor(fi) { return d.clips.filter(function (c) { return c.strengthIdx === fi; }); }
+    function uploading() { return Object.keys(live).length > 0; }
+
+    // ── rendering ────────────────────────────────────────────────────────────
+    var slides = [].slice.call(wz.querySelectorAll('.wz-slide'));
+    var elNext = document.getElementById('wz-next');
+    var elBack = document.getElementById('wz-back');
+    var elSkip = document.getElementById('wz-skip');
+    var elRail = document.getElementById('wz-rail');
+    var elErr = document.getElementById('wz-err');
+    var elLive = document.getElementById('wz-live-head');
+    var elStage = document.getElementById('wz-stage');
+
+    // Which slide element serves this step. Film reuses ONE element across
+    // every strength rather than cloning three to five near-identical sections:
+    // the slot grid, the picker and the upload plumbing are the same apparatus
+    // pointed at a different index.
+    function slideKeyFor(n) {
+      if (n > lastStep()) return 'done';
+      if (filmIndex(n) > -1) return 'film';
+      var t = tailIndex(n);
+      if (t > -1) return TAIL[t];
+      return String(n);
+    }
+
+    function paint() {
+      var key = slideKeyFor(step);
+      slides.forEach(function (s) { s.hidden = s.dataset.step !== key; });
+      var cur = wz.querySelector('.wz-slide[data-step="' + key + '"]');
+      var fi = filmIndex(step);
+      if (fi > -1) paintFilm(fi);
+      if (key === 'fullgame') paintGames();
+      if (key === 'domain') { seedDomain(); checkDomain(); }
+      if (key === 'custom') paintQuote(d.quote);
+      if (key === 'addons') loadAddons();
+      // The catalogue is needed to itemise, so make sure it's here even for
+      // someone who skipped straight past the add-ons slide.
+      if (key === 'review') { if (!CATALOG) loadAddons(); paintReview(); paintBill(); }
+      if (cur && !cur.classList.contains('wz-slide-done')) {
+        var h = cur.querySelector('.wz-h');
+        if (h) elLive.textContent = h.textContent;
+      }
+      elStage.textContent = step > lastStep() ? 'Done'
+        : fi > -1 ? 'Film'
+        : tailIndex(step) > -1 ? 'Finish' : 'Player';
+      elRail.style.width = Math.round((step / (lastStep() + 1)) * 100) + '%';
+      var done = step > lastStep();
+      elBack.hidden = done || step === 1;
+      elNext.hidden = done;
+      elSkip.hidden = done || !optionalAt(step);
+      elNext.textContent = step === lastStep() ? 'Continue to payment' : 'Next';
+      elNext.disabled = !valid(step);
+      elErr.textContent = '';
+      // The X stays on the sent screen — it's the only way out of it, and
+      // there's nothing left to confirm losing.
+      // Focus the heading, not the first input: an auto-focused field pops the
+      // mobile keyboard on every slide and swallows half the viewport.
+      if (cur) { cur.scrollTop = 0; }
+    }
+
+    function go(n, push) {
+      if (n > doneStep() || n < 1) return;
+      step = n;
+      save();
+      paint();
+      if (push !== false) history.pushState({ wz: n }, '');
+      track('get-started:intake-step-' + n);
+    }
+
+    // ── open / close ─────────────────────────────────────────────────────────
+    var scrollY = 0;
+    function open() {
+      scrollY = window.scrollY;
+      wz.hidden = false;
+      document.body.classList.add('wz-locked');
+      document.body.style.top = -scrollY + 'px';
+      hydrate();
+      paint();
+      history.pushState({ wz: step }, '');
+      track('get-started:intake-open');
+      if (window.fbq) window.fbq('trackCustom', 'StartIntake');
+    }
+    function close() {
+      wz.hidden = true;
+      document.body.classList.remove('wz-locked');
+      document.body.style.top = '';
+      window.scrollTo(0, scrollY);
+      document.getElementById('wz-confirm').hidden = true;
+      if (window.csIntakeSyncCta) window.csIntakeSyncCta();
+    }
+
+    document.addEventListener('click', function (e) {
+      var t = e.target.closest ? e.target.closest('[data-intake-open]') : null;
+      if (t) { e.preventDefault(); open(); }
+    });
+
+    document.getElementById('wz-x').addEventListener('click', function () {
+      if (step > lastStep()) { close(); return; }
+      document.getElementById('wz-confirm').hidden = false;
+      document.getElementById('wz-stay').focus();
+    });
+    document.getElementById('wz-stay').addEventListener('click', function () {
+      document.getElementById('wz-confirm').hidden = true;
+    });
+    document.getElementById('wz-leave').addEventListener('click', function () {
+      track('get-started:intake-abandon', 'step-' + step);
+      close();
+    });
+
+    // Android back and the browser back button move a slide, not off the page.
+    window.addEventListener('popstate', function (e) {
+      if (wz.hidden) return;
+      var n = e.state && e.state.wz;
+      if (n) { step = Math.min(Math.max(1, n), doneStep()); paint(); }
+      else close();
+    });
+    document.addEventListener('keydown', function (e) {
+      if (wz.hidden || e.key !== 'Escape') return;
+      document.getElementById('wz-x').click();
+    });
+
+    // ── field wiring ─────────────────────────────────────────────────────────
+    // Handles arrive three ways: bare, with an @, or as a pasted profile URL.
+    // All three mean the same thing, so all three are stored the same way.
+    function cleanHandle(v) {
+      return String(v).trim()
+        .replace(/^https?:\/\//i, '')
+        .replace(/^www\./i, '')
+        .replace(/^(?:instagram|tiktok)\.com\//i, '')
+        .replace(/^@+/, '')
+        .replace(/[\/?#].*$/, '')
+        .replace(/\s+/g, '');
+    }
+
+    wz.querySelectorAll('input[data-field], textarea[data-field]').forEach(function (el) {
+      // Only the leading @ is stripped as they type — rewriting a half-typed
+      // URL under the cursor would fight them. The rest waits for blur.
+      if (el.hasAttribute('data-handle')) {
+        el.addEventListener('input', function () {
+          if (/^@/.test(el.value)) { el.value = el.value.replace(/^@+/, ''); d[el.dataset.field] = el.value; save(); }
+        });
+        el.addEventListener('blur', function () {
+          var c = cleanHandle(el.value);
+          if (c !== el.value) { el.value = c; d[el.dataset.field] = c; save(); }
+        });
+      }
+      el.addEventListener('input', function () {
+        d[el.dataset.field] = el.value;
+        if (el.id === 'wz-tagline') document.getElementById('wz-tagline-n').textContent = el.value.length;
+        if (el.id === 'wz-domain') queueDomainCheck();
+        if (el.id === 'wz-custom') queueQuote();
+        elNext.disabled = !valid(step);
+        save();
+      });
+      el.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' && el.tagName !== 'TEXTAREA') { e.preventDefault(); if (!elNext.disabled) elNext.click(); }
+      });
+    });
+
+    // Bubbles: single-select acts as a radio group, multi as a toggle set.
+    wz.querySelectorAll('.wz-bubbles[data-field]').forEach(function (grp) {
+      var field = grp.dataset.field;
+      var single = grp.hasAttribute('data-single');
+      grp.addEventListener('click', function (e) {
+        var b = e.target.closest('.wz-bub');
+        if (!b || b.id === 'wz-str-add') return;
+        var v = b.dataset.val;
+        // The cap belongs to the group, not to this handler: strengths are
+        // limited because five film sections is already a long site, positions
+        // are not limited because there is no reason to.
+        var max = +grp.dataset.max || Infinity;
+        if (single) { d[field] = d[field] === v ? '' : v; }
+        else {
+          var i = d[field].indexOf(v);
+          if (i > -1) d[field].splice(i, 1);
+          else if (d[field].length < max) d[field].push(v);
+          else { elErr.textContent = 'Pick at most ' + max + '. Deselect one first.'; return; }
+        }
+        elErr.textContent = '';
+        paintBubbles(grp);
+        elNext.disabled = !valid(step);
+        save();
+      });
+    });
+    function paintBubbles(grp) {
+      var field = grp.dataset.field;
+      var single = grp.hasAttribute('data-single');
+      grp.querySelectorAll('.wz-bub').forEach(function (b) {
+        if (b.id === 'wz-str-add') return;
+        var on = single ? d[field] === b.dataset.val : d[field].indexOf(b.dataset.val) > -1;
+        b.classList.toggle('on', on);
+        if (single) b.setAttribute('aria-checked', on ? 'true' : 'false');
+        else b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+      var n = document.getElementById('wz-str-n');
+      if (n) n.textContent = d.strengths.length;
+    }
+
+    // Custom strength — a prompt is the right weight here: it's a rare path and
+    // an inline field would cost the slide a row it doesn't have.
+    document.getElementById('wz-str-add').addEventListener('click', function () {
+      if (d.strengths.length >= STRENGTH_MAX) { elErr.textContent = 'Pick at most ' + STRENGTH_MAX + '.'; return; }
+      var v = (window.prompt('Name the strength') || '').trim().slice(0, 40);
+      if (!v || d.strengths.indexOf(v) > -1) return;
+      d.strengths.push(v);
+      addCustomBubble(v);
+      paintBubbles(document.getElementById('wz-strengths'));
+      elNext.disabled = !valid(step);
+      save();
+    });
+    function addCustomBubble(v) {
+      var grp = document.getElementById('wz-strengths');
+      if (grp.querySelector('.wz-bub[data-val="' + CSS.escape(v) + '"]')) return;
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'wz-bub'; b.dataset.val = v;
+      b.setAttribute('aria-pressed', 'true'); b.textContent = v;
+      grp.insertBefore(b, document.getElementById('wz-str-add'));
+    }
+
+    // Accolades
+    function addAcc() {
+      var inp = document.getElementById('wz-acc-inp');
+      var v = inp.value.trim().slice(0, 80);
+      if (!v || d.accolades.indexOf(v) > -1) return;
+      d.accolades.push(v); inp.value = ''; inp.focus(); paintAcc(); save();
+    }
+    document.getElementById('wz-acc-add').addEventListener('click', addAcc);
+    document.getElementById('wz-acc-inp').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); addAcc(); }
+    });
+    function paintAcc() {
+      var list = document.getElementById('wz-acc-list');
+      list.innerHTML = '';
+      d.accolades.forEach(function (a, i) {
+        var c = document.createElement('span');
+        c.className = 'wz-chip';
+        c.textContent = a;
+        var x = document.createElement('button');
+        x.type = 'button'; x.className = 'wz-chip-x'; x.setAttribute('aria-label', 'Remove ' + a);
+        x.textContent = '×';
+        x.addEventListener('click', function () { d.accolades.splice(i, 1); paintAcc(); save(); });
+        c.appendChild(x);
+        list.appendChild(c);
+      });
+    }
+
+    // ── Circuit Stats lookup ─────────────────────────────────────────────────
+    var idx = null, idxLoading = false;
+    function loadIdx() {
+      if (idx || idxLoading) return;
+      idxLoading = true;
+      fetch('/intake-players.json')
+        .then(function (r) { return r.json(); })
+        .then(function (j) { idx = j.rows || []; idxLoading = false; })
+        .catch(function () { idxLoading = false; });
+    }
+    var csq = document.getElementById('wz-csq');
+    var cslist = document.getElementById('wz-cslist');
+    csq.addEventListener('input', function () {
+      var q = csq.value.trim().toLowerCase();
+      cslist.innerHTML = '';
+      csq.setAttribute('aria-expanded', 'false');
+      if (q.length < 2 || !idx) return;
+      var hits = [];
+      for (var i = 0; i < idx.length && hits.length < 8; i++) {
+        if (idx[i][0].toLowerCase().indexOf(q) > -1) hits.push(idx[i]);
+      }
+      if (!hits.length) return;
+      csq.setAttribute('aria-expanded', 'true');
+      hits.forEach(function (h) {
+        var b = document.createElement('button');
+        b.type = 'button'; b.className = 'wz-res'; b.setAttribute('role', 'option');
+        b.innerHTML = '<span class="wz-res-n"></span><span class="wz-res-m"></span>';
+        b.querySelector('.wz-res-n').textContent = h[0];
+        b.querySelector('.wz-res-m').textContent = (h[1] ? h[1] + ' · ' : '') + h[2];
+        b.addEventListener('click', function () { pick(h); });
+        cslist.appendChild(b);
+      });
+    });
+    function pick(h, quiet) {
+      d.csPlayer = { name: h[0], team: h[1], league: h[2] };
+      cslist.innerHTML = ''; csq.value = ''; csq.hidden = true;
+      document.getElementById('wz-cspicked-n').textContent = h[0];
+      document.getElementById('wz-cspicked-m').textContent = (h[1] ? h[1] + ' · ' : '') + h[2];
+      document.getElementById('wz-cspicked').hidden = false;
+      if (!quiet) { track('get-started:intake-cs-match'); save(); }
+    }
+    document.getElementById('wz-cspicked-x').addEventListener('click', function () {
+      d.csPlayer = null;
+      document.getElementById('wz-cspicked').hidden = true;
+      csq.hidden = false; csq.focus();
+      save();
+    });
+
+    // ── film ─────────────────────────────────────────────────────────────────
+    var slotHost = document.getElementById('wz-slots');
+    var fileInp = document.getElementById('wz-file');
+    var pendingSlot = null;
+
+    function paintFilm(fi) {
+      document.getElementById('wz-film-h').textContent = d.strengths[fi] || 'Film';
+      slotHost.innerHTML = '';
+      for (var j = 0; j < MAX_CLIPS; j++) {
+        slotHost.appendChild(slotEl(fi, j));
+      }
+      var n = clipsFor(fi).length;
+      document.getElementById('wz-film-n').textContent = n
+        ? n + ' of ' + MAX_CLIPS + ' added'
+        : 'Tap a slot to add a clip';
+      var up = Object.keys(live).length;
+      var upEl = document.getElementById('wz-film-up');
+      upEl.hidden = !up;
+      upEl.textContent = up + ' uploading…';
+    }
+
+    function slotEl(fi, j) {
+      var id = 's' + fi + 'c' + j;
+      var clip = d.clips.filter(function (c) { return c.strengthIdx === fi && c.clipIdx === j; })[0];
+      var job = live[id];
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'wz-slot' + (clip ? ' filled' : '') + (job ? ' busy' : '');
+      b.dataset.slot = id;
+
+      if (clip) {
+        if (clip.thumb) {
+          var img = document.createElement('img');
+          img.className = 'wz-slot-img'; img.src = clip.thumb; img.alt = '';
+          b.appendChild(img);
+        }
+        if (clip.seconds) {
+          var dur = document.createElement('span');
+          dur.className = 'wz-slot-dur'; dur.textContent = clip.seconds + 's';
+          b.appendChild(dur);
+        }
+        var x = document.createElement('span');
+        x.className = 'wz-slot-x'; x.textContent = '×'; x.dataset.remove = id;
+        x.setAttribute('role', 'button'); x.setAttribute('aria-label', 'Remove clip ' + (j + 1));
+        b.appendChild(x);
+      } else if (job) {
+        var ring = document.createElement('span');
+        ring.className = 'wz-slot-pct'; ring.textContent = (job.pct || 0) + '%';
+        b.appendChild(ring);
+      } else {
+        b.setAttribute('aria-label', 'Add clip ' + (j + 1));
+        var plus = document.createElement('span');
+        plus.className = 'wz-slot-plus'; plus.textContent = '+';
+        b.appendChild(plus);
+      }
+      return b;
+    }
+
+    slotHost.addEventListener('click', function (e) {
+      var fi = filmIndex(step);
+      if (fi < 0) return;
+      var rm = e.target.dataset && e.target.dataset.remove;
+      if (rm) { e.stopPropagation(); dropClip(rm); return; }
+      var slot = e.target.closest('.wz-slot');
+      if (!slot || slot.classList.contains('busy')) return;
+      var id = slot.dataset.slot;
+      if (d.clips.some(function (c) { return 's' + c.strengthIdx + 'c' + c.clipIdx === id; })) return;
+      pendingSlot = id;
+      fileInp.value = '';         // so re-picking the same file still fires change
+      fileInp.click();
+    });
+
+    fileInp.addEventListener('change', function () {
+      var f = fileInp.files && fileInp.files[0];
+      if (!f || !pendingSlot) return;
+      var m = pendingSlot.match(/^s(\d+)c(\d+)$/);
+      takeClip(f, +m[1], +m[2]);
+      pendingSlot = null;
+    });
+
+    /**
+     * Duration is checked before a single byte is uploaded. Rejecting a 14
+     * second clip after a two minute upload would be the cruellest possible
+     * place to enforce this rule, and metadata is enough to know.
+     */
+    function readVideo(file) {
+      return new Promise(function (resolve, reject) {
+        var url = URL.createObjectURL(file);
+        var v = document.createElement('video');
+        v.preload = 'metadata'; v.muted = true; v.playsInline = true;
+        var settled = false;
+        function finish(meta) {
+          if (settled) return;
+          settled = true;
+          URL.revokeObjectURL(url);
+          resolve(meta);
+        }
+        function fail(why) {
+          if (settled) return;
+          settled = true;
+          URL.revokeObjectURL(url);
+          reject(new Error(why));
+        }
+        v.onerror = function () { fail('unreadable'); };
+        setTimeout(function () { fail('timeout'); }, 15000);
+
+        v.onloadedmetadata = function () {
+          // Not every container reports a length. Some recorded formats hand
+          // back Infinity or NaN, and treating that as "too long" would reject
+          // a perfectly good clip with a nonsense number in the message. An
+          // unreadable duration is unknown, not disqualifying — the server's
+          // size cap is the guard that always applies.
+          var raw = v.duration;
+          var seconds = isFinite(raw) && raw > 0 ? Math.round(raw * 10) / 10 : null;
+
+          // The poster is a nicety: it makes a filled slot legible at a glance
+          // and survives into the draft, so a resumed run shows what was picked
+          // instead of six identical grey tiles. It must never cost a clip, so
+          // it gets its own short budget and failure just means no poster.
+          var settledThumb = false;
+          function withThumb() {
+            if (settledThumb) return;
+            settledThumb = true;
+            var thumb = null;
+            try {
+              var c = document.createElement('canvas');
+              var w = 132, h = Math.max(1, Math.round(w * (v.videoHeight / v.videoWidth || 0.56)));
+              c.width = w; c.height = h;
+              c.getContext('2d').drawImage(v, 0, 0, w, h);
+              thumb = c.toDataURL('image/jpeg', 0.55);
+            } catch (e) {}
+            finish({ seconds: seconds, thumb: thumb });
+          }
+          v.onseeked = withThumb;
+          setTimeout(withThumb, 2500);
+          try { v.currentTime = seconds ? Math.min(0.1, seconds / 2) : 0.1; } catch (e) { withThumb(); }
+        };
+        v.src = url;
+      });
+    }
+
+    function takeClip(file, fi, j) {
+      var id = 's' + fi + 'c' + j;
+      elErr.textContent = '';
+      readVideo(file).then(function (meta) {
+        if (meta.seconds !== null && meta.seconds > MAX_SECONDS + 0.4) {
+          elErr.textContent = "That clip is " + meta.seconds + "s — trim it to " + MAX_SECONDS + " or under.";
+          return;
+        }
+        return ensureToken().then(function () { return upload(file, fi, j, meta); });
+      }).catch(function (err) {
+        var msg = (err && err.message) || '';
+        if (/storage_unavailable|status_503/.test(msg)) {
+          filmDown = true;
+          track('get-started:intake-film-unavailable');
+          elErr.textContent = "Film upload isn't available right now — carry on and we'll ask for his clips by email.";
+        } else {
+          elErr.textContent = msg === 'unreadable'
+            ? "That file didn't look like a video we can read."
+            : "Couldn't add that clip. Try again.";
+        }
+        delete live[id];
+        paintFilm(fi);
+        elNext.disabled = !valid(step);
+      });
+    }
+
+    function upload(file, fi, j, meta) {
+      var id = 's' + fi + 'c' + j;
+      live[id] = { pct: 0 };
+      paintFilm(fi);
+      return api('POST', '/intake/' + d.intakeToken + '/upload-url', {
+        strengthIdx: fi, clipIdx: j, filename: file.name,
+      }).then(function (out) {
+        return new Promise(function (resolve, reject) {
+          // XHR, not fetch: upload progress is the whole point of this screen
+          // and fetch still cannot report it.
+          var xhr = new XMLHttpRequest();
+          live[id].xhr = xhr;
+          xhr.open('PUT', out.url, true);
+          xhr.upload.onprogress = function (e) {
+            if (!e.lengthComputable) return;
+            live[id].pct = Math.round((e.loaded / e.total) * 100);
+            if (filmIndex(step) === fi) paintFilm(fi);
+          };
+          xhr.onload = function () { xhr.status >= 200 && xhr.status < 300 ? resolve(out.key) : reject(new Error('put_' + xhr.status)); };
+          xhr.onerror = function () { reject(new Error('network')); };
+          xhr.send(file);
+        });
+      }).then(function (key) {
+        // The server HEADs the object before it counts — "the browser said it
+        // uploaded" is not the same claim as "the file is there and is sane".
+        return api('POST', '/intake/' + d.intakeToken + '/clip', {
+          key: key, strengthIdx: fi, clipIdx: j,
+          strength: d.strengths[fi], seconds: meta.seconds,
+        }).then(function () {
+          d.clips = d.clips.filter(function (c) { return !(c.strengthIdx === fi && c.clipIdx === j); });
+          d.clips.push({ strengthIdx: fi, clipIdx: j, key: key, seconds: meta.seconds || 0, thumb: meta.thumb });
+          delete live[id];
+          save();
+          if (filmIndex(step) === fi) { paintFilm(fi); elNext.disabled = !valid(step); }
+        });
+      }).catch(function (err) {
+        delete live[id];
+        var msg = (err && err.message) || '';
+        if (/storage_unavailable|status_503/.test(msg)) {
+          filmDown = true;
+          track('get-started:intake-film-unavailable');
+          elErr.textContent = "Film upload isn't available right now — carry on and we'll ask for his clips by email.";
+        } else {
+          elErr.textContent = /too_large/.test(msg)
+            ? 'That clip is too large. A shorter or lower-resolution version will work.'
+            : "That clip didn't upload. Tap the slot to try again.";
+        }
+        if (filmIndex(step) === fi) { paintFilm(fi); elNext.disabled = !valid(step); }
+      });
+    }
+
+    function dropClip(id) {
+      var m = id.match(/^s(\d+)c(\d+)$/);
+      var fi = +m[1], j = +m[2];
+      var clip = d.clips.filter(function (c) { return c.strengthIdx === fi && c.clipIdx === j; })[0];
+      if (!clip) return;
+      d.clips = d.clips.filter(function (c) { return c !== clip; });
+      save(); paintFilm(fi); elNext.disabled = !valid(step);
+      if (d.intakeToken) api('DELETE', '/intake/' + d.intakeToken + '/clip', { key: clip.key }).catch(function () {});
+    }
+
+    // Always PG/SG/SF/PF/C order, never the order they were tapped — "SG/PG"
+    // is how nobody writes a position.
+    function positions() {
+      return d.position.slice().sort(function (a, b) {
+        return POSITIONS.indexOf(a) - POSITIONS.indexOf(b);
+      }).join('/');
+    }
+
+    function api(method, path, body) {
+      return fetch(API + path, method === 'GET' ? {} : {
+        method: method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body || {}),
+      }).then(function (r) {
+        if (!r.ok) return r.json().catch(function () { return {}; }).then(function (j) {
+          throw new Error(j.error || ('status_' + r.status));
+        });
+        return r.json();
+      });
+    }
+
+    // The server-side draft is created on demand, at the first film screen, not
+    // when the wizard opens: a row per opened form would be mostly bounces, and
+    // the only thing that genuinely needs a server record is film — the clips
+    // live in R2 under keys nothing else remembers.
+    var tokenPromise = null;
+    function ensureToken() {
+      if (d.intakeToken) return Promise.resolve(d.intakeToken);
+      if (tokenPromise) return tokenPromise;
+      tokenPromise = api('POST', '/intake', { fromPage: location.href }).then(function (o) {
+        d.intakeToken = o.token; save();
+        api('PATCH', '/intake/' + o.token, { answers: answers() }).catch(function () {});
+        return o.token;
+      }).catch(function (e) { tokenPromise = null; throw e; });
+      return tokenPromise;
+    }
+
+    // ── full-game links ──────────────────────────────────────────────────────
+    var MAX_GAMES = 5;
+    function addGame() {
+      var inp = document.getElementById('wz-fg-inp');
+      var v = inp.value.trim();
+      if (!v) return;
+      // A bare domain is what most people paste; make it a link rather than
+      // rejecting it over a prefix they can't see the point of.
+      if (!/^https?:\/\//i.test(v)) v = 'https://' + v;
+      if (d.fullGames.length >= MAX_GAMES || d.fullGames.indexOf(v) > -1) { inp.value = ''; return; }
+      d.fullGames.push(v.slice(0, 400));
+      inp.value = '';
+      paintGames(); save();
+    }
+    function paintGames() {
+      var list = document.getElementById('wz-fg-list');
+      var row = document.getElementById('wz-fg-add-row');
+      list.innerHTML = '';
+      d.fullGames.forEach(function (u, i) {
+        var r = document.createElement('div');
+        r.className = 'wz-link';
+        var a = document.createElement('span');
+        a.className = 'wz-link-u';
+        // Strip the scheme for display only — the row is narrow and "https://"
+        // is the least informative part of every one of these.
+        a.textContent = u.replace(/^https?:\/\//i, '');
+        a.title = u;
+        var x = document.createElement('button');
+        x.type = 'button'; x.className = 'wz-link-x'; x.textContent = '×';
+        x.setAttribute('aria-label', 'Remove link ' + (i + 1));
+        x.addEventListener('click', function () { d.fullGames.splice(i, 1); paintGames(); save(); });
+        r.appendChild(a); r.appendChild(x);
+        list.appendChild(r);
+      });
+      // The input goes away at the cap rather than sitting there rejecting
+      // things silently.
+      row.hidden = d.fullGames.length >= MAX_GAMES;
+    }
+    document.getElementById('wz-fg-add').addEventListener('click', addGame);
+    document.getElementById('wz-fg-inp').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); addGame(); }
+    });
+
+    // ── add-ons ──────────────────────────────────────────────────────────────
+    // The catalogue comes from the server, which is also what prices them at
+    // checkout. Hardcoding it here would let the two drift, and the one that
+    // matters is the one the customer isn't looking at.
+    var CATALOG = null;
+    function loadAddons() {
+      if (CATALOG) { paintAddons(); return; }
+      api('GET', '/intake/addons').then(function (o) {
+        CATALOG = o.addons || [];
+        paintAddons();
+        // The bill and the review list both name add-ons, and both may already
+        // have rendered without them — the catalogue arriving is exactly when
+        // they become able to be right.
+        if (slideKeyFor(step) === 'review') { paintReview(); paintBill(); }
+      }).catch(function () { CATALOG = []; paintAddons(); });
+    }
+    function money(cents) {
+      return 'CA$' + (cents % 100 === 0 ? (cents / 100) : (cents / 100).toFixed(2));
+    }
+    function paintAddons() {
+      var host = document.getElementById('wz-addons');
+      host.innerHTML = '';
+      if (!CATALOG || !CATALOG.length) return;
+      CATALOG.forEach(function (a) {
+        var on = d.addons.indexOf(a.id) > -1;
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'wz-addon' + (on ? ' on' : '');
+        b.setAttribute('aria-pressed', on ? 'true' : 'false');
+        b.innerHTML =
+          '<span class="wz-addon-tick" aria-hidden="true"></span>' +
+          '<span class="wz-addon-txt"><span class="wz-addon-n"></span><span class="wz-addon-b"></span></span>' +
+          '<span class="wz-addon-p"></span>';
+        b.querySelector('.wz-addon-n').textContent = a.name;
+        b.querySelector('.wz-addon-b').textContent = a.blurb;
+        b.querySelector('.wz-addon-p').textContent = money(a.amount);
+        b.addEventListener('click', function () {
+          var i = d.addons.indexOf(a.id);
+          if (i > -1) d.addons.splice(i, 1); else d.addons.push(a.id);
+          save(); paintAddons();
+        });
+        host.appendChild(b);
+      });
+    }
+
+    // ── custom-request quote ─────────────────────────────────────────────────
+    var quoteTimer = null, quoteSeq = 0, lastQuoted = null;
+    function paintQuote(q) {
+      var el = document.getElementById('wz-quote');
+      var warn = document.getElementById('wz-warn');
+      if (!q) { el.hidden = true; warn.hidden = false; return; }
+      el.hidden = false;
+      // Once there's a real answer the generic warning is noise — it was
+      // standing in for exactly this.
+      warn.hidden = q.verdict !== 'manual';
+      if (q.verdict === 'checking') { el.className = 'wz-quote wz-quote-wait'; el.textContent = 'Pricing this…'; return; }
+      if (q.verdict === 'included') { el.className = 'wz-quote wz-quote-ok'; el.textContent = q.reason || "That's included — no extra charge."; return; }
+      if (q.verdict === 'quoted') {
+        el.className = 'wz-quote wz-quote-price';
+        el.innerHTML = '<strong></strong><span></span>';
+        el.querySelector('strong').textContent = '+' + money(q.amount) + ' for this';
+        el.querySelector('span').textContent = ' ' + (q.reason || '') + ' Added to today\'s total — remove the text above to drop it.';
+        return;
+      }
+      el.className = 'wz-quote wz-quote-wait';
+      el.textContent = q.reason || "We'll price this and confirm with you before doing anything.";
+    }
+    function queueQuote() {
+      clearTimeout(quoteTimer);
+      var text = d.custom.trim();
+      if (!text) { d.quote = null; lastQuoted = ''; paintQuote(null); save(); return; }
+      if (text === lastQuoted) return;
+      quoteTimer = setTimeout(function () {
+        var seq = ++quoteSeq;
+        paintQuote({ verdict: 'checking' });
+        ensureToken()
+          .then(function () { return api('POST', '/intake/' + d.intakeToken + '/quote', { custom: text }); })
+          .then(function (q) {
+            if (seq !== quoteSeq) return;
+            lastQuoted = text;
+            d.quote = { verdict: q.verdict, amount: q.amount || 0, reason: q.reason || '' };
+            save(); paintQuote(d.quote);
+          })
+          .catch(function () {
+            if (seq !== quoteSeq) return;
+            d.quote = null; save();
+            paintQuote({ verdict: 'manual', reason: "We'll price this and confirm with you before doing anything." });
+          });
+      }, 1100);   // long-ish: this costs a model call, and people pause mid-sentence
+    }
+
+    // ── the bill ─────────────────────────────────────────────────────────────
+    function billLines() {
+      var lines = [['Player website', 9900]];
+      (CATALOG || []).forEach(function (a) {
+        if (d.addons.indexOf(a.id) > -1) lines.push([a.name, a.amount]);
+      });
+      if (d.quote && d.quote.verdict === 'quoted' && d.quote.amount > 0) lines.push(['Custom request', d.quote.amount]);
+      return lines;
+    }
+    function paintBill() {
+      var host = document.getElementById('wz-bill');
+      var lines = billLines();
+      var total = lines.reduce(function (s, l) { return s + l[1]; }, 0);
+      host.innerHTML = '';
+      // One line is just the base price, which the row underneath already
+      // states — an itemised list of one item is a table pretending to be busy.
+      if (lines.length > 1) {
+        lines.forEach(function (l) {
+          var r = document.createElement('div');
+          r.className = 'wz-bill-r';
+          var n = document.createElement('span'); n.className = 'wz-bill-n'; n.textContent = l[0];
+          var v = document.createElement('span'); v.className = 'wz-bill-v'; v.textContent = money(l[1]);
+          r.appendChild(n); r.appendChild(v);
+          host.appendChild(r);
+        });
+      }
+      document.getElementById('wz-charge-v').textContent = money(total);
+      // The struck list price only makes sense against the base build; once
+      // extras are on the total it is comparing two different things.
+      document.getElementById('wz-charge-was').hidden = lines.length > 1;
+    }
+
+    // ── domain + review ──────────────────────────────────────────────────────
+    // Suggested once, from his name, and never re-imposed: a parent who cleared
+    // the field or typed their own meant it.
+    var domainSeeded = false;
+    function seedDomain() {
+      if (domainSeeded) return;
+      domainSeeded = true;
+      if (d.domain.trim()) return;
+      var slug = d.playerName
+        // Fold accents to their base letter FIRST. Stripping non-ASCII without
+        // this drops the character entirely — "Omariaé Johnson" became
+        // omariajohnson.com, a letter short of his own name. Rare, but the
+        // rosters are re-scraped constantly and it is one line to be right.
+        .normalize('NFD').replace(/[̀-ͯ]/g, '')
+        // Parenthetical nicknames are annotation, not name: "Charles (CJ)
+        // Sweeney" wants charlessweeney.com, not charlescjsweeney.com.
+        .replace(/\([^)]*\)/g, '')
+        .toLowerCase().replace(/[^a-z0-9]+/g, '');
+      if (!slug) return;
+      d.domain = slug + '.com';
+      document.getElementById('wz-domain').value = d.domain;
+      save();
+    }
+
+    // Live availability. Sequence-numbered rather than cancelled: responses can
+    // land out of order, and a slow answer for a name they've already typed
+    // past would otherwise overwrite the right one.
+    // Drawn, not typed: a ✓ character would inherit whatever the system font
+    // decides that glyph looks like, at whatever weight, and the two marks
+    // would not match each other.
+    var ICO = {
+      spin: '<svg viewBox="0 0 16 16" width="15" height="15" class="wz-spin" aria-hidden="true"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-dasharray="26" stroke-dashoffset="8"/></svg>',
+      ok:   '<svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><path d="M2.6 8.4 L6.2 11.9 L13.4 4.3" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+      no:   '<svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><path d="M4.2 4.2 L11.8 11.8 M11.8 4.2 L4.2 11.8" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>',
+    };
+
+    var domTimer = null, domSeq = 0;
+    function checkDomain() {
+      var el = document.getElementById('wz-dom');
+      var ico = document.getElementById('wz-dom-ico');
+      var v = d.domain.trim().toLowerCase();
+      if (!v) { el.hidden = true; ico.hidden = true; return; }
+      var seq = ++domSeq;
+      ico.hidden = false;
+      ico.className = 'wz-field-end wz-dom-wait';
+      ico.innerHTML = ICO.spin;
+      el.hidden = true;
+
+      function verdict(cls, mark, text) {
+        ico.className = 'wz-field-end ' + cls;
+        ico.innerHTML = mark ? ICO[mark] : '';
+        ico.hidden = !mark;
+        el.className = 'wz-dom ' + cls;
+        el.textContent = text || '';
+        el.hidden = !text;
+      }
+
+      fetch(API + '/intake/domain-check?d=' + encodeURIComponent(v))
+        .then(function (r) { return r.json(); })
+        .then(function (o) {
+          if (seq !== domSeq) return;
+          if (o.status === 'available') verdict('wz-dom-ok', 'ok', 'Available');
+          else if (o.status === 'taken') verdict('wz-dom-no', 'no', 'Taken — try another');
+          else if (o.status === 'invalid') verdict('wz-dom-wait', null, 'Needs to look like name.com');
+          // The registry didn't answer. Say so rather than vanishing — a
+          // spinner that disappears into nothing is indistinguishable from a
+          // feature that is broken, which is exactly how this read when the
+          // backend was down.
+          else verdict('wz-dom-wait', null, "Couldn't check right now — we'll confirm before registering");
+        })
+        .catch(function () {
+          if (seq !== domSeq) return;
+          verdict('wz-dom-wait', null, "Couldn't check right now — we'll confirm before registering");
+        });
+    }
+    function queueDomainCheck() {
+      clearTimeout(domTimer);
+      domTimer = setTimeout(checkDomain, 500);
+    }
+
+    // Rows are (label, value, step) so every line is a way back to the slide it
+    // came from — the reason the heading can say "tap anything to change it".
+    function reviewRows() {
+      var base = FIXED, film = filmCount();
+      var m = [positions(), d.height, d.wingspan ? d.wingspan + ' WS' : '', d.weight ? d.weight + ' lb' : ''].filter(Boolean);
+      var rows = [
+        ['Player', d.playerName, 1],
+        ['Email', d.email, 1],
+        ['Class', d.classYear ? 'Class of ' + d.classYear + (d.birthYear ? ' · born ' + d.birthYear : '') : '', 2],
+        ['From', [d.city, d.region].filter(Boolean).join(', '), 3],
+        ['Measurables', m.join(' / '), 4],
+        ['Circuit Stats', d.csPlayer ? d.csPlayer.name + ' — ' + d.csPlayer.league : 'Not matched', 5],
+        ['One line', d.tagline, 6],
+        ['Socials', [d.ig, d.tiktok].filter(Boolean).join(' · '), 7],
+        ['Accolades', d.accolades.length ? d.accolades.join(' · ') : '', 8],
+        ['Strengths', d.strengths.join(' · '), 9],
+      ];
+      if (FILM_ENABLED) {
+        rows.push(['Film', d.clips.length ? d.clips.length + ' clips' : 'None yet', base + 1]);
+      }
+      TAIL.forEach(function (name, i) {
+        var at = base + film + i + 1;
+        if (name === 'fullgame') rows.push(['Full game', d.fullGames.length > 1 ? d.fullGames.length + ' links' : (d.fullGames[0] || ''), at]);
+        if (name === 'domain') rows.push(['Domain', d.domain, at]);
+        if (name === 'custom') rows.push(['Custom requests', d.custom, at]);
+        if (name === 'addons') rows.push(['Add-ons', d.addons.length
+          ? (CATALOG || []).filter(function (a) { return d.addons.indexOf(a.id) > -1; }).map(function (a) { return a.name; }).join(' · ')
+          : '', at]);
+      });
+      return rows;
+    }
+
+    function paintReview() {
+      var host = document.getElementById('wz-review');
+      host.innerHTML = '';
+      reviewRows().forEach(function (r) {
+        var b = document.createElement('button');
+        b.type = 'button'; b.className = 'wz-rev';
+        var l = document.createElement('span'); l.className = 'wz-rev-l'; l.textContent = r[0];
+        var v = document.createElement('span');
+        v.className = 'wz-rev-v' + (r[1] ? '' : ' empty');
+        v.textContent = r[1] || 'Not set';
+        b.appendChild(l); b.appendChild(v);
+        b.addEventListener('click', function () { go(r[2]); });
+        host.appendChild(b);
+      });
+    }
+
+    // ── nav ──────────────────────────────────────────────────────────────────
+    // Moves a slide, never a history entry. It used to call history.back(),
+    // which only works if this session walked forward through every slide —
+    // resume a draft at slide 11 and the wizard has exactly ONE entry, so one
+    // Back popped past it and closed the whole thing. The hardware/browser back
+    // button still unwinds real history via popstate below; this button is
+    // about the form, and the form always has a previous slide.
+    elBack.addEventListener('click', function () { if (step > 1) go(step - 1); });
+    elSkip.addEventListener('click', function () { go(step + 1); });
+    elNext.addEventListener('click', function () {
+      if (!valid(step)) return;
+      // The lead is real the moment we have a name and a working address —
+      // fired here, not at the end, so the ads keep optimising on the same
+      // event at the same volume they always did.
+      if (step === 1 && !leadFired) {
+        leadFired = true;
+        track('get-started:intake-lead');
+        if (window.fbq) {
+          if (window.META_PIXEL_ID) window.fbq('init', window.META_PIXEL_ID, { em: d.email.trim().toLowerCase() });
+          window.fbq('track', 'Lead');
+        }
+        save();
+      }
+      if (step === 4) loadIdx();   // one slide of runway for the name index
+      // Leaving the strengths slide is the last moment the film run's length
+      // can change, so any clip belonging to a strength that was deselected is
+      // dropped here rather than travelling to the server attached to nothing.
+      if (step === 9) {
+        var keep = d.clips.filter(function (c) { return c.strengthIdx < filmCount(); });
+        if (keep.length !== d.clips.length) { d.clips = keep; save(); }
+      }
+      if (step === lastStep()) { submit(); return; }
+      go(step + 1);
+    });
+
+    // The shape the server draft stores. Kept separate from the email summary
+    // below: one is data for the build, the other is prose for Andy's inbox.
+    function answers() {
+      return {
+        playerName: d.playerName, email: d.email, classYear: d.classYear, birthYear: d.birthYear,
+        city: d.city, region: d.region, position: d.position, height: d.height,
+        wingspan: d.wingspan, weight: d.weight, csPlayer: d.csPlayer, tagline: d.tagline,
+        ig: d.ig, tiktok: d.tiktok, accolades: d.accolades, strengths: d.strengths,
+        fullGames: d.fullGames, domain: d.domain, custom: d.custom, addons: d.addons,
+      };
+    }
+
+    function summary() {
+      var L = [];
+      if (d.classYear) L.push('Class of ' + d.classYear + (d.birthYear ? ' · born ' + d.birthYear : ''));
+      if (d.city) L.push('From: ' + d.city + (d.region ? ', ' + d.region : ''));
+      var m = [positions(), d.height, d.wingspan ? d.wingspan + ' WS' : '', d.weight ? d.weight + ' lb' : ''].filter(Boolean);
+      if (m.length) L.push('Measurables: ' + m.join(' / '));
+      if (d.csPlayer) L.push('Circuit Stats: ' + d.csPlayer.name + ' — ' + (d.csPlayer.team ? d.csPlayer.team + ', ' : '') + d.csPlayer.league);
+      if (d.tagline) L.push('One line: "' + d.tagline.trim() + '"');
+      var s = [d.ig, d.tiktok].filter(Boolean);
+      if (s.length) L.push('Socials: ' + s.join(' · '));
+      if (d.accolades.length) L.push('Accolades: ' + d.accolades.join(' · '));
+      if (d.strengths.length) {
+        if (!FILM_ENABLED) {
+          L.push('Strengths (FILM NOT COLLECTED — ask for clips): ' + d.strengths.join(' · '));
+        } else {
+          L.push(filmDown ? 'Strengths (film upload was unavailable — ask for clips):' : 'Strengths & film:');
+          d.strengths.forEach(function (s, i) {
+            var n = clipsFor(i).length;
+            L.push('  · ' + s + ' — ' + n + ' clip' + (n === 1 ? '' : 's'));
+          });
+        }
+      }
+      if (d.fullGames.length) {
+        L.push('Full game film:');
+        d.fullGames.forEach(function (u) { L.push('  · ' + u); });
+      }
+      if (d.domain) L.push('Domain wanted: ' + d.domain.trim());
+      if (d.addons.length) {
+        L.push('ADD-ONS PURCHASED: ' + (CATALOG || []).filter(function (a) { return d.addons.indexOf(a.id) > -1; })
+          .map(function (a) { return a.name + ' (' + money(a.amount) + ')'; }).join(' · '));
+      }
+      if (d.custom.trim()) {
+        var q = d.quote;
+        var tag = !q ? '(not priced)'
+          : q.verdict === 'quoted' ? '(auto-quoted ' + money(q.amount) + ' — CHARGED)'
+          : q.verdict === 'included' ? '(judged included — no charge)'
+          : '(NEEDS YOUR QUOTE — nothing charged)';
+        L.push('CUSTOM REQUEST ' + tag + ':\n  ' + d.custom.trim());
+      }
+      return L.join('\n');
+    }
+
+    function submit() {
+      elNext.disabled = true; elErr.textContent = '';
+      // Uploads run in the background all the way through the film slides, so
+      // by here they are almost always done. Almost: a clip added on the last
+      // screen can still be in flight, and sending before it lands would file a
+      // submission that claims film the server hasn't verified.
+      if (uploading()) {
+        elNext.textContent = 'Finishing uploads…';
+        setTimeout(submit, 700);
+        return;
+      }
+      elNext.textContent = 'Sending…';
+      // The token has to exist by now or there is nothing for checkout to
+      // reference — and with film parked, nothing else would ever have created
+      // one. Its failure is survivable (the lead still files, and checkout
+      // degrades to the thank-you), so it never blocks the submission.
+      var send = ensureToken()
+        .then(function () { return api('PATCH', '/intake/' + d.intakeToken, { answers: answers() }); })
+        .catch(function () {});
+      send.then(function () {
+        return fetch(API + '/website-request', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            playerName: d.playerName.trim(),
+            teamLeague: d.csPlayer ? (d.csPlayer.team + ' — ' + d.csPlayer.league) : '',
+            parentName: '',
+            email: d.email.trim(),
+            phone: '',
+            notes: summary(),
+            fromPage: location.href,
+            intakeToken: d.intakeToken || '',
+          }),
+        });
+      }).then(function (r) {
+        if (!r.ok) throw new Error('status ' + r.status);
+        track('get-started:intake-complete');
+        if (window.fbq) window.fbq('trackCustom', 'CompleteRegistration');
+        // The brief is filed and Andy has been emailed. Whatever happens at
+        // Stripe from here, this submission is not lost — which is the entire
+        // reason payment comes after this call rather than before it.
+        var sb = document.getElementById('gs-sticky');
+        if (sb) { sb.dataset.done = '1'; sb.classList.remove('on'); }
+        return checkout();
+      }).catch(function (err) {
+        track('get-started:intake-error', err && err.message);
+        elNext.disabled = false; elNext.textContent = 'Continue to payment';
+        elErr.textContent = "That didn't send. Check your connection and try again.";
+      });
+    }
+
+    function checkout() {
+      if (!d.intakeToken) return finish();
+      elNext.textContent = 'Opening checkout…';
+      track('get-started:intake-checkout');
+      if (window.fbq) window.fbq('track', 'InitiateCheckout');
+      // The token outlives the draft: after the redirect it is the only thread
+      // back to this submission, and a cancelled payment needs it to offer
+      // "finish paying" instead of "fill it all in again".
+      try { localStorage.setItem('cs-intake-pending', JSON.stringify({ token: d.intakeToken, at: Date.now() })); } catch (e) {}
+      return api('POST', '/intake/' + d.intakeToken + '/checkout', {})
+        .then(function (o) {
+          if (!o.url) throw new Error('no_url');
+          clearDraft();
+          location.href = o.url;
+        })
+        .catch(function () {
+          // Checkout is the one step that is allowed to fail softly. The brief
+          // is already in — so land on the thank-you rather than an error, and
+          // let Andy take payment in the reply. A parent who has just spent
+          // fifteen minutes should not be shown a dead end.
+          track('get-started:intake-checkout-error');
+          finish();
+        });
+    }
+
+    function finish() {
+      var done = doneStep();
+      clearDraft();
+      step = done;
+      paint();
+      history.pushState({ wz: done }, '');
+    }
+
+    // ── hydrate from the draft ───────────────────────────────────────────────
+    var hydrated = false;
+    function hydrate() {
+      if (hydrated) return;
+      hydrated = true;
+      wz.querySelectorAll('input[data-field], textarea[data-field]').forEach(function (el) {
+        var v = d[el.dataset.field];
+        if (typeof v === 'string') el.value = v;
+      });
+      document.getElementById('wz-tagline-n').textContent = (d.tagline || '').length;
+      d.strengths.forEach(function (v) { addCustomBubble(v); });
+      wz.querySelectorAll('.wz-bubbles[data-field]').forEach(paintBubbles);
+      paintAcc();
+      // Restore the match without re-firing its event — hydrating a draft is
+      // not the parent matching a player.
+      if (d.csPlayer) pick([d.csPlayer.name, d.csPlayer.team, d.csPlayer.league], true);
+      if (step >= 4) loadIdx();
+      // Clips whose strength no longer exists (the draft was edited across
+      // sessions) would otherwise sit in R2 attached to an index nothing
+      // renders.
+      d.clips = d.clips.filter(function (c) { return c.strengthIdx < filmCount(); });
+    }
+
+    load();
+    window.csIntakeStep = function () { return step; };
+  })();
+</script>
+
+<style>
+  /* The wizard owns the viewport on a phone and a panel on a desktop, but it is
+     one flow either way — two layouts of the same thing, never two designs. */
+  .wz{
+    position:fixed;inset:0;z-index:200;
+    display:flex;align-items:center;justify-content:center;
+    background:#070d1a;
+    font-family:'Archivo',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  }
+  .wz[hidden]{display:none}
+  /* dvh, not vh: on iOS the address bar would otherwise push the footer under
+     the fold, which is the one place this design cannot afford to lose. */
+  .wz-panel{
+    position:relative;display:flex;flex-direction:column;
+    width:100%;height:100dvh;background:#070d1a;color:#e9eef8;
+  }
+  @media (min-width:700px){
+    .wz{background:rgba(4,8,16,.82);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+    .wz-panel{
+      width:min(520px,calc(100% - 48px));height:auto;min-height:600px;max-height:calc(100dvh - 64px);
+      border:1px solid #16223c;border-radius:20px;
+      box-shadow:0 40px 90px -20px rgba(0,0,0,.7);
+    }
+  }
+
+  /* ── top ── */
+  .wz-top{position:relative;flex:none;padding:16px 18px 0}
+  .wz-stage{font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#8b9ab5}
+  .wz-x{
+    position:absolute;top:8px;right:10px;width:40px;height:40px;
+    display:flex;align-items:center;justify-content:center;
+    background:none;border:none;color:#8b9ab5;cursor:pointer;border-radius:10px;
+    transition:color .15s,background .15s;
+  }
+  .wz-x:hover{color:#fff;background:rgba(255,255,255,.05)}
+  .wz-rail{margin-top:12px;height:2px;border-radius:2px;background:#16223c;overflow:hidden}
+  .wz-rail-fill{height:100%;background:#f2a83b;border-radius:2px;transition:width .35s cubic-bezier(.16,1,.3,1)}
+  @media (prefers-reduced-motion: reduce){.wz-rail-fill{transition:none}}
+
+  /* ── body ── overflow-y is auto rather than hidden as a safety net only: every
+     slide is budgeted to fit a 320x568 phone, so in practice it never engages,
+     but a clipped field would be a dead end and a scrollbar is merely a
+     compromise. */
+  /* A flex column, so the visible slide inherits a definite height and any
+     slide that needs to size a child against the space left (the review list)
+     can. height:100% does not resolve against a flex-basis-derived height
+     reliably, which is why the review list overflowed the footer. */
+  .wz-body{
+    flex:1;min-height:0;overflow-y:auto;padding:26px 18px 8px;-webkit-overflow-scrolling:touch;
+    display:flex;flex-direction:column;
+  }
+  .wz-slide{flex:1 1 auto;min-height:0}
+  .wz-sr{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+  .wz-slide[hidden]{display:none}
+  @media (prefers-reduced-motion: no-preference){
+    .wz-slide{animation:wzIn .32s cubic-bezier(.16,1,.3,1) both}
+  }
+  @keyframes wzIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+  .wz-h{font-size:clamp(23px,5.4vw,29px);font-weight:800;letter-spacing:-.018em;line-height:1.15;margin:0;text-wrap:balance}
+  .wz-sub{font-size:15px;line-height:1.5;color:#8b9ab5;margin:9px 0 22px}
+  .wz-note{font-size:13px;color:#6d7c9c;margin:12px 0 0}
+  /* Mono so the domain reads as the exact string being checked, and so the
+     line doesn't reflow between "Checking…" and its answer. */
+  .wz-dom{
+    margin-top:9px;font-family:'IBM Plex Mono',ui-monospace,monospace;
+    font-size:12.5px;font-weight:600;letter-spacing:.01em;
+  }
+  .wz-dom[hidden]{display:none}
+  /* The verdict rides inside the field, at the end of what was just typed. */
+  .wz-field{position:relative}
+  .wz-inp.wz-inp-end{padding-right:42px}
+  .wz-field-end{
+    position:absolute;right:13px;top:50%;transform:translateY(-50%);
+    display:flex;align-items:center;justify-content:center;pointer-events:none;
+  }
+  .wz-field-end[hidden]{display:none}
+  @media (prefers-reduced-motion: no-preference){
+    .wz-field-end :global(.wz-spin){animation:wzSpin .9s linear infinite;transform-origin:50% 50%}
+  }
+  @keyframes wzSpin{to{transform:rotate(360deg)}}
+  .wz-dom-wait{color:#8b9ab5}
+  .wz-dom-ok{color:#34d399}
+  .wz-dom-no{color:#f2a83b}
+
+  .wz-lbl{display:block;font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#8b9ab5;margin:0 0 7px}
+  .wz-lbl + .wz-inp,.wz-lbl + .wz-at{margin-bottom:18px}
+  /* The @ sits in the field rather than in the value: it labels the shape of
+     the answer without becoming part of it. Gold on focus, so the field the
+     cursor is in is obvious without moving anything. */
+  .wz-at{position:relative}
+  .wz-at-s{
+    position:absolute;left:14px;top:50%;transform:translateY(-50%);
+    font-size:16px;color:#5d6b8a;pointer-events:none;transition:color .15s;
+  }
+  .wz-at:focus-within .wz-at-s{color:#f2a83b}
+  /* Two classes, not one: .wz-inp sets `padding` as a shorthand further down
+     this sheet, and at equal specificity the later rule wins — a lone
+     .wz-inp-at was silently overridden and the text ran under the @. */
+  .wz-inp.wz-inp-at{padding-left:29px}
+  /* 16px is a hard floor, not a preference: iOS Safari zooms the whole page on
+     focus for anything smaller, and a zoomed wizard loses its own footer. */
+  .wz-inp{
+    width:100%;background:#0a1122;border:1px solid #1b2740;border-radius:10px;
+    padding:13px 14px;color:#e9eef8;font-size:16px;font-family:inherit;
+    outline:none;caret-color:#f2a83b;transition:border-color .15s;
+  }
+  .wz-inp::placeholder{color:#5d6b8a}
+  .wz-inp:focus{border-color:#f2a83b}
+  .wz-inp-s{max-width:130px}
+  .wz-ta{resize:none;line-height:1.45}
+  .wz-count{margin-top:8px;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12.5px;color:#6d7c9c;text-align:right}
+  .wz-count-c{text-align:left;margin-top:14px;color:#8b9ab5}
+  .wz-row3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .wz-row3 .wz-inp{margin-bottom:0}
+
+  /* ── bubbles ── the selection language the seat bar introduced, at tap size.
+     44px min height is the target floor, not a look. */
+  /* :global because a custom strength is appended by JS and would otherwise
+     render as a bare UA button next to nine styled ones. */
+  .wz-bubbles{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:22px}
+  .wz-bubbles :global(.wz-bub){
+    min-height:44px;padding:10px 15px;border-radius:23px;cursor:pointer;
+    background:#0a1122;border:1px solid #22304f;color:#c8d2e8;
+    font-family:inherit;font-size:14.5px;font-weight:600;
+    transition:border-color .15s,background .15s,color .15s;
+  }
+  .wz-bubbles :global(.wz-bub:hover){border-color:#33456d;color:#fff}
+  .wz-bubbles :global(.wz-bub.on){background:rgba(242,168,59,.12);border-color:#f2a83b;color:#f2a83b}
+  .wz-bubbles :global(.wz-bub-add){border-style:dashed;color:#8b9ab5}
+
+  /* ── film ── six slots, 3x2. Countable at a glance, and the empty ones are
+     the instruction: nobody needs telling that a dashed square wants a clip.
+     aspect-ratio rather than a height, so the grid scales with the column and
+     still fits the shortest phone. */
+  .wz-slots{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+  .wz-slots :global(.wz-slot){
+    position:relative;aspect-ratio:3/4;padding:0;overflow:hidden;cursor:pointer;
+    border-radius:11px;border:1px dashed #2a3a5e;background:#0a1122;
+    display:flex;align-items:center;justify-content:center;
+    color:#5d6b8a;font-family:inherit;transition:border-color .15s,background .15s;
+  }
+  .wz-slots :global(.wz-slot:hover){border-color:#f2a83b;color:#f2a83b}
+  .wz-slots :global(.wz-slot.filled){border-style:solid;border-color:#22304f;cursor:default}
+  .wz-slots :global(.wz-slot.busy){border-style:solid;border-color:rgba(242,168,59,.5);cursor:progress}
+  .wz-slots :global(.wz-slot-plus){font-size:26px;font-weight:300;line-height:1}
+  .wz-slots :global(.wz-slot-img){position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .wz-slots :global(.wz-slot-dur){
+    position:absolute;left:5px;bottom:5px;z-index:1;
+    padding:2px 6px;border-radius:5px;background:rgba(4,8,16,.82);
+    font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;font-weight:600;color:#e9eef8;
+  }
+  /* 26px, not 18: this sits on top of a thumbnail on a phone, and a small
+     target over a large one is how people delete the wrong clip. */
+  .wz-slots :global(.wz-slot-x){
+    position:absolute;top:4px;right:4px;z-index:2;width:26px;height:26px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    background:rgba(4,8,16,.78);color:#fff;font-size:16px;line-height:1;
+  }
+  .wz-slots :global(.wz-slot-x:hover){background:#c0392b}
+  .wz-slots :global(.wz-slot-pct){
+    font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12.5px;font-weight:600;
+    font-variant-numeric:tabular-nums;color:#f2a83b;
+  }
+  .wz-film-foot{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-top:16px}
+  .wz-film-n{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12.5px;color:#8b9ab5;font-variant-numeric:tabular-nums}
+  .wz-film-up{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12.5px;color:#f2a83b}
+  .wz-film-up[hidden]{display:none}
+
+  /* ── the cost warning ── Amber, not red: this is a condition of the offer,
+     not an error the parent has made. A 1px left rule only, so it reads as an
+     aside rather than the callout-block-with-thick-border every form has. */
+  .wz-warn{
+    margin-top:18px;padding:12px 0 12px 13px;border-left:1px solid rgba(242,168,59,.55);
+    font-size:13.5px;line-height:1.55;color:#b8c3da;
+  }
+  .wz-warn strong{display:block;color:#f2a83b;font-weight:700;margin-bottom:3px}
+
+  /* ── add-ons ── full-width rows, not a bubble set: each carries a price and
+     a sentence, and a pill can hold neither. */
+  .wz-addons{display:flex;flex-direction:column;gap:10px}
+  .wz-addons :global(.wz-addon){
+    display:flex;align-items:flex-start;gap:12px;width:100%;cursor:pointer;text-align:left;
+    padding:14px;border-radius:12px;background:#0a1122;border:1px solid #22304f;
+    font-family:inherit;transition:border-color .15s,background .15s;
+  }
+  .wz-addons :global(.wz-addon:hover){border-color:#33456d}
+  .wz-addons :global(.wz-addon.on){border-color:#f2a83b;background:rgba(242,168,59,.08)}
+  .wz-addons :global(.wz-addon-tick){
+    flex:none;width:20px;height:20px;margin-top:1px;border-radius:6px;
+    border:1.5px solid #33456d;background:transparent;transition:border-color .15s,background .15s;
+  }
+  .wz-addons :global(.wz-addon.on .wz-addon-tick){
+    border-color:#f2a83b;background:#f2a83b;
+    /* The mark is drawn by the box itself — a checkbox that only changes colour
+       reads as selected-ish; one that grows a tick reads as chosen. */
+    box-shadow:inset 0 0 0 2px #0a1122, inset 0 0 0 20px #f2a83b;
+  }
+  .wz-addons :global(.wz-addon-txt){flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+  .wz-addons :global(.wz-addon-n){font-size:14.5px;font-weight:700;color:#e9eef8;line-height:1.3}
+  .wz-addons :global(.wz-addon-b){font-size:12.5px;color:#8b9ab5;line-height:1.45}
+  .wz-addons :global(.wz-addon-p){
+    flex:none;font-family:'IBM Plex Mono',ui-monospace,monospace;
+    font-size:14px;font-weight:600;color:#f2a83b;
+  }
+
+  /* ── the live quote ── */
+  .wz-quote{margin-top:16px;font-size:13.5px;line-height:1.55;padding-left:13px;border-left:1px solid #22304f}
+  .wz-quote[hidden]{display:none}
+  .wz-quote-wait{color:#8b9ab5}
+  .wz-quote-ok{color:#34d399;border-left-color:rgba(52,211,153,.5)}
+  .wz-quote-price{color:#b8c3da;border-left-color:rgba(242,168,59,.55)}
+  .wz-quote-price strong{display:block;color:#f2a83b;font-weight:700;margin-bottom:3px}
+  .wz-warn[hidden]{display:none}
+
+  /* ── the bill ── */
+  .wz-bill{flex:none;display:flex;flex-direction:column;margin-top:16px}
+  .wz-slide[data-step="review"] .wz-charge,
+  .wz-slide[data-step="review"] .wz-charge-n{flex:none}
+  .wz-bill :global(.wz-bill-r){
+    display:flex;align-items:baseline;justify-content:space-between;gap:14px;
+    padding:7px 0;border-bottom:1px solid #131f38;
+  }
+  .wz-bill :global(.wz-bill-n){font-size:13.5px;color:#b8c3da;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .wz-bill :global(.wz-bill-v){
+    flex:none;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:13.5px;color:#e9eef8;
+  }
+  .wz-charge-was{
+    margin-right:9px;font-size:.52em;font-weight:800;color:#7c8aa8;
+    text-decoration:line-through;text-decoration-color:rgba(242,168,59,.85);
+  }
+  .wz-charge-was[hidden]{display:none}
+  .wz-charge-n .wz-charge-was{font-size:12.5px;margin-right:3px;font-weight:600}
+
+  /* ── review ── the one screen allowed its own scroll: it is a list of what
+     they said, and truncating it to honour the layout rule would defeat the
+     point of a last look. */
+  /* The review slide is the only one whose height it cannot know in advance:
+     the bill below it is one line or four, depending on add-ons and whether a
+     custom request got quoted. So rather than guess a max-height and overflow
+     the moment someone buys two extras, the slide is a flex column and the
+     list takes exactly whatever is left. */
+  .wz-slide[data-step="review"]{display:flex;flex-direction:column}
+  .wz-review{
+    flex:1;min-height:0;display:flex;flex-direction:column;overflow-y:auto;
+    border-top:1px solid #131f38;
+  }
+  .wz-review :global(.wz-rev){
+    display:flex;align-items:baseline;justify-content:space-between;gap:14px;
+    width:100%;padding:11px 2px;cursor:pointer;text-align:left;
+    background:none;border:none;border-bottom:1px solid #131f38;font-family:inherit;
+  }
+  .wz-review :global(.wz-rev:hover){background:rgba(255,255,255,.03)}
+  .wz-review :global(.wz-rev-l){flex:none;font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#8b9ab5}
+  .wz-review :global(.wz-rev-v){
+    flex:1;min-width:0;text-align:right;font-size:14px;color:#e9eef8;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  }
+  .wz-review :global(.wz-rev-v.empty){color:#5d6b8a;font-style:italic}
+  /* The charge, stated plainly and in the currency that will actually be
+     billed. The marketing page says "$99"; this is the last screen before a
+     card, so it is the wrong place to leave that ambiguous. */
+  .wz-charge{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-top:18px}
+  .wz-charge-l{font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#8b9ab5}
+  .wz-charge-v{font-size:26px;font-weight:900;color:#f2a83b;letter-spacing:-.02em}
+  .wz-charge-n{margin:5px 0 0;font-size:13px;color:#8b9ab5}
+
+  /* ── lookup ──
+     The result rows are built in JS, so every selector below them has to be
+     :global(). Astro stamps its scoping attribute on TEMPLATE elements only —
+     a createElement'd button carries no cid and silently matches nothing, which
+     is how these rendered as raw grey UA buttons. Anchoring each one to a
+     templated parent keeps them scoped in practice. */
+  .wz-results{
+    margin-top:8px;display:flex;flex-direction:column;max-height:216px;overflow-y:auto;
+    border:1px solid #1b2740;border-radius:11px;background:#0a1122;
+  }
+  .wz-results:empty{display:none}
+  .wz-results :global(.wz-res){
+    display:flex;flex-direction:column;gap:3px;text-align:left;cursor:pointer;width:100%;
+    padding:11px 13px;background:none;border:none;border-bottom:1px solid #131f38;
+    font-family:inherit;color:inherit;
+  }
+  .wz-results :global(.wz-res:last-child){border-bottom:none}
+  .wz-results :global(.wz-res:hover){background:rgba(242,168,59,.09)}
+  .wz-results :global(.wz-res-n){font-size:15px;font-weight:700;color:#e9eef8}
+  .wz-results :global(.wz-res-m){
+    font-size:12px;color:#8b9ab5;letter-spacing:.01em;
+    font-family:'IBM Plex Mono',ui-monospace,monospace;
+  }
+  /* display:flex would beat the UA's [hidden]{display:none} — author styles
+     outrank the UA sheet — so the empty confirmation box rendered on this slide
+     from the moment it loaded. The guard has to come after the rule. */
+  .wz-picked{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+    padding:14px;border:1px solid rgba(242,168,59,.45);border-radius:12px;background:rgba(242,168,59,.07);
+  }
+  .wz-picked[hidden]{display:none}
+  .wz-picked-n{font-size:16px;font-weight:800;color:#f2a83b}
+  .wz-picked-m{font-size:12.5px;color:#b8c3da;margin-top:2px}
+  .wz-picked-x{background:none;border:none;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;color:#8b9ab5;text-decoration:underline;text-underline-offset:3px}
+  .wz-picked-x:hover{color:#fff}
+
+  /* ── accolades ── the list scrolls inside its frame so the slide never does */
+  .wz-add{display:flex;gap:8px}
+  .wz-add .wz-inp{flex:1}
+  .wz-add-btn{
+    flex:none;padding:0 18px;border-radius:10px;cursor:pointer;
+    background:#16223c;border:1px solid #22304f;color:#e9eef8;
+    font-family:inherit;font-size:15px;font-weight:700;
+  }
+  .wz-add-btn:hover{background:#1c2b4a}
+  .wz-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px;max-height:190px;overflow-y:auto}
+  .wz-chips :global(.wz-chip){
+    display:inline-flex;align-items:center;gap:8px;padding:8px 8px 8px 13px;border-radius:19px;
+    background:#0f1830;border:1px solid #1b2740;font-size:13.5px;color:#c8d2e8;
+  }
+  .wz-chips :global(.wz-chip-x){
+    width:22px;height:22px;flex:none;border-radius:50%;cursor:pointer;line-height:1;
+    background:rgba(255,255,255,.06);border:none;color:#8b9ab5;font-size:15px;font-family:inherit;
+  }
+  .wz-chips :global(.wz-chip-x:hover){background:rgba(255,255,255,.12);color:#fff}
+
+  /* Full-game links: rows, not chips. A URL is long and a wrapping pill turns
+     five of them into a wall — one per line, scheme stripped, truncated from
+     the right where the least identifying part of a URL lives. */
+  .wz-links{display:flex;flex-direction:column;gap:7px;margin-top:14px;max-height:196px;overflow-y:auto}
+  .wz-links :global(.wz-link){
+    display:flex;align-items:center;gap:10px;padding:9px 8px 9px 12px;border-radius:10px;
+    background:#0f1830;border:1px solid #1b2740;
+  }
+  .wz-links :global(.wz-link-u){
+    flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+    font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12.5px;color:#c8d2e8;
+  }
+  .wz-links :global(.wz-link-x){
+    width:24px;height:24px;flex:none;border-radius:50%;cursor:pointer;line-height:1;
+    background:rgba(255,255,255,.06);border:none;color:#8b9ab5;font-size:16px;font-family:inherit;
+  }
+  .wz-links :global(.wz-link-x:hover){background:rgba(255,255,255,.12);color:#fff}
+  .wz-add[hidden]{display:none}
+
+  /* ── foot ── the only fixed furniture; thumb lives here. */
+  .wz-foot{flex:none;padding:12px 18px calc(16px + env(safe-area-inset-bottom));border-top:1px solid #131f38}
+  .wz-err{min-height:17px;font-size:13px;color:#f87171;margin-bottom:6px}
+  .wz-acts{display:flex;align-items:center;gap:12px}
+  .wz-next{
+    flex:1;min-height:52px;padding:14px 20px;border-radius:11px;cursor:pointer;border:none;
+    background:#f2a83b;color:#0a0f1c;font-family:inherit;font-size:16.5px;font-weight:800;
+    transition:background .15s,opacity .15s;
+  }
+  .wz-next:hover:not(:disabled){background:#f6b757}
+  .wz-next:disabled{opacity:.38;cursor:not-allowed}
+  .wz-back,.wz-skip{
+    flex:none;min-height:52px;padding:14px 6px;background:none;border:none;cursor:pointer;
+    font-family:inherit;font-size:15px;font-weight:600;color:#8b9ab5;
+    text-decoration:underline;text-underline-offset:4px;text-decoration-thickness:1px;
+  }
+  .wz-back:hover,.wz-skip:hover{color:#fff}
+  .wz-back[hidden],.wz-skip[hidden],.wz-next[hidden],.wz-x[hidden]{display:none}
+
+  /* ── sent ── */
+  .wz-slide-done{display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding-top:20px}
+  .wz-done-ico{
+    width:48px;height:48px;border-radius:50%;margin-bottom:14px;
+    display:flex;align-items:center;justify-content:center;
+    background:rgba(52,211,153,.14);color:#34d399;font-size:24px;font-weight:800;
+  }
+
+  /* ── exit sheet ── */
+  .wz-sheet{position:absolute;inset:0;z-index:10;display:flex;align-items:flex-end;justify-content:center;background:rgba(4,8,16,.72)}
+  .wz-sheet[hidden]{display:none}
+  @media (min-width:700px){.wz-sheet{align-items:center}}
+  .wz-sheet-in{
+    width:100%;max-width:440px;padding:26px 22px calc(26px + env(safe-area-inset-bottom));
+    background:#0b1220;border:1px solid #1b2740;border-radius:20px 20px 0 0;
+  }
+  @media (min-width:700px){.wz-sheet-in{border-radius:18px}}
+  .wz-sheet-h{font-size:21px;font-weight:800;margin:0 0 8px}
+  .wz-sheet-d{font-size:15px;line-height:1.5;color:#b8c3da;margin:0 0 20px}
+  .wz-sheet-stay{width:100%;flex:none}
+  .wz-sheet-go{
+    display:block;width:100%;margin-top:6px;padding:14px;background:none;border:none;cursor:pointer;
+    font-family:inherit;font-size:15px;font-weight:600;color:#8b9ab5;
+  }
+  .wz-sheet-go:hover{color:#fff}
+</style>
+
+<style is:global>
+  /* position:fixed on the body is the only lock that holds on iOS Safari;
+     overflow:hidden alone lets the page behind keep scrolling under the wizard. */
+  body.wz-locked{position:fixed;left:0;right:0;width:100%;overflow:hidden}
+</style>
