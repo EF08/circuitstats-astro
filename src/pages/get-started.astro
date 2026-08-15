@@ -391,8 +391,10 @@ const SALE_ON = SEATS_LEFT > 0;
 
   </div>
 
-  {/* Fixed-position takeover, so it sits outside the page's flow entirely. */}
-  <IntakeWizard />
+  {/* Fixed-position takeover, so it sits outside the page's flow entirely.
+      Seat counts are passed in rather than duplicated, so the wizard's review
+      slide and the price block above can never disagree. */}
+  <IntakeWizard seatsTotal={SEATS_TOTAL} seatsTaken={SEATS_TAKEN} />
 
   <script is:inline>
     // Prod goes through the Vercel rewrite (same origin); localhost dev has no

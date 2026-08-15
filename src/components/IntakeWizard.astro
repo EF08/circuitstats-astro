@@ -32,6 +32,11 @@ const STRENGTHS = [
 const STRENGTH_MIN = 3;
 const STRENGTH_MAX = 5;
 const TAGLINE_MAX = 140;
+// Seat state comes from the page so there is one source of truth for the
+// offer — the review slide and the price block can't disagree about how many
+// are left.
+const { seatsTotal = 50, seatsTaken = 0 } = Astro.props;
+const seatsLeft = Math.max(0, seatsTotal - seatsTaken);
 // Film is built and tested but parked until Cloudflare R2 is wired up (four
 // CB_R2_* vars + scripts/r2-smoke.js). Flipping this to true restores the
 // per-strength upload run exactly as it was — the slide, the slot grid, the
@@ -291,11 +296,23 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
             on this screen has already spent ten minutes and is reaching for a
             card, and scarcity at that point is a shove, not information. */}
         <div class="wz-bill" id="wz-bill"></div>
+        {/* The same seat bar as the pitch page, at the moment the card comes
+            out. I argued against it — scarcity next to a total reads as a
+            shove — but it is the offer's own terms and repeating them where
+            money changes hands is the honest version of the argument. */}
+        <div class="wz-seats">
+          <div class="wz-seats-top"><span class="wz-seats-r">{seatsLeft} left</span><span class="wz-seats-then">, then CA$399</span></div>
+          <div class="wz-seats-bar" aria-hidden="true">
+            {Array.from({ length: seatsTotal }, (_, i) => (
+              <span class={i < seatsTaken ? 'wz-seat wz-seat-on' : 'wz-seat'}></span>
+            ))}
+          </div>
+        </div>
         <div class="wz-charge">
           <span class="wz-charge-l">Today</span>
           <span class="wz-charge-v"><s class="wz-charge-was" id="wz-charge-was">CA$399</s><span id="wz-charge-v">CA$99</span></span>
         </div>
-        <p class="wz-charge-n">then <s class="wz-charge-was">CA$39</s> CA$9/month for hosting · cancel anytime</p>
+        <p class="wz-charge-n">then <s class="wz-charge-was">CA$39</s> CA$9/month to keep his stats updated</p>
       </section>
 
       <section class="wz-slide wz-slide-done" data-step="done" hidden>
@@ -1734,6 +1751,19 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
   .wz-charge-was[hidden]{display:none}
   .wz-charge-n .wz-charge-was{font-size:12.5px;margin-right:3px;font-weight:600}
 
+  /* Seat bar, same vocabulary as the pitch page's — 50 marks, gold for gone. */
+  .wz-seats{flex:none;margin-top:18px}
+  .wz-seats-top{display:flex;justify-content:flex-end;margin-bottom:8px}
+  .wz-seats-r,.wz-seats-then{
+    font-family:'IBM Plex Mono',ui-monospace,monospace;
+    font-size:12.5px;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap;
+  }
+  .wz-seats-r{color:#f2a83b}
+  .wz-seats-then{color:#8b9ab5}
+  .wz-seats-bar{display:flex;gap:2px;height:11px}
+  .wz-seat{flex:1 1 0;min-width:0;border-radius:2px;background:#22334f}
+  .wz-seat-on{background:#f2a83b}
+
   /* ── review ── the one screen allowed its own scroll: it is a list of what
      they said, and truncating it to honour the layout rule would defeat the
      point of a last look. */
@@ -1886,6 +1916,15 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
     font-family:inherit;font-size:15px;font-weight:600;color:#8b9ab5;
   }
   .wz-sheet-go:hover{color:#fff}
+
+  /* ── LAST WORD ON VISIBILITY ──
+     Kept at the very end of the sheet, and deliberately more specific than any
+     per-slide display rule above it. `.wz-slide[hidden]` and
+     `.wz-slide[data-step="review"]` have identical specificity, so whichever
+     came last won — which meant the review slide rendered on top of whatever
+     slide you were actually on. Anything that sets display on a slide has to
+     lose to this. */
+  .wz-slide[data-step][hidden]{display:none}
 </style>
 
 <style is:global>
