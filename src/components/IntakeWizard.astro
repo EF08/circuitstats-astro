@@ -37,15 +37,14 @@ const TAGLINE_MAX = 140;
 // are left.
 const { seatsTotal = 50, seatsTaken = 0 } = Astro.props;
 const seatsLeft = Math.max(0, seatsTotal - seatsTaken);
-// Film is built and tested but parked until Cloudflare R2 is wired up (four
-// CB_R2_* vars + scripts/r2-smoke.js). Flipping this to true restores the
-// per-strength upload run exactly as it was — the slide, the slot grid, the
-// duration gate, the background uploader and the server's size check are all
-// still here and still covered.
+// Live since Aug 16 2026, once r2-smoke.js round-tripped a real object through
+// the abrifazliu bucket (clips are namespaced under intake/, so upload target
+// and delivery target are one place).
 //
-// Off, the run is nine questions plus the four below, film is collected by
-// email afterwards, and the wizard needs no bucket to work end to end.
-const FILM_ENABLED = false;
+// Set back to false and the run collapses to nine questions plus the four
+// below, film collected by email instead — the wizard needs no bucket to work
+// end to end, which is what made shipping it before R2 possible.
+const FILM_ENABLED = true;
 // Everything after the film block. Named rather than numbered because their
 // step numbers depend on how many strengths the parent picked.
 const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
@@ -222,6 +221,25 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
         <div class="wz-film-foot">
           <span class="wz-film-n" id="wz-film-n"></span>
           <span class="wz-film-up" id="wz-film-up" hidden></span>
+        </div>
+
+        {/* Asked BEFORE the upload, not after: the title goes into the object
+            key, and a key cannot be renamed once written. It also lands while
+            the clip is still fresh in mind, which is when a useful description
+            actually gets written. */}
+        <div class="wz-name" id="wz-name" hidden>
+          <div class="wz-name-row">
+            <img class="wz-name-thumb" id="wz-name-thumb" alt="" />
+            <div class="wz-name-fields">
+              <label class="wz-lbl" for="wz-name-inp">What happens in this clip?</label>
+              <input class="wz-inp" id="wz-name-inp" type="text" maxlength="50" placeholder="pull-up three in transition" autocomplete="off" enterkeyhint="done" />
+            </div>
+          </div>
+          <div class="wz-name-acts">
+            <button class="wz-add-btn" id="wz-name-ok" type="button">Add clip</button>
+            <button class="wz-name-cancel" id="wz-name-cancel" type="button">Cancel</button>
+            <span class="wz-name-n" id="wz-name-n">0/50</span>
+          </div>
         </div>
       </section>
 
@@ -813,11 +831,13 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
           img.className = 'wz-slot-img'; img.src = clip.thumb; img.alt = '';
           b.appendChild(img);
         }
-        if (clip.seconds) {
-          var dur = document.createElement('span');
-          dur.className = 'wz-slot-dur'; dur.textContent = clip.seconds + 's';
-          b.appendChild(dur);
-        }
+        // The title, not the duration: what the clip shows is the thing worth
+        // reading back, and the seconds were only ever a rule being obeyed.
+        var cap = document.createElement('span');
+        cap.className = 'wz-slot-cap';
+        cap.textContent = clip.title || (clip.seconds ? clip.seconds + 's' : 'clip');
+        b.appendChild(cap);
+        b.title = (clip.title || '') + (clip.seconds ? '  ·  ' + clip.seconds + 's' : '');
         var x = document.createElement('span');
         x.className = 'wz-slot-x'; x.textContent = '×'; x.dataset.remove = id;
         x.setAttribute('role', 'button'); x.setAttribute('aria-label', 'Remove clip ' + (j + 1));
@@ -918,6 +938,44 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
       });
     }
 
+    // The clip waits here, named but not yet uploaded.
+    var staged = null;
+    function closeNamer() {
+      staged = null;
+      document.getElementById('wz-name').hidden = true;
+      document.getElementById('wz-name-inp').value = '';
+      document.getElementById('wz-name-n').textContent = '0/50';
+    }
+    function openNamer(file, fi, j, meta) {
+      staged = { file: file, fi: fi, j: j, meta: meta };
+      var host = document.getElementById('wz-name');
+      var img = document.getElementById('wz-name-thumb');
+      if (meta.thumb) { img.src = meta.thumb; img.hidden = false; } else { img.hidden = true; }
+      host.hidden = false;
+      var inp = document.getElementById('wz-name-inp');
+      inp.value = '';
+      document.getElementById('wz-name-ok').disabled = true;
+      inp.focus();
+    }
+    document.getElementById('wz-name-inp').addEventListener('input', function () {
+      document.getElementById('wz-name-n').textContent = this.value.length + '/50';
+      document.getElementById('wz-name-ok').disabled = this.value.trim().length < 3;
+    });
+    document.getElementById('wz-name-inp').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); document.getElementById('wz-name-ok').click(); }
+    });
+    document.getElementById('wz-name-cancel').addEventListener('click', closeNamer);
+    document.getElementById('wz-name-ok').addEventListener('click', function () {
+      if (!staged) return;
+      var title = document.getElementById('wz-name-inp').value.trim().slice(0, 50);
+      if (title.length < 3) return;
+      var s = staged;
+      closeNamer();
+      ensureToken()
+        .then(function () { return upload(s.file, s.fi, s.j, s.meta, title); })
+        .catch(function () { elErr.textContent = "Couldn't add that clip. Try again."; });
+    });
+
     function takeClip(file, fi, j) {
       var id = 's' + fi + 'c' + j;
       elErr.textContent = '';
@@ -926,7 +984,7 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
           elErr.textContent = "That clip is " + meta.seconds + "s — trim it to " + MAX_SECONDS + " or under.";
           return;
         }
-        return ensureToken().then(function () { return upload(file, fi, j, meta); });
+        openNamer(file, fi, j, meta);
       }).catch(function (err) {
         var msg = (err && err.message) || '';
         if (/storage_unavailable|status_503/.test(msg)) {
@@ -944,12 +1002,12 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
       });
     }
 
-    function upload(file, fi, j, meta) {
+    function upload(file, fi, j, meta, title) {
       var id = 's' + fi + 'c' + j;
       live[id] = { pct: 0 };
       paintFilm(fi);
       return api('POST', '/intake/' + d.intakeToken + '/upload-url', {
-        strengthIdx: fi, clipIdx: j, filename: file.name,
+        strengthIdx: fi, clipIdx: j, filename: file.name, title: title,
       }).then(function (out) {
         return new Promise(function (resolve, reject) {
           // XHR, not fetch: upload progress is the whole point of this screen
@@ -971,10 +1029,10 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
         // uploaded" is not the same claim as "the file is there and is sane".
         return api('POST', '/intake/' + d.intakeToken + '/clip', {
           key: key, strengthIdx: fi, clipIdx: j,
-          strength: d.strengths[fi], seconds: meta.seconds,
+          strength: d.strengths[fi], seconds: meta.seconds, title: title,
         }).then(function () {
           d.clips = d.clips.filter(function (c) { return !(c.strengthIdx === fi && c.clipIdx === j); });
-          d.clips.push({ strengthIdx: fi, clipIdx: j, key: key, seconds: meta.seconds || 0, thumb: meta.thumb });
+          d.clips.push({ strengthIdx: fi, clipIdx: j, key: key, seconds: meta.seconds || 0, thumb: meta.thumb, title: title });
           delete live[id];
           save();
           if (filmIndex(step) === fi) { paintFilm(fi); elNext.disabled = !valid(step); }
@@ -1036,8 +1094,13 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
       if (tokenPromise) return tokenPromise;
       tokenPromise = api('POST', '/intake', { fromPage: location.href }).then(function (o) {
         d.intakeToken = o.token; save();
-        api('PATCH', '/intake/' + o.token, { answers: answers() }).catch(function () {});
-        return o.token;
+        // AWAITED, not fired and forgotten. The object key is built server-side
+        // from the player's name, so a draft whose answers haven't landed yet
+        // produces intake/untitled-… — and the confirm step then rejects a key
+        // it no longer recognises. The upload has to wait for the answers.
+        return api('PATCH', '/intake/' + o.token, { answers: answers() })
+          .catch(function () {})
+          .then(function () { return o.token; });
       }).catch(function (e) { tokenPromise = null; throw e; });
       return tokenPromise;
     }
@@ -1733,10 +1796,14 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
   .wz-slots :global(.wz-slot.busy){border-style:solid;border-color:rgba(242,168,59,.5);cursor:progress}
   .wz-slots :global(.wz-slot-plus){font-size:26px;font-weight:300;line-height:1}
   .wz-slots :global(.wz-slot-img){position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-  .wz-slots :global(.wz-slot-dur){
-    position:absolute;left:5px;bottom:5px;z-index:1;
-    padding:2px 6px;border-radius:5px;background:rgba(4,8,16,.82);
-    font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;font-weight:600;color:#e9eef8;
+  /* Full-width caption rather than a corner badge: a title needs the room, and
+     it sits over a gradient so it stays readable on a bright frame. */
+  .wz-slots :global(.wz-slot-cap){
+    position:absolute;left:0;right:0;bottom:0;z-index:1;
+    padding:14px 6px 5px;
+    background:linear-gradient(to top,rgba(4,8,16,.92),rgba(4,8,16,0));
+    font-size:10.5px;font-weight:600;line-height:1.25;color:#e9eef8;text-align:left;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
   }
   /* 26px, not 18: this sits on top of a thumbnail on a phone, and a small
      target over a large one is how people delete the wrong clip. */
@@ -1754,6 +1821,30 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
   .wz-film-n{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12.5px;color:#8b9ab5;font-variant-numeric:tabular-nums}
   .wz-film-up{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12.5px;color:#f2a83b}
   .wz-film-up[hidden]{display:none}
+
+  /* Naming panel — sits under the grid, gold-edged so it reads as the one
+     thing waiting on an answer. */
+  .wz-name{
+    margin-top:16px;padding:13px;border-radius:12px;
+    border:1px solid rgba(242,168,59,.45);background:rgba(242,168,59,.06);
+  }
+  .wz-name[hidden]{display:none}
+  .wz-name-row{display:flex;gap:12px;align-items:flex-start}
+  .wz-name-thumb{width:52px;height:69px;flex:none;border-radius:7px;object-fit:cover;background:#0a1122}
+  .wz-name-thumb[hidden]{display:none}
+  .wz-name-fields{flex:1;min-width:0}
+  .wz-name-acts{display:flex;align-items:center;gap:10px;margin-top:11px}
+  .wz-name-acts .wz-add-btn{padding:9px 16px;font-size:14px}
+  .wz-name-acts .wz-add-btn:disabled{opacity:.4;cursor:not-allowed}
+  .wz-name-cancel{
+    background:none;border:none;cursor:pointer;font-family:inherit;font-size:13.5px;
+    color:#8b9ab5;text-decoration:underline;text-underline-offset:3px;
+  }
+  .wz-name-cancel:hover{color:#fff}
+  .wz-name-n{
+    margin-left:auto;font-family:'IBM Plex Mono',ui-monospace,monospace;
+    font-size:12px;color:#6d7c9c;font-variant-numeric:tabular-nums;
+  }
 
   /* ── the cost warning ── Amber, not red: this is a condition of the offer,
      not an error the parent has made. A 1px left rule only, so it reads as an
