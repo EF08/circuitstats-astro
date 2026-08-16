@@ -7,6 +7,23 @@ const PIXEL_ID = '1402096628471311';
 ---
 {PIXEL_ID && (
   <script is:inline define:vars={{ PIXEL_ID }}>
+  (function () {
+    // Never on localhost. This is the live pixel and there is only one — every
+    // event a dev session fires is a real signal in the ad account, and the
+    // wizard's events are the expensive ones: walking the intake end to end
+    // sends StartIntake, Lead (with a hashed email), CompleteRegistration and
+    // InitiateCheckout, which is exactly the sequence campaigns optimise on.
+    // Building the wizard on Aug 15-16 2026 walked it dozens of times.
+    //
+    // Nothing is stubbed: every fbq call on the site is already guarded with
+    // `if (window.fbq)`, so leaving the pixel unloaded makes them all no-op.
+    var h = location.hostname;
+    if (h === 'localhost' || h === '127.0.0.1' || h === '[::1]' || h === '::1'
+        || h.endsWith('.local')
+        || /^(?:10\.|192\.168\.|172\.(?:1[6-9]|2\d|3[01])\.)/.test(h)) {
+      console.info('[MetaPixel] disabled on ' + h + ' — dev events stay out of the ad account');
+      return;
+    }
     !function(f,b,e,v,n,t,s)
     {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
     n.callMethod.apply(n,arguments):n.queue.push(arguments)};
@@ -30,6 +47,7 @@ const PIXEL_ID = '1402096628471311';
       var a = e.target.closest && e.target.closest('a[href*="wa.me"]');
       if (a) fbq('track', 'Contact');
     }, true);
+  })();
   </script>
 )}
 {PIXEL_ID && (
