@@ -9,7 +9,7 @@ import { allPlayerRefs, teamSlug } from '../lib/slugs';
 const SITE = 'https://www.circuitstats.com';
 
 export const GET: APIRoute = () => {
-  const urls: string[] = ['/', '/get-started'];
+  const urls: string[] = ['/', '/get-started', '/free-evaluation'];
   for (const lg of LEAGUES) {
     urls.push(`${lg.urlBase}/stats`, `${lg.urlBase}/teams`, `${lg.urlBase}/compare`);
     // only boards that actually have qualifiers for this scope — an empty board

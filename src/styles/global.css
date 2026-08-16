@@ -74,16 +74,33 @@ a{color:inherit;text-decoration:none}
 .hdr-scope:focus-visible{outline:1.5px solid var(--accent);outline-offset:3px;border-radius:4px;color:var(--accent)}
 .hdr-scope-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .hdr-scope-caret{font-size:8px;opacity:.7;flex-shrink:0}
-/* Top-right conversion CTA — the site's gold "money button" language (.pp-cta-btn) at header scale. */
+/* Top-right conversion CTA — the site's gold "money button" language (.pp-cta-btn) at header scale.
+   Two-part label: the offer, then the seat count in red. It stacks by default
+   because "Free D1 evaluation – 6 left" on one line eats the width the wordmark
+   and league switcher need on a 360px phone; from 430px up there is room and it
+   sits on a single line, dash and all. */
 .hdr-cta{
-  display:inline-flex;align-items:center;flex-shrink:0;
+  display:inline-flex;flex-direction:column;align-items:center;justify-content:center;
+  flex-shrink:0;line-height:1.15;
   background:linear-gradient(135deg,#ffbf47,#f5a623 55%,#e8941a);color:#141414;
-  font-size:11.5px;font-weight:800;padding:6px 12px;border-radius:8px;
+  font-size:10.5px;font-weight:800;letter-spacing:-.01em;
+  padding:5px 10px;border-radius:8px;
   white-space:nowrap;box-shadow:0 2px 10px rgba(245,166,35,.3);
   transition:filter .12s,transform .1s;
 }
+/* Deep red rather than --red: the site's #f87171 sits at 1.4:1 on gold. This
+   holds 4.7:1 and still reads unmistakably red. */
+.hdr-cta-n{color:#8c1212;font-weight:900}
+/* The dash only separates — with the count stacked underneath it has nothing
+   left to do, so it appears with the single-line layout and not before. */
+.hdr-cta-dash{display:none}
+@media (min-width:430px){
+  .hdr-cta{flex-direction:row;gap:4px;font-size:11.5px;padding:6px 12px}
+  .hdr-cta-dash{display:inline}
+}
 .hdr-cta:hover{filter:brightness(1.06)}
 .hdr-cta:active{transform:scale(.97)}
+.hdr-cta:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 .share-toast{
   position:fixed;left:50%;bottom:calc(var(--nav-h) + env(safe-area-inset-bottom,0px) + 16px);
   transform:translateX(-50%) translateY(8px);

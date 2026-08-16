@@ -1,0 +1,166 @@
+---
+// /free-evaluation — where the site-wide header CTA lands (Aug 2026).
+//
+// The header used to open /get-started, which asks for $99 on the first screen.
+// This is the step before that: a free film review, asked for in the one place
+// these parents already live. It exists to start a WhatsApp conversation and
+// nothing else, so there is exactly one action on the page — no form, no
+// account, no second CTA to split the tap. The pitch happens in the chat.
+//
+// Deliberately one screen with nothing below the fold: there is no scroll to
+// measure and no reason to build one. Meta's `Contact` event fires off the
+// wa.me tap through the site-wide listener in MetaPixel.astro, and the internal
+// funnel picks it up from data-track — neither needs wiring here.
+import Layout from '../layouts/Layout.astro';
+import { EVAL_SEATS_LEFT } from '../lib/evalSeats.js';
+const SITE = 'https://www.circuitstats.com';
+
+const WA_NUMBER = '16476079935';
+const WA_TEXT = encodeURIComponent("Hi, I'd like a free D1 evaluation. Here's my film:");
+const WA_HREF = `https://wa.me/${WA_NUMBER}?text=${WA_TEXT}`;
+---
+<Layout
+  title="Free D1 Evaluation | Circuit Stats"
+  trackTitle="Free D1 Evaluation"
+  description="Send us your film on WhatsApp and we'll tell you how a D1 coach and scout would value you right now — and what you need to change to get recruited. Free."
+  subLabel="Free D1 Evaluation"
+  pillLabel="ALL"
+  pageBase="/rankings"
+  activeTab={null}
+  canonical={`${SITE}/free-evaluation`}
+  hideNav
+  hideHeader
+>
+  <div class="fe">
+    <nav class="fe-nav">
+      <a class="fe-brand" href="/" data-track="free-eval:logo">
+        <div class="hdr-logo fe-logo" role="img" aria-label="Circuit Stats logo"></div>
+        <span class="fe-brand-txt">
+          <span class="fe-brand-t">Circuit Stats</span>
+          <span class="fe-brand-s">Free D1 Evaluation</span>
+        </span>
+      </a>
+    </nav>
+
+    <div class="fe-main">
+      <h1 class="fe-h">Send us your film.<br />Get a free D1 evaluation.</h1>
+
+      <p class="fe-sub">
+        One WhatsApp message with your highlights. We'll tell you how a D1 coach
+        and scout would actually value you right now — and exactly what you need
+        to change to get recruited.
+      </p>
+
+      <a class="fe-wa" href={WA_HREF} target="_blank" rel="noopener" data-track="free-eval:whatsapp">
+        <svg class="fe-wa-ico" viewBox="0 0 24 24" aria-hidden="true">
+          <path fill="currentColor" d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/>
+        </svg>
+        Send film on WhatsApp
+      </a>
+
+      <p class="fe-meta">
+        {EVAL_SEATS_LEFT > 0 && (
+          <span class="fe-left"><span class="fe-dot" aria-hidden="true"></span>{EVAL_SEATS_LEFT} evaluations left</span>
+        )}
+        <span class="fe-free">Free — no sign-up, no payment.</span>
+      </p>
+    </div>
+  </div>
+
+<style>
+  /* One screen, vertically centred, nothing below the fold. min-height rather
+     than height so a long-word wrap or a 90% text-zoom setting can grow the
+     block instead of clipping it. --vh100 (not 100dvh) because global.css
+     applies a 1.3 CSS zoom on desktop, which scales px but not viewport units. */
+  .fe{
+    min-height:var(--vh100);
+    display:flex;flex-direction:column;
+    padding:0 22px env(safe-area-inset-bottom,0px);
+  }
+  /* Selection is one of the surfaces the browser would otherwise theme for us. */
+  .fe-h::selection,.fe-sub::selection,.fe-meta::selection,
+  .fe-left::selection,.fe-free::selection{background:rgba(37,211,102,.3);color:#fff}
+
+  .fe-nav{display:flex;align-items:center;height:64px;flex:none}
+  .fe-brand{display:flex;align-items:center;gap:10px;-webkit-tap-highlight-color:transparent}
+  .fe-logo{width:30px;height:30px}
+  .fe-brand-txt{display:flex;flex-direction:column;line-height:1.25}
+  .fe-brand-t{font-size:14.5px;font-weight:800;letter-spacing:-.02em}
+  .fe-brand-s{font-size:10.5px;font-weight:600;letter-spacing:.02em;color:var(--text-2)}
+  .fe-brand:hover .fe-brand-t{color:var(--gold)}
+
+  /* Optically centred, not mathematically: the type sits a touch above the
+     middle, which is where the eye expects a single statement to land. */
+  .fe-main{
+    flex:1;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;
+    padding-bottom:11vh;
+  }
+
+  /* The break belongs on the full stop, and only the hard <br> puts it there at
+     every width — text-wrap:balance and a ch-based measure each landed it
+     mid-sentence at one size or the other (measured at 320/390/1440). No
+     max-width: the first sentence still fits one line at 320px, and the column
+     cap below keeps the second from running long on a wide screen. */
+  .fe-h{
+    margin:0;
+    font-size:clamp(30px,8.4vw,52px);font-weight:900;
+    line-height:1.06;letter-spacing:-.035em;
+  }
+  .fe-sub{
+    margin:20px 0 0;max-width:44ch;
+    font-size:clamp(15.5px,4.1vw,18px);line-height:1.6;color:#9db0cf;
+  }
+
+  /* The only action on the page. WhatsApp's own green rather than the site's
+     gold: it names the app that is about to open, which is half the promise. */
+  .fe-wa{
+    display:inline-flex;align-items:center;gap:11px;margin-top:34px;
+    background:#25d366;color:#05230f;
+    font-size:16.5px;font-weight:800;letter-spacing:-.01em;
+    padding:16px 26px;border-radius:14px;
+    box-shadow:0 10px 30px -8px rgba(37,211,102,.45);
+    transition:background .15s,box-shadow .2s,transform .1s;
+  }
+  .fe-wa:hover{background:#2ee776;box-shadow:0 14px 38px -8px rgba(37,211,102,.6)}
+  .fe-wa:active{transform:scale(.98)}
+  .fe-wa:focus-visible{outline:2px solid #25d366;outline-offset:3px}
+  .fe-wa-ico{width:23px;height:23px;flex:none}
+
+  .fe-meta{
+    display:flex;flex-wrap:wrap;align-items:center;gap:7px 14px;margin:18px 0 0;
+    font-size:13px;line-height:1.4;
+  }
+  .fe-left{display:inline-flex;align-items:center;gap:7px;font-weight:800;color:#ff7d7d}
+  .fe-dot{
+    width:7px;height:7px;border-radius:50%;flex:none;
+    background:#ff7d7d;box-shadow:0 0 8px rgba(255,125,125,.85);
+    animation:feDot 1.9s ease-in-out infinite;
+  }
+  @keyframes feDot{0%,100%{opacity:1}50%{opacity:.35}}
+  .fe-free{color:var(--text-2)}
+
+  /* The page's one authored moment: the statement resolves into place, each
+     part a beat behind the last. Starts from the settled state so anything that
+     blocks the animation still leaves a finished page. */
+  @media (prefers-reduced-motion:no-preference){
+    .fe-h,.fe-sub,.fe-wa,.fe-meta{animation:feRise .62s cubic-bezier(.16,1,.3,1) backwards}
+    .fe-sub{animation-delay:.07s}
+    .fe-wa{animation-delay:.15s}
+    .fe-meta{animation-delay:.23s}
+    @keyframes feRise{from{opacity:0;transform:translateY(14px);filter:blur(7px)}}
+  }
+
+  @media (min-width:600px){
+    .fe{padding:0 40px}
+    .fe-nav{height:74px}
+    .fe-main{padding-bottom:9vh}
+  }
+  /* Past the point where a left-hugging column starts reading as unfinished
+     rather than deliberate, the whole thing centres — wordmark and headline
+     keep the one shared left edge, and the empty space falls evenly on both
+     sides instead of all on the right. */
+  @media (min-width:860px){
+    .fe-nav,.fe-main{width:100%;max-width:720px;margin-inline:auto}
+  }
+</style>
+</Layout>

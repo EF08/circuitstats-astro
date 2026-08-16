@@ -3,10 +3,13 @@
 // link instead of a hash toggle. Header (Aug 2026): the league switcher lives on
 // the scope sub-line under the wordmark (the old right-side "ALL ▼" pill and the
 // "Questions?" mailto are gone), and the top-right slot is the site-wide
-// "Get D1 offers" CTA to /get-started. Dropdown items are <a> links (native,
-// JS-free), the trigger toggled by a small inline script.
+// "Free D1 evaluation" CTA to /free-evaluation (it was "Get D1 offers" ->
+// /get-started until Aug 2026 — the header now opens the free-film-review step
+// of the funnel instead of the $99 offer). Dropdown items are <a> links
+// (native, JS-free), the trigger toggled by a small inline script.
 import '../styles/global.css';
 import { LEAGUES, SESSION_LEAGUES } from '../lib/leagues';
+import { EVAL_SEATS_LEFT } from '../lib/evalSeats.js';
 import GateModal from '../components/GateModal.astro';
 import MetaPixel from '../components/MetaPixel.astro';
 
@@ -155,7 +158,10 @@ const navIcons: Record<string, string> = {
       </div>
     </div>
   </div>
-  <a class="hdr-cta" href="/get-started" data-track="header:get-offers">Get D1 offers</a>
+  <a class="hdr-cta" href="/free-evaluation" data-track="header:free-eval">
+    <span class="hdr-cta-t">Free D1 evaluation</span>
+    {EVAL_SEATS_LEFT > 0 && <span class="hdr-cta-n"><span class="hdr-cta-dash" aria-hidden="true">– </span>{EVAL_SEATS_LEFT} left</span>}
+  </a>
 </header>}
 
 <main class:list={["main", { "main-no-nav": hideNav, "main-no-hdr": hideHeader }]}>
