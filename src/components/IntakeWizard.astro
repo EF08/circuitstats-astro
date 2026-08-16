@@ -249,13 +249,22 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
         <label class="wz-lbl" for="wz-domain">Domain</label>
         {/* Checked live against RDAP. The verdict goes IN the field, where the
             eye already is after typing — a line underneath is read second, if
-            at all. Never blocks Next: a taken name might be one they already
-            own, or one they want a variant of. */}
+            at all.
+            This slide DOES block: a malformed address, or one somebody else
+            already owns, is a site that cannot be delivered, and finding that
+            out after taking the money is the worst possible moment. The one
+            escape is the checkbox — plenty of parents have already bought the
+            domain themselves, and RDAP cannot tell that apart from a stranger
+            owning it. */}
         <div class="wz-field">
           <input class="wz-inp wz-inp-end" id="wz-domain" data-field="domain" type="text" maxlength="80" autocomplete="off" spellcheck="false" autocapitalize="none" inputmode="url" />
           <span class="wz-field-end" id="wz-dom-ico" hidden></span>
         </div>
         <div class="wz-dom" id="wz-dom" role="status" hidden></div>
+        <label class="wz-own" id="wz-own" hidden>
+          <input type="checkbox" id="wz-own-cb" />
+          <span>I already own this domain</span>
+        </label>
       </section>
 
       <!-- Custom requests. The cost warning sits ON this slide rather than in a
@@ -380,7 +389,7 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
       playerName: '', email: '', classYear: '', birthYear: '', city: '', region: '',
       position: [], height: '', wingspan: '', weight: '', csPlayer: null,
       tagline: '', ig: '', tiktok: '', accolades: [], strengths: [],
-      fullGames: [], domain: '', custom: '', addons: [],
+      fullGames: [], domain: '', domainOwned: false, custom: '', addons: [],
       // The quote the parent was shown, mirrored from the server so the review
       // total and the checkout can never disagree about what was agreed.
       quote: null,
@@ -456,13 +465,24 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
       }
       var t = tailIndex(n);
       if (t > -1) {
-        // Prefilled from his name, so this is normally already satisfied — but
-        // an empty address would mean building a site with nowhere to put it.
-        if (TAIL[t] === 'domain') return d.domain.trim().length >= 4;
+        if (TAIL[t] === 'domain') {
+          // Well-formed is non-negotiable — "abcd" used to pass. Registered by
+          // someone else is equally blocking unless they say they're the
+          // someone else, because otherwise this is a site with nowhere to go.
+          if (!DOMAIN_RE.test(d.domain.trim().toLowerCase())) return false;
+          if (domStatus === 'taken' && !d.domainOwned) return false;
+          // 'unknown' passes: the registry not answering is our problem, and
+          // holding a paying customer hostage to a third party's uptime is not
+          // a rule, it is an outage.
+          return true;
+        }
         return true;   // fullgame, custom, review
       }
       return true;
     }
+    // One label plus one or two TLD segments — name.com and name.co.uk, not
+    // a bare word and not somebody's subdomain, which they could not register.
+    var DOMAIN_RE = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z]{2,24}){1,2}$/;
     function clipsFor(fi) { return d.clips.filter(function (c) { return c.strengthIdx === fi; }); }
     function uploading() { return Object.keys(live).length > 0; }
 
@@ -1237,12 +1257,26 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
       no:   '<svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><path d="M4.2 4.2 L11.8 11.8 M11.8 4.2 L4.2 11.8" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>',
     };
 
-    var domTimer = null, domSeq = 0;
+    var domTimer = null, domSeq = 0, domStatus = null;
     function checkDomain() {
       var el = document.getElementById('wz-dom');
       var ico = document.getElementById('wz-dom-ico');
+      var own = document.getElementById('wz-own');
       var v = d.domain.trim().toLowerCase();
-      if (!v) { el.hidden = true; ico.hidden = true; return; }
+      domStatus = null;
+      own.hidden = true;
+      if (!v) { el.hidden = true; ico.hidden = true; elNext.disabled = !valid(step); return; }
+      // Caught here rather than at the registry — no point spending a lookup,
+      // or their patience, on a string that cannot be a domain.
+      if (!DOMAIN_RE.test(v)) {
+        ++domSeq;
+        ico.hidden = true;
+        el.hidden = false;
+        el.className = 'wz-dom wz-dom-wait';
+        el.textContent = 'Needs to look like name.com';
+        elNext.disabled = !valid(step);
+        return;
+      }
       var seq = ++domSeq;
       ico.hidden = false;
       ico.className = 'wz-field-end wz-dom-wait';
@@ -1262,20 +1296,33 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
         .then(function (r) { return r.json(); })
         .then(function (o) {
           if (seq !== domSeq) return;
+          domStatus = o.status;
           if (o.status === 'available') verdict('wz-dom-ok', 'ok', 'Available');
-          else if (o.status === 'taken') verdict('wz-dom-no', 'no', 'Taken — try another');
+          else if (o.status === 'taken') {
+            verdict('wz-dom-no', 'no', 'Taken — pick another, or tick the box if it’s yours');
+            own.hidden = false;
+          }
           else if (o.status === 'invalid') verdict('wz-dom-wait', null, 'Needs to look like name.com');
           // The registry didn't answer. Say so rather than vanishing — a
           // spinner that disappears into nothing is indistinguishable from a
           // feature that is broken, which is exactly how this read when the
           // backend was down.
           else verdict('wz-dom-wait', null, "Couldn't check right now — we'll confirm before registering");
+          elNext.disabled = !valid(step);
         })
         .catch(function () {
           if (seq !== domSeq) return;
+          domStatus = 'unknown';
           verdict('wz-dom-wait', null, "Couldn't check right now — we'll confirm before registering");
+          elNext.disabled = !valid(step);
         });
     }
+
+    document.getElementById('wz-own-cb').addEventListener('change', function () {
+      d.domainOwned = this.checked;
+      save();
+      elNext.disabled = !valid(step);
+    });
     function queueDomainCheck() {
       clearTimeout(domTimer);
       domTimer = setTimeout(checkDomain, 500);
@@ -1477,7 +1524,10 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
       // The token outlives the draft: after the redirect it is the only thread
       // back to this submission, and a cancelled payment needs it to offer
       // "finish paying" instead of "fill it all in again".
-      try { localStorage.setItem('cs-intake-pending', JSON.stringify({ token: d.intakeToken, at: Date.now() })); } catch (e) {}
+      // The token AND the domain outlive the draft: after the redirect they are
+      // the only thread back to this submission, and the success screen names
+      // the site they just bought — which it cannot do from a cleared draft.
+      try { localStorage.setItem('cs-intake-pending', JSON.stringify({ token: d.intakeToken, domain: d.domain.trim(), at: Date.now() })); } catch (e) {}
       return api('POST', '/intake/' + d.intakeToken + '/checkout', {})
         .then(function (o) {
           if (!o.url) throw new Error('no_url');
@@ -1614,6 +1664,12 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
   .wz-dom-wait{color:#8b9ab5}
   .wz-dom-ok{color:#34d399}
   .wz-dom-no{color:#f2a83b}
+  .wz-own{
+    display:flex;align-items:center;gap:10px;margin-top:13px;cursor:pointer;
+    font-size:13.5px;color:#b8c3da;
+  }
+  .wz-own[hidden]{display:none}
+  .wz-own input{width:18px;height:18px;accent-color:#f2a83b;cursor:pointer;flex:none}
 
   .wz-lbl{display:block;font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#8b9ab5;margin:0 0 7px}
   .wz-lbl + .wz-inp,.wz-lbl + .wz-at{margin-bottom:18px}

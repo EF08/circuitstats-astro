@@ -171,10 +171,16 @@ const SALE_ON = SEATS_LEFT > 0;
             on their own routes, because the brief was already filed before
             checkout opened — so neither state is a form to fill in again, just
             a different sentence about the same finished submission. */}
+        {/* Takes the column over once they've paid — the offer, the price and
+            the seat bar are all arguments for a decision they've already made,
+            and leaving them up reads as being sold to after buying. */}
         <div class="gs-back" id="gs-paid" hidden>
           <div class="gs-back-ico">✓</div>
           <h3 class="gs-back-t">You're in.</h3>
-          <p class="gs-back-d">Payment received and everything you sent is with us. We'll reply within a few hours with next steps — his site is usually live within days.</p>
+          <p class="gs-back-d">
+            Payment received and everything you sent is with us.<br />
+            <span id="gs-paid-site">Check back by tomorrow!</span> Any questions? <a class="gs-paid-wa" href="https://wa.me/16476079935" target="_blank" rel="noopener" data-track="get-started:paid-whatsapp">WhatsApp us</a>.
+          </p>
         </div>
         <div class="gs-back" id="gs-unpaid" hidden>
           <div class="gs-back-ico gs-back-ico-wait">•</div>
@@ -772,7 +778,25 @@ const SALE_ON = SEATS_LEFT > 0;
       if (sb) { sb.dataset.done = '1'; sb.classList.remove('on'); }
 
       if (paid) {
+        // The whole offer column stands down — heading, price, seat bar and the
+        // reveal are all persuasion for a decision already made.
+        document.getElementById('get').classList.add('gs-bought');
         document.getElementById('gs-paid').hidden = false;
+        // Name the site they just bought, if this device is the one that bought
+        // it. Paying on a phone and reopening on a laptop is a real path, so the
+        // sentence has to read without the domain too.
+        var dom = (pending && pending.domain || '').replace(/^https?:\/\//i, '').replace(/\/.*$/, '');
+        if (dom) {
+          var host = document.getElementById('gs-paid-site');
+          host.textContent = 'Check ';
+          var a = document.createElement('a');
+          a.className = 'gs-paid-wa';
+          a.href = 'https://' + dom;
+          a.target = '_blank'; a.rel = 'noopener';
+          a.textContent = dom;
+          host.appendChild(a);
+          host.appendChild(document.createTextNode(' by tomorrow!'));
+        }
         try { localStorage.removeItem('cs-intake-pending'); } catch (e) {}
         track('get-started:intake-paid');
         // The money event. Also sent server-side from the webhook, because a
@@ -1088,6 +1112,17 @@ const SALE_ON = SEATS_LEFT > 0;
   .gs-back-ico-wait{background:rgba(242,168,59,.14);color:#f2a83b;font-size:30px}
   .gs-back-t{font-size:25px;font-weight:800;margin:0}
   .gs-back-d{font-size:15.5px;color:#b8c3da;line-height:1.6;max-width:42ch;margin:0}
+  .gs-paid-wa{color:#f2a83b;font-weight:700;text-decoration:underline;text-underline-offset:3px}
+  .gs-paid-wa:hover{color:#f6b757}
+  /* Bought: everything that argued for the purchase stands down, and the
+     confirmation is the only thing in the column. The hairline goes too — it
+     was separating the price from the way in, and neither is here now. */
+  .gs-bought .gs-h2,
+  .gs-bought .gs-price-row,
+  .gs-bought .gs-seats,
+  .gs-bought #gs-formwrap,
+  .gs-bought .gs-more-btn{display:none}
+  .gs-bought .gs-back{border-top:none;padding-top:0}
   /* These parents live in WhatsApp — the talk-first path is a real secondary
      button under Submit (48px target) on every screen size. */
   .gs-wa-link{

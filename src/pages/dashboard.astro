@@ -29,13 +29,12 @@ const SITE = 'https://www.circuitstats.com';
     <div class="db-head">
       <div>
         <h1 class="db-title">Dashboard</h1>
-        <p class="db-sub" id="db-range-label">Last 30 days</p>
-      </div>
-      <div class="db-ranges" role="group" aria-label="Date range">
-        <button class="db-range" data-days="7">7d</button>
-        <button class="db-range is-on" data-days="30">30d</button>
-        <button class="db-range" data-days="90">90d</button>
-        <button class="db-range" data-days="all">All time</button>
+        {/* One window, always since launch. The 7/30/90/all switcher was four
+            ways of asking a question that has one useful answer at this stage,
+            and every switch was another multi-second wait — a 30-day view cost
+            MORE than it looks, because the funnel also loads the previous 30 to
+            compute its delta arrows. */}
+        <p class="db-sub" id="db-range-label">Since launch</p>
       </div>
     </div>
     <div id="db-content" class="db-loading">Loading…</div>
@@ -301,7 +300,7 @@ const SITE = 'https://www.circuitstats.com';
     // Which stage fills need dark text on top of them (the light end of the ramp).
     var LIGHT_FILL_FROM = 3;
 
-    var days = '30';
+    var days = 'all';
     var el = function (id) { return document.getElementById(id); };
 
     // ── helpers ──────────────────────────────────────────────────────────────
@@ -1213,15 +1212,9 @@ const SITE = 'https://www.circuitstats.com';
       }
     }
 
-    document.querySelectorAll('.db-range').forEach(function (b) {
-      b.addEventListener('click', function () {
-        document.querySelectorAll('.db-range').forEach(function (x) { x.classList.remove('is-on'); });
-        b.classList.add('is-on');
-        days = b.getAttribute('data-days') || '30';
-        el('db-range-label').textContent = days === 'all' ? 'Since launch' : 'Last ' + days + ' days';
-        load();
-      });
-    });
+    // The range switcher is gone — one window, always since launch. The
+    // "Next 25" control in the visitor log reuses the .db-range class for its
+    // look, so this listener is not re-pointed at it.
 
     window.onGateUnlock = load;
     if (new URLSearchParams(location.search).has('auth')) {
