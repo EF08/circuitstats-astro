@@ -1,0 +1,394 @@
+---
+// /film?t=<token> — the private upload link emailed to a parent who skipped
+// film during intake.
+//
+// NOT the wizard. A wizard is for someone answering questions in order for the
+// first time; this visitor already did that and is here for one job — fill the
+// gaps. So every strength is on screen at once with its slots, they can see
+// exactly what is missing, and they can do it in any order across as many
+// sittings as they like. There is nothing to submit: a clip is saved the moment
+// it uploads.
+//
+// The token is the whole credential. It authorises uploading clips against one
+// submission and nothing else — the endpoint behind this returns a first name
+// and a strength list, never an email address or a payment record.
+import Layout from '../layouts/Layout.astro';
+const SITE = 'https://www.circuitstats.com';
+---
+<Layout
+  title="Add his film | Circuit Stats"
+  trackTitle="Film upload"
+  description="Add highlight clips to your player's website."
+  subLabel="Player Websites"
+  pillLabel="ALL"
+  pageBase="/rankings"
+  activeTab={null}
+  canonical={`${SITE}/film`}
+  hideNav
+>
+  <div class="fu">
+    <div class="fu-in">
+      <header class="fu-top">
+        <h1 class="fu-h" id="fu-h">Add his film</h1>
+        <p class="fu-sub" id="fu-sub">Loading…</p>
+      </header>
+
+      <div id="fu-body" hidden></div>
+
+      <div class="fu-msg" id="fu-msg" hidden></div>
+
+      <input class="fu-file" id="fu-file" type="file" accept="video/*" hidden />
+
+      {/* Same naming panel as the wizard: the title becomes part of the file's
+          name in storage, so it is asked before the upload, not after. */}
+      <div class="fu-name" id="fu-name" hidden>
+        <div class="fu-name-row">
+          <img class="fu-name-thumb" id="fu-name-thumb" alt="" />
+          <div class="fu-name-fields">
+            <label class="fu-lbl" for="fu-name-inp">What happens in this clip?</label>
+            <input class="fu-inp" id="fu-name-inp" type="text" maxlength="50" placeholder="pull-up three in transition" autocomplete="off" enterkeyhint="done" />
+          </div>
+        </div>
+        <div class="fu-name-acts">
+          <button class="fu-btn" id="fu-name-ok" type="button">Add clip</button>
+          <button class="fu-cancel" id="fu-name-cancel" type="button">Cancel</button>
+          <span class="fu-count" id="fu-name-n">0/50</span>
+        </div>
+      </div>
+
+      <footer class="fu-foot">
+        Questions? <a href="https://wa.me/16476079935" target="_blank" rel="noopener">WhatsApp us</a>
+      </footer>
+    </div>
+  </div>
+
+  <script is:inline>
+    (function () {
+      var API = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+        ? 'http://localhost:4000/a1a2-command-center' : '/a1a2-command-center';
+      var TOKEN = new URLSearchParams(location.search).get('t') || '';
+      var MAX_SECONDS = 10;
+      var view = null, live = {}, staged = null;
+
+      var elBody = document.getElementById('fu-body');
+      var elMsg = document.getElementById('fu-msg');
+      var elSub = document.getElementById('fu-sub');
+      var fileInp = document.getElementById('fu-file');
+
+      function say(text, cls) {
+        elMsg.hidden = !text;
+        elMsg.className = 'fu-msg' + (cls ? ' ' + cls : '');
+        elMsg.textContent = text || '';
+      }
+
+      function api(method, path, body) {
+        return fetch(API + path, method === 'GET' ? {} : {
+          method: method, headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body || {}),
+        }).then(function (r) {
+          if (!r.ok) return r.json().catch(function () { return {}; }).then(function (j) {
+            throw new Error(j.error || ('status_' + r.status));
+          });
+          return r.json();
+        });
+      }
+
+      function clipsFor(i) {
+        return (view.clips || []).filter(function (c) { return c.strengthIdx === i; });
+      }
+
+      function render() {
+        elBody.hidden = false;
+        elBody.innerHTML = '';
+        view.strengths.forEach(function (name, i) {
+          var have = clipsFor(i).length;
+          var sec = document.createElement('section');
+          sec.className = 'fu-sec';
+
+          var head = document.createElement('div');
+          head.className = 'fu-sec-top';
+          var h = document.createElement('h2');
+          h.className = 'fu-sec-h'; h.textContent = name;
+          var n = document.createElement('span');
+          n.className = 'fu-sec-n' + (have >= view.minPerStrength ? ' ok' : '');
+          n.textContent = have >= view.minPerStrength
+            ? have + ' added'
+            : have + ' of ' + view.minPerStrength + ' needed';
+          head.appendChild(h); head.appendChild(n);
+
+          var grid = document.createElement('div');
+          grid.className = 'fu-slots';
+          for (var j = 0; j < view.maxPerStrength; j++) {
+            grid.appendChild(slot(i, j));
+          }
+          sec.appendChild(head); sec.appendChild(grid);
+          elBody.appendChild(sec);
+        });
+
+        var missing = view.strengths.filter(function (_, i) { return clipsFor(i).length < view.minPerStrength; }).length;
+        elSub.textContent = missing
+          ? 'Add 2 to 6 clips for each. Aim for about 5 seconds each. Nothing to submit — each clip saves as it uploads.'
+          : 'All set. You can still add more, and anything you add saves straight away.';
+      }
+
+      function slot(i, j) {
+        var id = 's' + i + 'c' + j;
+        var clip = (view.clips || []).filter(function (c) { return c.strengthIdx === i && c.clipIdx === j; })[0];
+        var job = live[id];
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'fu-slot' + (clip ? ' filled' : '') + (job ? ' busy' : '');
+        b.dataset.slot = id;
+        if (clip) {
+          var cap = document.createElement('span');
+          cap.className = 'fu-slot-cap'; cap.textContent = clip.title || 'clip';
+          b.appendChild(cap);
+          var x = document.createElement('span');
+          x.className = 'fu-slot-x'; x.textContent = '×'; x.dataset.remove = id;
+          x.setAttribute('role', 'button'); x.setAttribute('aria-label', 'Remove clip');
+          b.appendChild(x);
+        } else if (job) {
+          var p = document.createElement('span');
+          p.className = 'fu-slot-pct'; p.textContent = (job.pct || 0) + '%';
+          b.appendChild(p);
+        } else {
+          var plus = document.createElement('span');
+          plus.className = 'fu-slot-plus'; plus.textContent = '+';
+          b.appendChild(plus);
+        }
+        return b;
+      }
+
+      var pending = null;
+      document.addEventListener('click', function (e) {
+        var rm = e.target.dataset && e.target.dataset.remove;
+        if (rm) {
+          e.stopPropagation();
+          var m = rm.match(/^s(\d+)c(\d+)$/);
+          var c = (view.clips || []).filter(function (x) { return x.strengthIdx === +m[1] && x.clipIdx === +m[2]; })[0];
+          if (!c) return;
+          view.clips = view.clips.filter(function (x) { return x !== c; });
+          render();
+          api('DELETE', '/intake/' + TOKEN + '/clip', { key: c.key }).catch(function () {});
+          return;
+        }
+        var s = e.target.closest && e.target.closest('.fu-slot');
+        if (!s || s.classList.contains('filled') || s.classList.contains('busy')) return;
+        pending = s.dataset.slot;
+        fileInp.value = '';
+        fileInp.click();
+      });
+
+      fileInp.addEventListener('change', function () {
+        var f = fileInp.files && fileInp.files[0];
+        if (!f || !pending) return;
+        var m = pending.match(/^s(\d+)c(\d+)$/);
+        take(f, +m[1], +m[2]);
+        pending = null;
+      });
+
+      // Same reader as the wizard: metadata first, poster best-effort, and a
+      // duration we cannot read is unknown rather than disqualifying.
+      function readVideo(file) {
+        return new Promise(function (resolve, reject) {
+          var url = URL.createObjectURL(file);
+          var v = document.createElement('video');
+          v.preload = 'metadata'; v.muted = true; v.playsInline = true;
+          var settled = false;
+          function done(meta) { if (!settled) { settled = true; URL.revokeObjectURL(url); resolve(meta); } }
+          function fail(w) { if (!settled) { settled = true; URL.revokeObjectURL(url); reject(new Error(w)); } }
+          v.onerror = function () { fail('unreadable'); };
+          setTimeout(function () { fail('timeout'); }, 15000);
+          v.onloadedmetadata = function () {
+            var raw = v.duration;
+            var seconds = isFinite(raw) && raw > 0 ? Math.round(raw * 10) / 10 : null;
+            var got = false;
+            function withThumb() {
+              if (got) return; got = true;
+              var thumb = null;
+              try {
+                var c = document.createElement('canvas');
+                var w = 132, hh = Math.max(1, Math.round(w * (v.videoHeight / v.videoWidth || 0.56)));
+                c.width = w; c.height = hh;
+                c.getContext('2d').drawImage(v, 0, 0, w, hh);
+                thumb = c.toDataURL('image/jpeg', 0.55);
+              } catch (e) {}
+              done({ seconds: seconds, thumb: thumb });
+            }
+            v.onseeked = withThumb;
+            setTimeout(withThumb, 2500);
+            try { v.currentTime = seconds ? Math.min(0.1, seconds / 2) : 0.1; } catch (e) { withThumb(); }
+          };
+          v.src = url;
+        });
+      }
+
+      function take(file, i, j) {
+        say('');
+        readVideo(file).then(function (meta) {
+          if (meta.seconds !== null && meta.seconds > MAX_SECONDS + 0.4) {
+            say('That clip is ' + meta.seconds + 's — trim it to ' + MAX_SECONDS + ' or under.', 'bad');
+            return;
+          }
+          staged = { file: file, i: i, j: j, meta: meta };
+          var img = document.getElementById('fu-name-thumb');
+          if (meta.thumb) { img.src = meta.thumb; img.hidden = false; } else { img.hidden = true; }
+          document.getElementById('fu-name').hidden = false;
+          document.getElementById('fu-name-ok').disabled = true;
+          var ti = document.getElementById('fu-name-inp');
+          ti.value = ''; ti.focus();
+        }).catch(function () { say("Couldn't read that file. Try another.", 'bad'); });
+      }
+
+      function closeNamer() {
+        staged = null;
+        document.getElementById('fu-name').hidden = true;
+        document.getElementById('fu-name-inp').value = '';
+        document.getElementById('fu-name-n').textContent = '0/50';
+      }
+      document.getElementById('fu-name-inp').addEventListener('input', function () {
+        document.getElementById('fu-name-n').textContent = this.value.length + '/50';
+        document.getElementById('fu-name-ok').disabled = this.value.trim().length < 3;
+      });
+      document.getElementById('fu-name-inp').addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); document.getElementById('fu-name-ok').click(); }
+      });
+      document.getElementById('fu-name-cancel').addEventListener('click', closeNamer);
+      document.getElementById('fu-name-ok').addEventListener('click', function () {
+        if (!staged) return;
+        var title = document.getElementById('fu-name-inp').value.trim().slice(0, 50);
+        if (title.length < 3) return;
+        var s = staged;
+        closeNamer();
+        upload(s.file, s.i, s.j, s.meta, title);
+      });
+
+      function upload(file, i, j, meta, title) {
+        var id = 's' + i + 'c' + j;
+        live[id] = { pct: 0 };
+        render();
+        api('POST', '/intake/' + TOKEN + '/upload-url', {
+          strengthIdx: i, clipIdx: j, filename: file.name, title: title,
+        }).then(function (out) {
+          return new Promise(function (resolve, reject) {
+            var xhr = new XMLHttpRequest();
+            xhr.open('PUT', out.url, true);
+            xhr.upload.onprogress = function (e) {
+              if (!e.lengthComputable) return;
+              live[id].pct = Math.round((e.loaded / e.total) * 100);
+              render();
+            };
+            xhr.onload = function () { (xhr.status >= 200 && xhr.status < 300) ? resolve(out.key) : reject(new Error('put_' + xhr.status)); };
+            xhr.onerror = function () { reject(new Error('network')); };
+            xhr.send(file);
+          });
+        }).then(function (key) {
+          return api('POST', '/intake/' + TOKEN + '/clip', {
+            key: key, strengthIdx: i, clipIdx: j,
+            strength: view.strengths[i], seconds: meta.seconds, title: title,
+          }).then(function () {
+            delete live[id];
+            view.clips.push({ strengthIdx: i, clipIdx: j, key: key, title: title, seconds: meta.seconds || 0 });
+            render();
+            say('Saved.', 'ok');
+            setTimeout(function () { if (elMsg.textContent === 'Saved.') say(''); }, 2500);
+          });
+        }).catch(function (err) {
+          delete live[id];
+          render();
+          say(/too_large/.test(err.message || '')
+            ? 'That clip is too large. A shorter or lower-resolution version will work.'
+            : "That clip didn't upload. Tap the slot to try again.", 'bad');
+        });
+      }
+
+      // ── boot ──
+      if (!TOKEN) {
+        elSub.textContent = '';
+        say('This link is missing its code. Use the link from your confirmation email, or WhatsApp us and we\'ll send a new one.', 'bad');
+      } else {
+        api('GET', '/intake/' + TOKEN + '/film').then(function (v) {
+          view = v;
+          document.getElementById('fu-h').textContent = 'Add ' + v.playerName + "'s film";
+          render();
+        }).catch(function () {
+          elSub.textContent = '';
+          say("We couldn't find that submission. The link may be out of date — WhatsApp us and we'll sort it.", 'bad');
+        });
+      }
+    })();
+  </script>
+</Layout>
+
+<style>
+  .fu{background:#070d1a;min-height:100vh;color:#e9eef8;font-family:'Archivo',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+  .fu-in{max-width:760px;margin:0 auto;padding:clamp(28px,6vw,60px) clamp(18px,5vw,32px) 80px;display:flex;flex-direction:column;gap:26px}
+  .fu-top{display:flex;flex-direction:column;gap:9px}
+  .fu-h{font-size:clamp(26px,5vw,36px);font-weight:800;letter-spacing:-.02em;margin:0;text-wrap:balance}
+  .fu-sub{margin:0;font-size:15.5px;line-height:1.55;color:#8b9ab5;max-width:60ch}
+
+  .fu-sec{display:flex;flex-direction:column;gap:11px}
+  .fu-sec-top{display:flex;align-items:baseline;justify-content:space-between;gap:12px;border-bottom:1px solid #16223c;padding-bottom:9px}
+  .fu-sec-h{margin:0;font-size:17px;font-weight:700;letter-spacing:-.01em}
+  /* The count is the whole point of this page — what's still missing. Amber
+     until it's met, green once it is, so the gaps are findable by colour. */
+  .fu-sec-n{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12.5px;font-weight:600;color:#f2a83b;white-space:nowrap}
+  .fu-sec-n.ok{color:#34d399}
+
+  .fu-slots{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+  @media (min-width:620px){.fu-slots{grid-template-columns:repeat(6,1fr)}}
+  .fu-slot{
+    position:relative;aspect-ratio:3/4;padding:0;overflow:hidden;cursor:pointer;
+    border-radius:11px;border:1px dashed #2a3a5e;background:#0a1122;
+    display:flex;align-items:center;justify-content:center;
+    color:#5d6b8a;font-family:inherit;transition:border-color .15s;
+  }
+  .fu-slot:hover{border-color:#f2a83b;color:#f2a83b}
+  .fu-slot.filled{border-style:solid;border-color:#22304f;cursor:default}
+  .fu-slot.busy{border-style:solid;border-color:rgba(242,168,59,.5);cursor:progress}
+  .fu-slot-plus{font-size:26px;font-weight:300;line-height:1}
+  .fu-slot-cap{
+    position:absolute;left:0;right:0;bottom:0;padding:14px 6px 5px;
+    background:linear-gradient(to top,rgba(4,8,16,.92),rgba(4,8,16,0));
+    font-size:10.5px;font-weight:600;line-height:1.25;color:#e9eef8;text-align:left;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+  }
+  .fu-slot-x{
+    position:absolute;top:4px;right:4px;z-index:2;width:26px;height:26px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    background:rgba(4,8,16,.78);color:#fff;font-size:16px;line-height:1;
+  }
+  .fu-slot-x:hover{background:#c0392b}
+  .fu-slot-pct{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12.5px;font-weight:600;color:#f2a83b}
+
+  .fu-msg{font-size:14px;line-height:1.5;padding:11px 13px;border-radius:10px;border:1px solid #22304f;background:#0a1122;color:#b8c3da}
+  .fu-msg[hidden]{display:none}
+  .fu-msg.bad{border-color:rgba(248,113,113,.5);color:#f8b4b4}
+  .fu-msg.ok{border-color:rgba(52,211,153,.5);color:#6ee7b7}
+
+  .fu-name{padding:13px;border-radius:12px;border:1px solid rgba(242,168,59,.45);background:rgba(242,168,59,.06)}
+  .fu-name[hidden]{display:none}
+  .fu-name-row{display:flex;gap:12px;align-items:flex-start}
+  .fu-name-thumb{width:52px;height:69px;flex:none;border-radius:7px;object-fit:cover;background:#0a1122}
+  .fu-name-thumb[hidden]{display:none}
+  .fu-name-fields{flex:1;min-width:0}
+  .fu-lbl{display:block;font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#8b9ab5;margin:0 0 7px}
+  .fu-inp{
+    width:100%;background:#0a1122;border:1px solid #1b2740;border-radius:10px;padding:13px 14px;
+    color:#e9eef8;font-size:16px;font-family:inherit;outline:none;caret-color:#f2a83b;transition:border-color .15s;
+  }
+  .fu-inp::placeholder{color:#5d6b8a}
+  .fu-inp:focus{border-color:#f2a83b}
+  .fu-name-acts{display:flex;align-items:center;gap:10px;margin-top:11px}
+  .fu-btn{
+    padding:10px 17px;border-radius:10px;cursor:pointer;border:none;
+    background:#f2a83b;color:#0a0f1c;font-family:inherit;font-size:14.5px;font-weight:800;
+  }
+  .fu-btn:disabled{opacity:.4;cursor:not-allowed}
+  .fu-cancel{background:none;border:none;cursor:pointer;font-family:inherit;font-size:13.5px;color:#8b9ab5;text-decoration:underline;text-underline-offset:3px}
+  .fu-cancel:hover{color:#fff}
+  .fu-count{margin-left:auto;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;color:#6d7c9c;font-variant-numeric:tabular-nums}
+
+  .fu-foot{border-top:1px solid #16223c;padding-top:20px;font-size:13.5px;color:#8b9ab5}
+  .fu-foot a{color:#f2a83b;font-weight:700;text-decoration:underline;text-underline-offset:3px}
+</style>

@@ -29,6 +29,11 @@ const STRENGTHS = [
   'Athleticism', 'Size', 'High IQ', '3PT shooting', 'Handle',
   'Defense', 'Strength', 'Footwork', 'Control & balance',
 ];
+// Self-reported stats, for players our data doesn't carry — a U14, a player
+// outside the three circuits, or one whose season hasn't been scraped yet.
+// Averages, in the order a box score prints them.
+const STAT_KEYS = ['PTS', 'REB', 'AST', 'STL', 'BLK', 'TS%', 'FG%', 'FT%', '3P%', '3PM', 'FTM'];
+const STAT_MAX = 8;
 const STRENGTH_MIN = 3;
 const STRENGTH_MAX = 5;
 const TAGLINE_MAX = 140;
@@ -47,6 +52,11 @@ const seatsLeft = Math.max(0, seatsTotal - seatsTaken);
 const FILM_ENABLED = true;
 // Everything after the film block. Named rather than numbered because their
 // step numbers depend on how many strengths the parent picked.
+// Film sits with the strengths it belongs to, straight after them — moving it
+// to the end separated a section from the film that fills it. What made the
+// order safe to keep is that film is now skippable: a parent without clips to
+// hand says "skip for now" and finishes, and the confirmation email carries a
+// private upload link for the clips they still owe.
 const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
 ---
 
@@ -149,6 +159,22 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
         </div>
       </section>
 
+      {/* Only shown when slide 5 found nobody. A player we already hold stats
+          for must never be asked to type them again — and one we don't hold
+          shouldn't be left with an empty stat block on his site. */}
+      <section class="wz-slide" data-step="stats" hidden>
+        <h3 class="wz-h">His stats</h3>
+        <p class="wz-sub">He's not in our data yet, so add his best numbers here. Season averages.</p>
+        <label class="wz-lbl" for="wz-statleague">League or event</label>
+        <input class="wz-inp" id="wz-statleague" data-field="statLeague" type="text" maxlength="60" placeholder="e.g. UAA U15, or his club league" autocomplete="off" />
+        <div class="wz-bubbles wz-statpick" id="wz-statpick" role="group" aria-label="Stats">
+          {STAT_KEYS.map(k => (
+            <button class="wz-bub wz-bub-s" type="button" aria-pressed="false" data-val={k}>{k}</button>
+          ))}
+        </div>
+        <div class="wz-statgrid" id="wz-statgrid"></div>
+      </section>
+
       <!-- 6 — the strongest thing on Abri's page, so the real example is on
            screen rather than described. -->
       <section class="wz-slide" data-step="6" hidden>
@@ -202,6 +228,14 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
           ))}
           <button class="wz-bub wz-bub-add" id="wz-str-add" type="button">+ Add your own</button>
         </div>
+        {/* Inline, not window.prompt(). A native dialog drops the visitor out
+            of the page entirely — different typography, different buttons, the
+            browser's own chrome — which is precisely the seam that makes a
+            product feel unfinished. */}
+        <div class="wz-add" id="wz-str-row" hidden>
+          <input class="wz-inp" id="wz-str-inp" type="text" maxlength="40" placeholder="e.g. Rebounding" autocomplete="off" enterkeyhint="done" />
+          <button class="wz-add-btn" id="wz-str-ok" type="button">Add</button>
+        </div>
         <div class="wz-count wz-count-c"><span id="wz-str-n">0</span> of {STRENGTH_MAX} chosen</div>
       </section>
 
@@ -215,7 +249,7 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
            in front of the one action that matters. -->
       <section class="wz-slide wz-slide-film" data-step="film" hidden>
         <h3 class="wz-h" id="wz-film-h"></h3>
-        <p class="wz-sub">4–6 clips, 10 seconds max each. Aim for 5.</p>
+        <p class="wz-sub">2–6 clips. Aim for ~5 secs per video. <span class="wz-later">Don't have them on this device? Skip for now — we'll email you a private link to add them.</span></p>
         <div class="wz-slots" id="wz-slots"></div>
         <input class="wz-file" id="wz-file" type="file" accept="video/*" hidden />
         <div class="wz-film-foot">
@@ -351,10 +385,20 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
 
     <footer class="wz-foot">
       <div class="wz-err" id="wz-err" role="alert"></div>
+      {/* Three fixed columns. Back and Skip go invisible rather than absent
+          when they don't apply, so Next never shifts under a thumb that was
+          already reaching for it — a primary action that moves between slides
+          is how people mis-tap their way backwards. */}
       <div class="wz-acts">
-        <button class="wz-back" id="wz-back" type="button">Back</button>
+        <button class="wz-back" id="wz-back" type="button">
+          <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><path d="M10 2.5 L4.5 8 L10 13.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>Back</span>
+        </button>
         <button class="wz-next" id="wz-next" type="button">Next</button>
-        <button class="wz-skip" id="wz-skip" type="button" hidden>Skip</button>
+        <button class="wz-skip" id="wz-skip" type="button" hidden>
+          <span id="wz-skip-t">Skip</span>
+          <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><path d="M6 2.5 L11.5 8 L6 13.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
       </div>
     </footer>
   </div>
@@ -371,7 +415,7 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
   </div>
 </div>
 
-<script is:inline define:vars={{ STRENGTH_MIN, STRENGTH_MAX, TAGLINE_MAX, FILM_ENABLED, TAIL, POSITIONS }}>
+<script is:inline define:vars={{ STRENGTH_MIN, STRENGTH_MAX, TAGLINE_MAX, FILM_ENABLED, TAIL, POSITIONS, STAT_MAX }}>
   (function () {
     var wz = document.getElementById('wz');
     if (!wz) return;
@@ -383,21 +427,52 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
     // then the sent screen. The run's length is therefore something they picked,
     // not a number this file knows: 12 slides for three strengths, 14 for five.
     var FIXED = 9;
-    var MAX_CLIPS = 6, MAX_SECONDS = 10;
+    var MIN_CLIPS = 2, MAX_CLIPS = 6, MAX_SECONDS = 10;
     function filmCount() { return FILM_ENABLED ? d.strengths.length : 0; }
-    function filmEnd()   { return FIXED + filmCount(); }
-    function lastStep()  { return filmEnd() + TAIL.length; }   // 'review'
-    function doneStep()  { return lastStep() + 1; }
-    function filmIndex(n) { return n > FIXED && n <= filmEnd() ? n - FIXED - 1 : -1; }
-    function tailIndex(n) { return n > filmEnd() && n <= lastStep() ? n - filmEnd() - 1 : -1; }
+
+    // The run as a flat list of slide keys, with 'film' expanded to one entry
+    // per strength. Everything else — how long the run is, which slide a step
+    // number lands on, which film index it is — is derived from this rather
+    // than from arithmetic on block boundaries, which is what broke when film
+    // stopped being a contiguous block after the questions.
+    function slideKeys() {
+      var keys = [];
+      for (var i = 1; i <= FIXED; i++) {
+        keys.push(String(i));
+        // Conditional: matching a player on slide 5 already gives us verified
+        // numbers, so the manual slide only exists for the players our data
+        // doesn't carry. Derived, not stored — matching later removes it, and
+        // every step number downstream re-derives from this list.
+        if (i === 5 && !d.csPlayer) keys.push('stats');
+      }
+      for (var k = 0; k < filmCount(); k++) keys.push('film');
+      for (var t = 0; t < TAIL.length; t++) keys.push(TAIL[t]);
+      return keys;
+    }
+    function lastStep() { return slideKeys().length; }   // 'review'
+    function doneStep() { return lastStep() + 1; }
+    function slideKeyFor(n) {
+      if (n > lastStep()) return 'done';
+      return slideKeys()[n - 1] || 'done';
+    }
+    /** Which strength's film slide this is, or -1. */
+    function filmIndex(n) {
+      var keys = slideKeys();
+      if (keys[n - 1] !== 'film') return -1;
+      var c = 0;
+      for (var i = 0; i < n - 1; i++) if (keys[i] === 'film') c++;
+      return c;
+    }
+    /** First step number showing this key, for jumping back from the review. */
+    function stepOf(key) { return slideKeys().indexOf(key) + 1; }
     // Slides that carry nothing required. Everything else gates Next, so the
     // parent can never reach the end with a hole in the submission.
-    var OPTIONAL = { 5: 1, 7: 1, 8: 1 };
-    function optionalAt(n) {
-      var t = tailIndex(n);
-      if (t > -1) return TAIL[t] === 'fullgame' || TAIL[t] === 'custom';
-      return !!OPTIONAL[n];
-    }
+    // Film is skippable, and that is the whole reason it can stay here rather
+    // than being pushed to the end: a parent whose clips are on a laptop at
+    // home is not blocked, they say "skip for now" and get a private upload
+    // link in the confirmation email.
+    var OPTIONAL = { '5': 1, '7': 1, '8': 1, 'film': 1, 'fullgame': 1, 'custom': 1 };
+    function optionalAt(n) { return !!OPTIONAL[slideKeyFor(n)]; }
 
     // Funnel + pixel go through the page's own helpers when they exist, so this
     // component never owns a second copy of either contract.
@@ -406,6 +481,7 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
     var d = {
       playerName: '', email: '', classYear: '', birthYear: '', city: '', region: '',
       position: [], height: '', wingspan: '', weight: '', csPlayer: null,
+      statLeague: '', selfStats: [],
       tagline: '', ig: '', tiktok: '', accolades: [], strengths: [],
       fullGames: [], domain: '', domainOwned: false, custom: '', addons: [],
       // The quote the parent was shown, mirrored from the server so the review
@@ -473,17 +549,17 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
         // cannot move forward or back out with anything saved. The submission
         // goes through without clips and says so.
         if (filmDown) return true;
-        // One clip, not four. Four-to-six is the advice on screen and it's what
-        // makes a good section; blocking on it would trade real submissions for
-        // a rule nobody outside this file agreed to. A strength with NO film
-        // would render an empty section on the built site, so that is the floor.
-        // Uploads still in flight don't block either — they finish while the
-        // parent moves, and Send is what waits.
-        return clipsFor(fi).length >= 1;
+        // Two, matching the "2–6 clips" on screen. A single clip makes a
+        // section that looks unfinished on the built site, and the floor is the
+        // one place the advice and the rule should agree — asking for 2–6 and
+        // then accepting 1 teaches people to ignore the copy.
+        // Uploads still in flight don't block: they finish while the parent
+        // moves on, and Send is what waits for them.
+        return clipsFor(fi).length >= MIN_CLIPS;
       }
-      var t = tailIndex(n);
-      if (t > -1) {
-        if (TAIL[t] === 'domain') {
+      {
+        var t = slideKeyFor(n);
+        if (t === 'domain') {
           // Well-formed is non-negotiable — "abcd" used to pass. Registered by
           // someone else is equally blocking unless they say they're the
           // someone else, because otherwise this is a site with nowhere to go.
@@ -518,20 +594,13 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
     // every strength rather than cloning three to five near-identical sections:
     // the slot grid, the picker and the upload plumbing are the same apparatus
     // pointed at a different index.
-    function slideKeyFor(n) {
-      if (n > lastStep()) return 'done';
-      if (filmIndex(n) > -1) return 'film';
-      var t = tailIndex(n);
-      if (t > -1) return TAIL[t];
-      return String(n);
-    }
-
     function paint() {
       var key = slideKeyFor(step);
       slides.forEach(function (s) { s.hidden = s.dataset.step !== key; });
       var cur = wz.querySelector('.wz-slide[data-step="' + key + '"]');
       var fi = filmIndex(step);
       if (fi > -1) paintFilm(fi);
+      if (key === 'stats') paintStats();
       if (key === 'fullgame') paintGames();
       if (key === 'domain') { seedDomain(); checkDomain(); }
       if (key === 'custom') paintQuote(d.quote);
@@ -545,13 +614,17 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
       }
       elStage.textContent = step > lastStep() ? 'Done'
         : fi > -1 ? 'Film'
-        : tailIndex(step) > -1 ? 'Finish' : 'Player';
+        : step > FIXED ? 'Finish' : 'Player';
       elRail.style.width = Math.round((step / (lastStep() + 1)) * 100) + '%';
       var done = step > lastStep();
       elBack.hidden = done || step === 1;
       elNext.hidden = done;
       elSkip.hidden = done || !optionalAt(step);
       elNext.textContent = step === lastStep() ? 'Continue to payment' : 'Next';
+      // "Skip" is honest on an optional field; on film it is a promise, so it
+      // says what actually happens next. Label only — the arrow is a sibling.
+      document.getElementById('wz-skip-t').textContent =
+        slideKeyFor(step) === 'film' ? 'Skip for now' : 'Skip';
       elNext.disabled = !valid(step);
       elErr.textContent = '';
       // The X stays on the sent screen — it's the only way out of it, and
@@ -717,17 +790,40 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
       if (n) n.textContent = d.strengths.length;
     }
 
-    // Custom strength — a prompt is the right weight here: it's a rare path and
-    // an inline field would cost the slide a row it doesn't have.
-    document.getElementById('wz-str-add').addEventListener('click', function () {
-      if (d.strengths.length >= STRENGTH_MAX) { elErr.textContent = 'Pick at most ' + STRENGTH_MAX + '.'; return; }
-      var v = (window.prompt('Name the strength') || '').trim().slice(0, 40);
-      if (!v || d.strengths.indexOf(v) > -1) return;
+    // Custom strength, added inline in the wizard's own field styling.
+    var strRow = document.getElementById('wz-str-row');
+    var strInp = document.getElementById('wz-str-inp');
+    function closeStrRow() { strRow.hidden = true; strInp.value = ''; }
+    function commitStrength() {
+      var v = strInp.value.trim().slice(0, 40);
+      if (!v) return;
+      // Case-insensitive, so "high iq" doesn't become a second High IQ.
+      var dup = d.strengths.some(function (s) { return s.toLowerCase() === v.toLowerCase(); });
+      if (dup) { closeStrRow(); return; }
+      if (d.strengths.length >= STRENGTH_MAX) {
+        elErr.textContent = 'Pick at most ' + STRENGTH_MAX + '. Deselect one first.';
+        closeStrRow();
+        return;
+      }
       d.strengths.push(v);
       addCustomBubble(v);
       paintBubbles(document.getElementById('wz-strengths'));
       elNext.disabled = !valid(step);
+      elErr.textContent = '';
+      closeStrRow();
       save();
+    }
+    document.getElementById('wz-str-add').addEventListener('click', function () {
+      if (d.strengths.length >= STRENGTH_MAX) { elErr.textContent = 'Pick at most ' + STRENGTH_MAX + '. Deselect one first.'; return; }
+      strRow.hidden = false;
+      strInp.focus();
+    });
+    document.getElementById('wz-str-ok').addEventListener('click', commitStrength);
+    strInp.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); commitStrength(); }
+      // Escape closes the row without closing the whole wizard, so the
+      // slide's own dismiss beats the dialog's.
+      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeStrRow(); }
     });
     function addCustomBubble(v) {
       var grp = document.getElementById('wz-strengths');
@@ -824,10 +920,9 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
       for (var j = 0; j < MAX_CLIPS; j++) {
         slotHost.appendChild(slotEl(fi, j));
       }
+      // No "tap a slot to add a clip" — six dashed squares already say that.
       var n = clipsFor(fi).length;
-      document.getElementById('wz-film-n').textContent = n
-        ? n + ' of ' + MAX_CLIPS + ' added'
-        : 'Tap a slot to add a clip';
+      document.getElementById('wz-film-n').textContent = n + ' of ' + MAX_CLIPS + ' added';
       var up = Object.keys(live).length;
       var upEl = document.getElementById('wz-film-up');
       upEl.hidden = !up;
@@ -1302,6 +1397,55 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
       document.querySelector('.wz-seats').hidden = itemised;
     }
 
+    // ── self-reported stats ──────────────────────────────────────────────────
+    // Two parts that have to stay in step: which stats they picked, and the
+    // value for each. Stored as an ordered list rather than an object so the
+    // grid renders in the order they chose, which is the order they think their
+    // best numbers go in.
+    function statVal(k) {
+      var e = d.selfStats.filter(function (s) { return s.k === k; })[0];
+      return e ? e.v : '';
+    }
+    function paintStats() {
+      var pick = document.getElementById('wz-statpick');
+      pick.querySelectorAll('.wz-bub').forEach(function (b) {
+        var on = d.selfStats.some(function (s) { return s.k === b.dataset.val; });
+        b.classList.toggle('on', on);
+        b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+      var grid = document.getElementById('wz-statgrid');
+      grid.innerHTML = '';
+      d.selfStats.forEach(function (s) {
+        var cell = document.createElement('div');
+        cell.className = 'wz-statcell';
+        var lab = document.createElement('label');
+        lab.className = 'wz-statlab'; lab.textContent = s.k;
+        lab.setAttribute('for', 'wz-stat-' + s.k);
+        var inp = document.createElement('input');
+        inp.className = 'wz-inp wz-statinp';
+        inp.id = 'wz-stat-' + s.k;
+        inp.type = 'text'; inp.inputMode = 'decimal'; inp.maxLength = 6;
+        inp.autocomplete = 'off';
+        inp.value = s.v;
+        inp.placeholder = /%$/.test(s.k) ? '45.0' : '20.5';
+        inp.addEventListener('input', function () { s.v = inp.value; save(); });
+        cell.appendChild(lab); cell.appendChild(inp);
+        grid.appendChild(cell);
+      });
+    }
+    document.getElementById('wz-statpick').addEventListener('click', function (e) {
+      var b = e.target.closest('.wz-bub');
+      if (!b) return;
+      var k = b.dataset.val;
+      var i = d.selfStats.findIndex(function (s) { return s.k === k; });
+      if (i > -1) d.selfStats.splice(i, 1);
+      else if (d.selfStats.length < STAT_MAX) d.selfStats.push({ k: k, v: '' });
+      else { elErr.textContent = 'Pick at most ' + STAT_MAX + '. Deselect one first.'; return; }
+      elErr.textContent = '';
+      paintStats();
+      save();
+    });
+
     // ── domain + review ──────────────────────────────────────────────────────
     // Suggested once, from his name, and never re-imposed: a parent who cleared
     // the field or typed their own meant it.
@@ -1412,7 +1556,6 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
     // Rows are (label, value, step) so every line is a way back to the slide it
     // came from — the reason the heading can say "tap anything to change it".
     function reviewRows() {
-      var base = FIXED, film = filmCount();
       var m = [positions(), d.height, d.wingspan ? d.wingspan + ' WS' : '', d.weight ? d.weight + ' lb' : ''].filter(Boolean);
       var rows = [
         ['Player', d.playerName, 1],
@@ -1421,22 +1564,26 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
         ['From', [d.city, d.region].filter(Boolean).join(', '), 3],
         ['Measurables', m.join(' / '), 4],
         ['Circuit Stats', d.csPlayer ? d.csPlayer.name + ' — ' + d.csPlayer.league : 'Not matched', 5],
+        ...(d.csPlayer ? [] : [['Stats', d.selfStats.length
+          ? d.selfStats.map(function (s) { return s.k + ' ' + (s.v || '—'); }).join('  ')
+          : '', stepOf('stats')]]),
         ['One line', d.tagline, 6],
         ['Socials', [d.ig, d.tiktok].filter(Boolean).join(' · '), 7],
         ['Accolades', d.accolades.length ? d.accolades.join(' · ') : '', 8],
         ['Strengths', d.strengths.join(' · '), 9],
       ];
-      if (FILM_ENABLED) {
-        rows.push(['Film', d.clips.length ? d.clips.length + ' clips' : 'None yet', base + 1]);
-      }
-      TAIL.forEach(function (name, i) {
-        var at = base + film + i + 1;
+      // Jump targets come from the key list, so a row always points at the
+      // slide it describes no matter where that slide now sits.
+      TAIL.forEach(function (name) {
+        var at = stepOf(name);
+        if (at < 1) return;
         if (name === 'fullgame') rows.push(['Full game', d.fullGames.length > 1 ? d.fullGames.length + ' links' : (d.fullGames[0] || ''), at]);
         if (name === 'domain') rows.push(['Domain', d.domain, at]);
         if (name === 'custom') rows.push(['Custom requests', d.custom, at]);
         if (name === 'addons') rows.push(['Add-ons', d.addons.length
           ? (CATALOG || []).filter(function (a) { return d.addons.indexOf(a.id) > -1; }).map(function (a) { return a.name; }).join(' · ')
           : '', at]);
+        if (name === 'film' && FILM_ENABLED) rows.push(['Film', d.clips.length ? d.clips.length + ' clips' : 'None yet', at]);
       });
       return rows;
     }
@@ -1498,7 +1645,8 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
       return {
         playerName: d.playerName, email: d.email, classYear: d.classYear, birthYear: d.birthYear,
         city: d.city, region: d.region, position: d.position, height: d.height,
-        wingspan: d.wingspan, weight: d.weight, csPlayer: d.csPlayer, tagline: d.tagline,
+        wingspan: d.wingspan, weight: d.weight, csPlayer: d.csPlayer,
+        statLeague: d.statLeague, selfStats: d.selfStats, tagline: d.tagline,
         ig: d.ig, tiktok: d.tiktok, accolades: d.accolades, strengths: d.strengths,
         fullGames: d.fullGames, domain: d.domain, custom: d.custom, addons: d.addons,
       };
@@ -1511,6 +1659,10 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
       var m = [positions(), d.height, d.wingspan ? d.wingspan + ' WS' : '', d.weight ? d.weight + ' lb' : ''].filter(Boolean);
       if (m.length) L.push('Measurables: ' + m.join(' / '));
       if (d.csPlayer) L.push('Circuit Stats: ' + d.csPlayer.name + ' — ' + (d.csPlayer.team ? d.csPlayer.team + ', ' : '') + d.csPlayer.league);
+      else if (d.selfStats.length || d.statLeague.trim()) {
+        L.push('SELF-REPORTED STATS (not in our data' + (d.statLeague.trim() ? ' — ' + d.statLeague.trim() : '') + '):');
+        L.push('  ' + d.selfStats.map(function (s) { return s.k + ' ' + (s.v || '—'); }).join('   '));
+      }
       if (d.tagline) L.push('One line: "' + d.tagline.trim() + '"');
       var s = [d.ig, d.tiktok].filter(Boolean);
       if (s.length) L.push('Socials: ' + s.join(' · '));
@@ -1723,6 +1875,9 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
   .wz-h{font-size:clamp(23px,5.4vw,29px);font-weight:800;letter-spacing:-.018em;line-height:1.15;margin:0;text-wrap:balance}
   .wz-sub{font-size:15px;line-height:1.5;color:#8b9ab5;margin:9px 0 22px}
   .wz-note{font-size:13px;color:#6d7c9c;margin:12px 0 0}
+  /* Its own line and a quieter tone: the instruction above is what to do, this
+     is the way out for someone who can't. */
+  .wz-later{display:block;margin-top:6px;color:#6d7c9c}
   /* Mono so the domain reads as the exact string being checked, and so the
      line doesn't reflow between "Checking…" and its answer. */
   .wz-dom{
@@ -1788,6 +1943,9 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
   /* :global because a custom strength is appended by JS and would otherwise
      render as a bare UA button next to nine styled ones. */
   .wz-bubbles{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:22px}
+  /* The custom-strength row sits directly under the bubbles it adds to, so the
+     22px the group carries would read as a gap in the middle of one control. */
+  .wz-bubbles:has(+ .wz-add){margin-bottom:12px}
   .wz-bubbles :global(.wz-bub){
     min-height:44px;padding:10px 15px;border-radius:23px;cursor:pointer;
     background:#0a1122;border:1px solid #22304f;color:#c8d2e8;
@@ -1797,6 +1955,31 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
   .wz-bubbles :global(.wz-bub:hover){border-color:#33456d;color:#fff}
   .wz-bubbles :global(.wz-bub.on){background:rgba(242,168,59,.12);border-color:#f2a83b;color:#f2a83b}
   .wz-bubbles :global(.wz-bub-add){border-style:dashed;color:#8b9ab5}
+  /* Stat keys are short and there are eleven of them, so they get a tighter
+     pill than a strength name needs — three rows instead of five. */
+  .wz-statpick{gap:7px;margin-bottom:16px}
+  .wz-statpick :global(.wz-bub-s){
+    min-height:38px;padding:8px 13px;font-size:13.5px;border-radius:19px;
+    font-family:'IBM Plex Mono',ui-monospace,monospace;
+  }
+  /* Two columns, and its own scroll: eight stats plus a league name will not
+     fit a 568px phone, and the slide itself must never scroll. */
+  /* Same treatment as the review slide, for the same reason: the height of
+     this one depends on how many stats they picked, so guessing a max-height
+     overflows the moment someone picks eight. The slide is a flex column and
+     the grid takes exactly what is left. */
+  .wz-slide[data-step="stats"]{display:flex;flex-direction:column}
+  .wz-statpick{flex:none}
+  .wz-statgrid{
+    flex:1;min-height:0;overflow-y:auto;
+    display:grid;grid-template-columns:1fr 1fr;gap:9px 12px;align-content:start;
+  }
+  .wz-statgrid :global(.wz-statcell){display:flex;align-items:center;gap:9px}
+  .wz-statgrid :global(.wz-statlab){
+    flex:none;width:42px;font-family:'IBM Plex Mono',ui-monospace,monospace;
+    font-size:12.5px;font-weight:600;color:#f2a83b;
+  }
+  .wz-statgrid :global(.wz-statinp){padding:9px 10px;font-size:15px}
 
   /* ── film ── six slots, 3x2. Countable at a glance, and the empty ones are
      the instruction: nobody needs telling that a dashed square wants a clip.
@@ -2058,21 +2241,31 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
   /* ── foot ── the only fixed furniture; thumb lives here. */
   .wz-foot{flex:none;padding:12px 18px calc(16px + env(safe-area-inset-bottom));border-top:1px solid #131f38}
   .wz-err{min-height:17px;font-size:13px;color:#f87171;margin-bottom:6px}
-  .wz-acts{display:flex;align-items:center;gap:12px}
+  /* Equal side rails, bounded middle: Next sits in the same place on every
+     slide and never grows to fill the bar. */
+  .wz-acts{display:grid;grid-template-columns:1fr minmax(0,220px) 1fr;align-items:center;gap:10px}
   .wz-next{
-    flex:1;min-height:52px;padding:14px 20px;border-radius:11px;cursor:pointer;border:none;
+    min-height:52px;padding:14px 20px;border-radius:11px;cursor:pointer;border:none;
     background:#f2a83b;color:#0a0f1c;font-family:inherit;font-size:16.5px;font-weight:800;
     transition:background .15s,opacity .15s;
   }
   .wz-next:hover:not(:disabled){background:#f6b757}
   .wz-next:disabled{opacity:.38;cursor:not-allowed}
   .wz-back,.wz-skip{
-    flex:none;min-height:52px;padding:14px 6px;background:none;border:none;cursor:pointer;
+    display:flex;align-items:center;gap:5px;min-height:52px;padding:14px 2px;
+    background:none;border:none;cursor:pointer;
     font-family:inherit;font-size:15px;font-weight:600;color:#8b9ab5;
-    text-decoration:underline;text-underline-offset:4px;text-decoration-thickness:1px;
+    transition:color .15s;
   }
+  .wz-back{justify-self:start}
+  .wz-skip{justify-self:end}
+  .wz-back span,.wz-skip span{text-decoration:underline;text-underline-offset:4px;text-decoration-thickness:1px}
   .wz-back:hover,.wz-skip:hover{color:#fff}
-  .wz-back[hidden],.wz-skip[hidden],.wz-next[hidden],.wz-x[hidden]{display:none}
+  /* Invisible, not removed — the column keeps its width so nothing shifts.
+     visibility:hidden also takes them out of the accessibility tree, so this
+     costs nothing there either. */
+  .wz-back[hidden],.wz-skip[hidden]{display:flex;visibility:hidden}
+  .wz-next[hidden],.wz-x[hidden]{display:none}
 
   /* ── sent ── */
   .wz-slide-done{display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding-top:20px}
