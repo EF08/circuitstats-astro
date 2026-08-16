@@ -561,13 +561,29 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
       if (cur) { cur.scrollTop = 0; }
     }
 
+    // Where they are, and how long the last screen held them.
+    //
+    // Reported by NAME, not by number. The run's length depends on how many
+    // strengths they picked, so "step 13" is the full-game slide for one parent
+    // and a film slide for another — a ladder built on those numbers averages
+    // two different questions together.
+    //
+    // The seconds ride along as detail, so one event answers both "where did
+    // they stop" and "what took them so long". Sent on ARRIVAL, describing the
+    // screen just left, which means an abandon still reports the time spent on
+    // the screen that lost them.
+    var slideEnteredAt = Date.now(), slideLeaving = null;
     function go(n, push) {
       if (n > doneStep() || n < 1) return;
+      var from = slideLeaving || slideKeyFor(step);
+      var secs = Math.min(3600, Math.round((Date.now() - slideEnteredAt) / 1000));
       step = n;
+      slideEnteredAt = Date.now();
+      slideLeaving = null;
       save();
       paint();
       if (push !== false) history.pushState({ wz: n }, '');
-      track('get-started:intake-step-' + n);
+      track('get-started:intake-step-' + slideKeyFor(n), from + ':' + secs);
     }
 
     // ── open / close ─────────────────────────────────────────────────────────
@@ -606,7 +622,9 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
       document.getElementById('wz-confirm').hidden = true;
     });
     document.getElementById('wz-leave').addEventListener('click', function () {
-      track('get-started:intake-abandon', 'step-' + step);
+      // Named, and with the time they spent staring at it before giving up.
+      track('get-started:intake-abandon',
+        slideKeyFor(step) + ':' + Math.round((Date.now() - slideEnteredAt) / 1000));
       close();
     });
 
