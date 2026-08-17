@@ -683,16 +683,16 @@ const SALE_ON = SEATS_LEFT > 0;
           if (i >= q.length) {
             clearInterval(typer);
             document.getElementById('iph-serp-caret').style.display = 'none';
-            setTimeout(results, 1260);
+            setTimeout(results, 1000);
           }
-        }, 480);
+        }, 385);
         function results() {
           document.getElementById('iph-serp-res').hidden = false;
-          setTimeout(tap, 3800);
+          setTimeout(tap, 3050);
         }
         function tap() {
           document.getElementById('iph-serp-tap').hidden = false;
-          setTimeout(leave, 1050);
+          setTimeout(leave, 850);
         }
         function leave() {
           serp.classList.add('iph-serp-out');
