@@ -113,11 +113,17 @@ const SALE_ON = SEATS_LEFT > 0;
                 {/* THE SERP ACT — the hero asks "when a coach googles your
                     name, what comes up?"; the phone answers in order: the
                     search, his site as the top result, the tap, the site.
-                    Hidden until JS plays it (no-JS and reduced-motion go
-                    straight to the site as before), removed after one run.
-                    z-index 2: over the site, under the touch shield, so a
-                    real tap still opens abrifazliu.com at any moment. */}
-                <div class="iph-serp" id="iph-serp" hidden aria-hidden="true">
+                    Server-rendered VISIBLE so the phone's first paint is
+                    Google — it used to start hidden until the visibility
+                    observer fired, which showed the site for a beat and then
+                    cut backwards to the search. No-JS hides it via the
+                    noscript below (site only, as before); reduced-motion
+                    removes it synchronously before first paint. Removed for
+                    good after one run. z-index 2: over the site, under the
+                    touch shield, so a real tap still opens abrifazliu.com at
+                    any moment. */}
+                <noscript><style>.iph-serp{display:none}</style></noscript>
+                <div class="iph-serp" id="iph-serp" aria-hidden="true">
                   <div class="iph-serp-logo"><span style="color:#4285F4">G</span><span style="color:#EA4335">o</span><span style="color:#FBBC05">o</span><span style="color:#4285F4">g</span><span style="color:#34A853">l</span><span style="color:#EA4335">e</span></div>
                   <div class="iph-serp-box">
                     {/* One drawn glyph, not a circle plus a positioned handle —
@@ -666,12 +672,13 @@ const SALE_ON = SEATS_LEFT > 0;
       }
       var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       if (!serp || !phone || reduce) { if (serp) serp.remove(); finish(); return; }
+      // The omnibox tells the same story: google.com while the SERP is up,
+      // abrifazliu.com from the moment of the tap. Set here, synchronously
+      // before first paint, so the URL matches the screen from frame one; the
+      // template default stays abrifazliu.com so a no-JS page (which hides
+      // the SERP) never claims to be Google.
+      if (omniUrl) omniUrl.textContent = 'google.com';
       function play() {
-        serp.hidden = false;
-        // The omnibox tells the same story: google.com while searching,
-        // abrifazliu.com from the moment of the tap. The template default
-        // stays abrifazliu.com so a no-JS page never claims to be Google.
-        if (omniUrl) omniUrl.textContent = 'google.com';
         var q = 'abri fazliu';
         var qEl = document.getElementById('iph-serp-q');
         var i = 0;
