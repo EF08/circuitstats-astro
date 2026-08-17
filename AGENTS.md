@@ -34,6 +34,8 @@ Funnel labels changed with the wizard, and both readers were updated to union ol
 
 An urgency badge on the player-page CTA and `/get-started` hero (`src/lib/liveLabel.js`) shows only during the real NCAA live periods (April and July); other months it hides entirely — don't "fix" its absence.
 
+**`/intake` — the pipeline recapture link (Aug 17 2026).** The same wizard as `/get-started`, minus everything transactional: no pricing, no add-ons slide, no quote, no Stripe — submit files the brief, emails Andy, done. Andy sends it by hand to prospects he's already talking to. Its silence is structural, not policed: the page never defines `window.csTrack` and passes Layout's `noPixel`, so every funnel label and pixel call inside the wizard no-ops on its own guard — never add either helper to that page. Submissions carry `source: 'pipeline'` (born on the intake draft, copied server-side onto the `website_request` that closes it); `funnel.js`'s `humanLead`, `model.listWebsiteRequests` and the MCP `awaitingPayment` count all exclude it, so pipeline briefs never inflate a funnel or dashboard number. Pipeline drafts use their own localStorage key (`cs-intake-pipeline-v1`) so the two pages never share a half-filled form.
+
 Still open: how the offer is pitched/marketed beyond the site itself, and whether sites are templated or custom-built.
 
 ## Value props (copy reference)

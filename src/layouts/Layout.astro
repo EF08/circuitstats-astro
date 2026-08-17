@@ -25,8 +25,12 @@ export interface Props {
   trackTitle?: string;       // human-readable name for analytics (player/team/matchup) — not SEO title
   hideNav?: boolean;         // drop the bottom nav (conversion pages: no exits off the page)
   hideHeader?: boolean;      // drop the site header too (page ships its own nav, e.g. /get-started)
+  noPixel?: boolean;         // omit MetaPixel entirely (not even PageView) — for
+                             // non-funnel pages like /intake, where any pixel
+                             // event would feed ad optimization traffic that
+                             // was never bought (see CLAUDE.md pixel section)
 }
-const { title, description = '', subLabel, pillLabel, pageBase, activeTab, canonical, robots, trackTitle, hideNav = false, hideHeader = false } = Astro.props;
+const { title, description = '', subLabel, pillLabel, pageBase, activeTab, canonical, robots, trackTitle, hideNav = false, hideHeader = false, noPixel = false } = Astro.props;
 
 // Share-preview image: one static brand card for every page. Replaced the
 // per-page Chromium screenshot function (api/og-shot.js, removed Aug 2026) —
@@ -140,7 +144,7 @@ const navIcons: Record<string, string> = {
   <link rel="icon" type="image/png" href="/favicon.png" />
   <link rel="apple-touch-icon" href="/favicon.png" />
   <meta name="theme-color" content="#08090f" />
-  <MetaPixel />
+  {!noPixel && <MetaPixel />}
 </head>
 <body>
 <GateModal />

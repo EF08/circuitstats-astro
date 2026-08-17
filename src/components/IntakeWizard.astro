@@ -40,8 +40,16 @@ const TAGLINE_MAX = 140;
 // Seat state comes from the page so there is one source of truth for the
 // offer — the review slide and the price block can't disagree about how many
 // are left.
-const { seatsTotal = 50, seatsTaken = 0 } = Astro.props;
+const { seatsTotal = 50, seatsTaken = 0, pipeline = false } = Astro.props;
 const seatsLeft = Math.max(0, seatsTotal - seatsTaken);
+// PIPELINE MODE (/intake): the same wizard as an info-recapture form for
+// prospects Andy is already talking to. Same slides, same film uploads, same
+// brief filed and emailed — but no pricing anywhere, no add-ons slide, no
+// quote, and no Stripe: submit ends at the thank-you. The host page carries
+// its share of the contract: it must NOT define window.csTrack and must use
+// Layout's noPixel, which is what silences every funnel label and pixel event
+// here (each call is already guarded). Submissions carry source:'pipeline' so
+// no funnel or dashboard number counts them.
 // Live since Aug 16 2026, once r2-smoke.js round-tripped a real object through
 // the abrifazliu bucket (clips are namespaced under intake/, so upload target
 // and delivery target are one place).
@@ -57,7 +65,11 @@ const FILM_ENABLED = true;
 // order safe to keep is that film is now skippable: a parent without clips to
 // hand says "skip for now" and finishes, and the confirmation email carries a
 // private upload link for the clips they still owe.
-const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
+// Pipeline mode drops 'addons' — every step number, jump target and rail
+// count rederives from slideKeys(), which is the whole point of TAIL being data.
+const TAIL = pipeline
+  ? ['fullgame', 'domain', 'custom', 'review']
+  : ['fullgame', 'domain', 'custom', 'addons', 'review'];
 ---
 
 <div class="wz" id="wz" hidden role="dialog" aria-modal="true" aria-labelledby="wz-live-head">
@@ -249,11 +261,10 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
            in front of the one action that matters. -->
       <section class="wz-slide wz-slide-film" data-step="film" hidden>
         <h3 class="wz-h" id="wz-film-h"></h3>
-        <p class="wz-sub">2–6 clips. Aim for ~5 secs per video. <span class="wz-later">Don't have them on this device? Skip for now — we'll email you a private link to add them.</span></p>
+        <p class="wz-sub">Upload your most impressive clips of this skill. Trim each one to just the play itself &mdash; about 5 seconds, from a real game where possible.</p>
         <div class="wz-slots" id="wz-slots"></div>
         <input class="wz-file" id="wz-file" type="file" accept="video/*" hidden />
         <div class="wz-film-foot">
-          <span class="wz-film-n" id="wz-film-n"></span>
           <span class="wz-film-up" id="wz-film-up" hidden></span>
         </div>
 
@@ -323,26 +334,30 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
            footnote somewhere: it is the whole reason the slide exists. -->
       <section class="wz-slide" data-step="custom" hidden>
         <h3 class="wz-h">Anything you want done differently?</h3>
-        <p class="wz-sub">Everything you've filled in is covered by the price. This is for anything beyond it.</p>
+        <p class="wz-sub">{pipeline
+          ? 'Anything at all — a page you want, a look you have in mind, something we should know.'
+          : "Everything you've filled in is covered by the price. This is for anything beyond it."}</p>
         <textarea class="wz-inp wz-ta" id="wz-custom" data-field="custom" rows="4" maxlength="900" placeholder="e.g. a page for his academics, a different colour scheme, a section for club history"></textarea>
         {/* Priced live rather than left hanging. The old copy told them
             something extra might cost extra and then made them wait days to
-            find out how much — this answers it before they've left the slide. */}
+            find out how much — this answers it before they've left the slide.
+            Pipeline mode captures the text but never prices it: money talk
+            belongs to the conversation Andy is already having. */}
         <div class="wz-quote" id="wz-quote" role="status" hidden></div>
-        <div class="wz-warn" id="wz-warn">
+        {!pipeline && <div class="wz-warn" id="wz-warn">
           <strong>Bigger custom work is quoted separately.</strong>
           Small tweaks are included. Anything larger we'll price for you here before you pay.
-        </div>
+        </div>}
       </section>
 
       {/* Add-ons, last thing before the summary: they only make sense once the
           site itself is decided, and putting them earlier would read as an
           upsell blocking the thing they came for. */}
-      <section class="wz-slide" data-step="addons" hidden>
+      {!pipeline && <section class="wz-slide" data-step="addons" hidden>
         <h3 class="wz-h">Want us to go further?</h3>
         <p class="wz-sub">All optional, all one-time. Skip if you just want the site.</p>
         <div class="wz-addons" id="wz-addons"></div>
-      </section>
+      </section>}
 
       <!-- Review. The one screen that is allowed to scroll inside itself: it is
            a list of what they said, and hiding half of it to honour a layout
@@ -355,25 +370,27 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
             list price stays — same fact as the top of the page, at the moment
             the card comes out. The seat meter deliberately does NOT: someone
             on this screen has already spent ten minutes and is reaching for a
-            card, and scarcity at that point is a shove, not information. */}
-        <div class="wz-bill" id="wz-bill"></div>
+            card, and scarcity at that point is a shove, not information.
+            Pipeline mode ends the slide at the review list: no bill, no seats,
+            no charge — there is no card coming out. */}
+        {!pipeline && <div class="wz-bill" id="wz-bill"></div>}
         {/* The same seat bar as the pitch page, at the moment the card comes
             out. I argued against it — scarcity next to a total reads as a
             shove — but it is the offer's own terms and repeating them where
             money changes hands is the honest version of the argument. */}
-        <div class="wz-seats">
+        {!pipeline && <div class="wz-seats">
           <div class="wz-seats-top"><span class="wz-seats-r">{seatsLeft} left</span><span class="wz-seats-then">, then CA$399</span></div>
           <div class="wz-seats-bar" aria-hidden="true">
             {Array.from({ length: seatsTotal }, (_, i) => (
               <span class={i < seatsTaken ? 'wz-seat wz-seat-on' : 'wz-seat'}></span>
             ))}
           </div>
-        </div>
-        <div class="wz-charge">
+        </div>}
+        {!pipeline && <div class="wz-charge">
           <span class="wz-charge-l">Today</span>
           <span class="wz-charge-v"><s class="wz-charge-was" id="wz-charge-was">CA$399</s><span id="wz-charge-v">CA$99</span></span>
-        </div>
-        <p class="wz-charge-n">then <s class="wz-charge-was">CA$39</s> CA$9/month to keep his stats updated</p>
+        </div>}
+        {!pipeline && <p class="wz-charge-n">then <s class="wz-charge-was">CA$39</s> CA$9/month to keep his stats updated</p>}
       </section>
 
       <section class="wz-slide wz-slide-done" data-step="done" hidden>
@@ -415,14 +432,17 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
   </div>
 </div>
 
-<script is:inline define:vars={{ STRENGTH_MIN, STRENGTH_MAX, TAGLINE_MAX, FILM_ENABLED, TAIL, POSITIONS, STAT_MAX }}>
+<script is:inline define:vars={{ STRENGTH_MIN, STRENGTH_MAX, TAGLINE_MAX, FILM_ENABLED, TAIL, POSITIONS, STAT_MAX, PIPELINE: pipeline }}>
   (function () {
     var wz = document.getElementById('wz');
     if (!wz) return;
 
     var API = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
       ? 'http://localhost:4000/a1a2-command-center' : '/a1a2-command-center';
-    var KEY = 'cs-intake-v1';
+    // Pipeline drafts under their own key: localStorage is origin-scoped, and a
+    // parent who visits both /intake and /get-started must not find one form
+    // holding the other's half-finished answers.
+    var KEY = PIPELINE ? 'cs-intake-pipeline-v1' : 'cs-intake-v1';
     // Nine fixed questions, then one film screen per strength the parent chose,
     // then the sent screen. The run's length is therefore something they picked,
     // not a number this file knows: 12 slides for three strengths, 14 for five.
@@ -474,7 +494,9 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
     // 'stats' is skippable too: a parent who doesn't have his averages to hand
     // shouldn't be stuck on the one slide that exists because our data let them
     // down. The site renders without a stat block; a dead end renders nothing.
-    var OPTIONAL = { '5': 1, '7': 1, '8': 1, 'stats': 1, 'film': 1, 'fullgame': 1, 'custom': 1 };
+    // 'addons' too: the slide's own subtitle says "Skip if you just want the
+    // site", and a footer without the Skip it names reads as a trap.
+    var OPTIONAL = { '5': 1, '7': 1, '8': 1, 'stats': 1, 'film': 1, 'fullgame': 1, 'custom': 1, 'addons': 1 };
     function optionalAt(n) { return !!OPTIONAL[slideKeyFor(n)]; }
 
     // Funnel + pixel go through the page's own helpers when they exist, so this
@@ -617,7 +639,7 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
       if (key === 'addons') loadAddons();
       // The catalogue is needed to itemise, so make sure it's here even for
       // someone who skipped straight past the add-ons slide.
-      if (key === 'review') { if (!CATALOG) loadAddons(); paintReview(); paintBill(); }
+      if (key === 'review') { if (!PIPELINE && !CATALOG) loadAddons(); paintReview(); paintBill(); }
       if (cur && !cur.classList.contains('wz-slide-done')) {
         var h = cur.querySelector('.wz-h');
         if (h) elLive.textContent = h.textContent;
@@ -630,7 +652,7 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
       elBack.hidden = done || step === 1;
       elNext.hidden = done;
       elSkip.hidden = done || !optionalAt(step);
-      elNext.textContent = step === lastStep() ? 'Continue to payment' : 'Next';
+      elNext.textContent = step === lastStep() ? (PIPELINE ? 'Submit' : 'Continue to payment') : 'Next';
       // "Skip" is honest on an optional field; on film it is a promise, so it
       // says what actually happens next. Label only — the arrow is a sibling.
       document.getElementById('wz-skip-t').textContent =
@@ -930,9 +952,8 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
       for (var j = 0; j < MAX_CLIPS; j++) {
         slotHost.appendChild(slotEl(fi, j));
       }
-      // No "tap a slot to add a clip" — six dashed squares already say that.
-      var n = clipsFor(fi).length;
-      document.getElementById('wz-film-n').textContent = n + ' of ' + MAX_CLIPS + ' added';
+      // No "tap a slot to add a clip" — six dashed squares already say that,
+      // and no "n of 6 added" either: filled squares are their own count.
       var up = Object.keys(live).length;
       var upEl = document.getElementById('wz-film-up');
       upEl.hidden = !up;
@@ -1220,7 +1241,11 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
     function ensureToken() {
       if (d.intakeToken) return Promise.resolve(d.intakeToken);
       if (tokenPromise) return tokenPromise;
-      tokenPromise = api('POST', '/intake', { fromPage: location.href }).then(function (o) {
+      // source rides the draft from birth; the backend copies it onto the
+      // website_request it closes, so the two collections can never disagree.
+      tokenPromise = api('POST', '/intake', PIPELINE
+        ? { fromPage: location.href, source: 'pipeline' }
+        : { fromPage: location.href }).then(function (o) {
         d.intakeToken = o.token; save();
         // AWAITED, not fired and forgotten. The object key is built server-side
         // from the player's name, so a draft whose answers haven't landed yet
@@ -1351,6 +1376,7 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
     // ── custom-request quote ─────────────────────────────────────────────────
     var quoteTimer = null, quoteSeq = 0, lastQuoted = null;
     function paintQuote(q) {
+      if (PIPELINE) return;   // no quote UI exists in pipeline mode (#wz-warn isn't rendered)
       var el = document.getElementById('wz-quote');
       var warn = document.getElementById('wz-warn');
       if (!q) { el.hidden = true; warn.hidden = false; return; }
@@ -1371,6 +1397,7 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
       el.textContent = q.reason || "We'll price this and confirm with you before doing anything.";
     }
     function queueQuote() {
+      if (PIPELINE) return;   // the text is captured; pricing it belongs to Andy's conversation
       clearTimeout(quoteTimer);
       var text = d.custom.trim();
       if (!text) { d.quote = null; lastQuoted = ''; paintQuote(null); save(); return; }
@@ -1404,6 +1431,7 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
       return lines;
     }
     function paintBill() {
+      if (PIPELINE) return;   // no bill in pipeline mode (#wz-bill isn't rendered)
       var host = document.getElementById('wz-bill');
       var lines = billLines();
       var total = lines.reduce(function (s, l) { return s + l[1]; }, 0);
@@ -1815,10 +1843,13 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
         // reason payment comes after this call rather than before it.
         var sb = document.getElementById('gs-sticky');
         if (sb) { sb.dataset.done = '1'; sb.classList.remove('on'); }
-        return checkout();
+        // Pipeline mode ends here: the brief is the deliverable, there is no
+        // card to collect. finish() is the same terminal state checkout()
+        // already falls back to when Stripe can't open.
+        return PIPELINE ? finish() : checkout();
       }).catch(function (err) {
         track('get-started:intake-error', err && err.message);
-        elNext.disabled = false; elNext.textContent = 'Continue to payment';
+        elNext.disabled = false; elNext.textContent = PIPELINE ? 'Submit' : 'Continue to payment';
         elErr.textContent = "That didn't send. Check your connection and try again.";
       });
     }
@@ -1949,9 +1980,6 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
   .wz-h{font-size:clamp(23px,5.4vw,29px);font-weight:800;letter-spacing:-.018em;line-height:1.15;margin:0;text-wrap:balance}
   .wz-sub{font-size:15px;line-height:1.5;color:#8b9ab5;margin:9px 0 22px}
   .wz-note{font-size:13px;color:#6d7c9c;margin:12px 0 0}
-  /* Its own line and a quieter tone: the instruction above is what to do, this
-     is the way out for someone who can't. */
-  .wz-later{display:block;margin-top:6px;color:#6d7c9c}
   /* Mono so the domain reads as the exact string being checked, and so the
      line doesn't reflow between "Checking…" and its answer. */
   .wz-dom{
@@ -2133,7 +2161,6 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
     font-variant-numeric:tabular-nums;color:#f2a83b;
   }
   .wz-film-foot{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-top:16px}
-  .wz-film-n{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12.5px;color:#8b9ab5;font-variant-numeric:tabular-nums}
   .wz-film-up{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12.5px;color:#f2a83b}
   .wz-film-up[hidden]{display:none}
 
