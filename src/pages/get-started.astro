@@ -151,6 +151,12 @@ const SALE_ON = SEATS_LEFT > 0;
                       <div class="iph-serp-t iph-serp-t2">What to Expect in the NPH Showcase League: Grade 10 Division</div>
                       <div class="iph-serp-s">Oct 22, 2025 &mdash; #77 Abri Fazliu (Prospect) &mdash; Physical guard who plays with confidence and creates mismatches off the dribble&hellip;</div>
                     </div>
+                    {/* His real TikTok handle (same one his site shows) — like
+                        the IG row, grounded in an account that exists. */}
+                    <div class="iph-serp-r4">
+                      <div class="iph-serp-src"><span class="iph-serp-fav iph-serp-fav-tt">T</span><span class="iph-serp-dom">tiktok.com</span></div>
+                      <div class="iph-serp-t iph-serp-t2">Abri Fazliu (@.babyluka) &middot; TikTok</div>
+                    </div>
                   </div>
                 </div>
                 <iframe id="iph-frame" src="https://www.abrifazliu.com" title="Live example: Abri Fazliu's recruiting website"></iframe>
@@ -699,16 +705,16 @@ const SALE_ON = SEATS_LEFT > 0;
           if (i >= q.length) {
             clearInterval(typer);
             document.getElementById('iph-serp-caret').style.display = 'none';
-            setTimeout(results, 700);
+            setTimeout(results, 550);
           }
-        }, 270);
+        }, 210);
         function results() {
           document.getElementById('iph-serp-res').hidden = false;
-          setTimeout(tap, 2150);
+          setTimeout(tap, 1680);
         }
         function tap() {
           document.getElementById('iph-serp-tap').hidden = false;
-          setTimeout(leave, 600);
+          setTimeout(leave, 470);
         }
         function leave() {
           serp.classList.add('iph-serp-out');
@@ -1207,15 +1213,16 @@ const SALE_ON = SEATS_LEFT > 0;
   .iph-serp-tabs{display:flex;gap:19px;font-size:13px;color:#5f6368;border-bottom:1px solid #eceef1}
   .iph-serp-tabs span{padding-bottom:9px}
   .iph-serp-tabs .on{color:#1a73e8;font-weight:700;border-bottom:2px solid #1a73e8;margin-bottom:-1px}
-  .iph-serp-r1,.iph-serp-r2,.iph-serp-r3{padding:13px 2px}
+  .iph-serp-r1,.iph-serp-r2,.iph-serp-r3,.iph-serp-r4{padding:13px 2px}
   @media (prefers-reduced-motion: no-preference){
-    .iph-serp-tabs,.iph-serp-r1,.iph-serp-r2,.iph-serp-r3{animation:serpIn .45s ease-out both}
+    .iph-serp-tabs,.iph-serp-r1,.iph-serp-r2,.iph-serp-r3,.iph-serp-r4{animation:serpIn .45s ease-out both}
     .iph-serp-r2{animation-delay:.14s}
     .iph-serp-r3{animation-delay:.22s}
+    .iph-serp-r4{animation-delay:.3s}
   }
   @keyframes serpIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
   .iph-serp-r1{position:relative;margin-top:4px}
-  .iph-serp-r2,.iph-serp-r3{border-top:1px solid #eceef1;margin-top:8px}
+  .iph-serp-r2,.iph-serp-r3,.iph-serp-r4{border-top:1px solid #eceef1;margin-top:8px}
   .iph-serp-src{display:flex;align-items:center;gap:9px;margin-bottom:7px}
   .iph-serp-fav{
     width:23px;height:23px;border-radius:50%;flex:none;
@@ -1224,6 +1231,7 @@ const SALE_ON = SEATS_LEFT > 0;
   }
   .iph-serp-fav-ig{background:radial-gradient(circle at 30% 110%,#fdf497 0%,#fd5949 45%,#d6249f 60%,#285aeb 90%)}
   .iph-serp-fav-nph{background:#1b3a6b;color:#fff}
+  .iph-serp-fav-tt{background:#010101;color:#fff}
   .iph-serp-dom{font-size:13px;color:#202124}
   .iph-serp-t{font-size:18px;line-height:1.3;color:#1a0dab}
   .iph-serp-t2{font-size:15.5px}
