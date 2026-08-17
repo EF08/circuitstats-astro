@@ -127,7 +127,7 @@ const SALE_ON = SEATS_LEFT > 0;
             sitting above it as its own row — that row is what got cut for
             crowding the block, and the h1's gold italic already established how
             this page emphasises a phrase inside a heading. */}
-        <h2 class="gs-h2">Get yours today{SALE_ON && <em class="gs-offers gs-h2-sub">first 50 customers only!</em>}</h2>
+        <h2 class="gs-h2">Get your website today{SALE_ON && <em class="gs-offers gs-h2-sub">first 50 customers only!</em>}</h2>
         <div class="gs-price-row">
           <div class="gs-price-main">{SALE_ON ? '$99' : '$399'}{SALE_ON && <s class="gs-was">$399</s>}</div>
           <div class="gs-price-alt">to build, then {SALE_ON ? (<><s class="gs-was">$39</s><span class="gs-now">$9/month</span></>) : '$39/month'} to host · cancel anytime</div>
@@ -159,6 +159,33 @@ const SALE_ON = SEATS_LEFT > 0;
             </div>
           </div>
         )}
+        {/* THE PACKAGE — the included checklist (moved up from the drawer,
+            where 3 visitors in 152 ever saw it) plus the priced add-ons,
+            between the seat bar and the ask. One list, two marks: ✓ is in the
+            $99, + costs its printed price. Add-on names and prices mirror the
+            wizard's catalogue (apps/circuitboard/addons.js) — if that changes,
+            change this; prices render bare like the page's "$99" (the CAD
+            gap is deliberate, see CLAUDE.md). The claim verb on outreach rows
+            stays SEND. The one link is the existing circuitstats-link label —
+            no new funnel keys, and the Lead event stays byte-identical. */}
+        <div class="gs-pack">
+          {/* Rows that have a live example on this page are doors to it: the
+              dotted phrase is the affordance, the whole row is the target.
+              Row 1's proof (the visitor log) pops in place instead — sending
+              someone away from the offer to prove the offer is backwards. */}
+          <div class="gs-pack-row"><span class="gs-pack-ico">✓</span><span class="gs-pack-txt">Connect website to <a class="gs-cs-link" href="/" target="_blank" rel="noopener" data-track="get-started:circuitstats-link">Circuit Stats</a>, <span class="gs-pack-pop-t" role="button" tabindex="0" aria-expanded="false" aria-controls="gs-pop-vlog">where D1 &amp; NBA teams scout</span><span class="gs-pack-pop" id="gs-pop-vlog"><span class="gs-pop-h">FROM CIRCUIT STATS VISITOR LOG</span><span class="gs-pop-r"><span class="gs-pop-org">North Carolina University</span><span class="gs-pop-when">recently</span></span><span class="gs-pop-s">viewed Xavier Young, U17 scoring leaders</span><span class="gs-pop-r"><span class="gs-pop-org">Cleveland Cavaliers</span><span class="gs-pop-when">2d ago</span></span><span class="gs-pop-s">viewed Flory Kuminga, EYBL U15 stats</span></span></span></div>
+          <div class="gs-pack-row gs-pack-go" data-goto="#info-example" role="button" tabindex="0"><span class="gs-pack-ico">✓</span><span class="gs-pack-txt">Ranks at the <span class="gs-pack-eg">top of Google</span> for your name</span></div>
+          <div class="gs-pack-row"><span class="gs-pack-ico">✓</span><span class="gs-pack-txt">Your own ".com" domain, registered to you</span></div>
+          <div class="gs-pack-row"><span class="gs-pack-ico">✓</span><span class="gs-pack-txt">Your film, edited and organized</span></div>
+          <div class="gs-pack-row"><span class="gs-pack-ico">✓</span><span class="gs-pack-txt">Verified stats, updated every session</span></div>
+          <div class="gs-pack-row gs-pack-go" data-goto="#info-dash" role="button" tabindex="0"><span class="gs-pack-ico">✓</span><span class="gs-pack-txt"><span class="gs-pack-eg">Private dashboard</span>: track visitors &amp; film watch time (including coaches)</span></div>
+          <div class="gs-pack-row"><span class="gs-pack-ico">✓</span><span class="gs-pack-txt">Hosting and upkeep handled forever</span></div>
+          <div class="gs-pack-row"><span class="gs-pack-ico">✓</span><span class="gs-pack-txt">Cancel anytime</span></div>
+          <div class="gs-pack-div">OPTIONAL ADD-ONS</div>
+          <div class="gs-pack-row"><span class="gs-pack-ico gs-pack-plus">+</span><span class="gs-pack-txt">Your website, sent to the top 100 US prep schools</span><span class="gs-pack-p">$49</span></div>
+          <div class="gs-pack-row"><span class="gs-pack-ico gs-pack-plus">+</span><span class="gs-pack-txt">Your website, sent to the top 100 NCAA D1 schools</span><span class="gs-pack-p">$49</span></div>
+          <div class="gs-pack-row"><span class="gs-pack-ico gs-pack-plus">+</span><span class="gs-pack-txt">Pro shooting coach film breakdown, 1-hr Zoom</span><span class="gs-pack-p">$199</span></div>
+        </div>
         {/* The two-field form became the wizard's first slide, unchanged — same
             ask, same Lead event, same place in the funnel. What sits here now is
             only the door to it. */}
@@ -360,19 +387,12 @@ const SALE_ON = SEATS_LEFT > 0;
         </div>
       </section>
 
-      <!-- WHAT'S INCLUDED + ROI -->
+      <!-- CLOSING CTA. The included checklist that used to live here moved up
+           into the offer column (Aug 17 2026) so it argues before the ask, not
+           behind the drawer 3-in-152 visitors open. The section itself stays:
+           #info-included anchors the 'included' dwell key and the
+           scroll-included marker, and the drawer still ends with a door. -->
       <section class="gs-included" id="info-included">
-        <h2 class="gs-h2">The whole thing, handled.</h2>
-        <div class="gs-checks">
-          <div class="gs-check"><span>✓</span> Connect website to Circuit Stats, where D1 &amp; NBA teams scout</div>
-          <div class="gs-check"><span>✓</span> Ranks at the top of Google for your name</div>
-          <div class="gs-check"><span>✓</span> Your own domain, registered to you</div>
-          <div class="gs-check"><span>✓</span> Your film, edited and organized</div>
-          <div class="gs-check"><span>✓</span> Verified stats, updated every session</div>
-          <div class="gs-check"><span>✓</span> Private dashboard: coach visits &amp; watch time</div>
-          <div class="gs-check"><span>✓</span> Hosting and upkeep handled forever</div>
-          <div class="gs-check"><span>✓</span> Cancel anytime</div>
-        </div>
         <a class="gs-btn gs-btn-lg gs-back-btn" href="#get" data-track="get-started:info-cta">Get your website today</a>
       </section>
 
@@ -546,6 +566,57 @@ const SALE_ON = SEATS_LEFT > 0;
           window.scrollBy({ top: top, behavior: reduce ? 'auto' : 'smooth' });
         }, reduce ? 0 : 120);
       });
+    })();
+
+    // Package rows that are doors: open the drawer if it's shut (same three
+    // moves as the button above, and the same more-info label — they DID ask
+    // for more info, the detail says from which row), then travel to the
+    // example. The vlog pop is hover/focus via CSS; the .on class is the tap
+    // path for touch, closed by any tap outside or Escape.
+    (function () {
+      var more = document.getElementById('gs-more');
+      var btn = document.getElementById('gs-more-btn');
+      var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      function openMore() {
+        if (!more.hidden) return false;
+        more.hidden = false;
+        btn.setAttribute('disabled', '');
+        btn.classList.add('gone');
+        return true;
+      }
+      document.querySelectorAll('.gs-pack-go').forEach(function (row) {
+        function go() {
+          var target = document.querySelector(row.getAttribute('data-goto'));
+          if (!target) return;
+          if (openMore()) track('get-started:more-info', 'pack-row ' + row.getAttribute('data-goto'));
+          setTimeout(function () {
+            target.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+          }, reduce ? 0 : 120);
+        }
+        row.addEventListener('click', go);
+        row.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); }
+        });
+      });
+      var t = document.querySelector('.gs-pack-pop-t');
+      var pop = document.getElementById('gs-pop-vlog');
+      if (t && pop) {
+        function setOpen(on) {
+          pop.classList.toggle('on', on);
+          t.setAttribute('aria-expanded', on ? 'true' : 'false');
+        }
+        t.addEventListener('click', function (e) {
+          e.stopPropagation();
+          setOpen(!pop.classList.contains('on'));
+        });
+        t.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen(!pop.classList.contains('on')); }
+          if (e.key === 'Escape') setOpen(false);
+        });
+        document.addEventListener('click', function (e) {
+          if (!e.target.closest('.gs-pack-pop-t') && !e.target.closest('.gs-pack-pop')) setOpen(false);
+        });
+      }
     })();
 
     // The proof-of-life sequence. 1) When the phone enters the viewport, we
@@ -1116,6 +1187,76 @@ const SALE_ON = SEATS_LEFT > 0;
      outlived the fields. */
   #gs-formwrap{display:flex;flex-direction:column;gap:16px;border-top:1px solid #16223c;padding-top:24px}
   .gs-submit{align-self:stretch}
+  /* The package: dense on purpose — eleven rows between the price and the
+     button must read as one glance-able bill of goods, not a reading task, so
+     rows run tighter and smaller than the drawer version they replaced
+     (13.5px meets the fine-print floor at every width). ✓ and + share one
+     fixed slot so the text edge holds; prices are mono gold like the wizard's
+     add-on slide, so the same figure in checkout reads as already met. */
+  .gs-pack{margin-top:24px;border-top:1px solid #131f38}
+  .gs-pack-row{
+    display:flex;gap:10px;align-items:baseline;
+    padding:6.5px 0;border-bottom:1px solid #131f38;
+    font-size:13.5px;line-height:1.45;color:#c8d2e8;
+  }
+  .gs-pack-row:last-child{border-bottom:none}
+  .gs-pack-ico{flex:none;width:14px;text-align:center;color:#f2a83b;font-weight:700}
+  .gs-pack-plus{font-size:15px}
+  .gs-pack-txt{flex:1;min-width:0}
+  .gs-pack-p{
+    flex:none;font-family:'IBM Plex Mono',ui-monospace,monospace;
+    font-size:12.5px;font-weight:600;color:#f2a83b;font-variant-numeric:tabular-nums;
+  }
+  .gs-pack-div{
+    padding:12px 0 3px;
+    font-family:'IBM Plex Mono',ui-monospace,monospace;
+    font-size:11px;letter-spacing:.12em;color:#8b9ab5;
+  }
+  /* Doors to examples: the dotted phrase is the signal (solid blue stays
+     reserved for the real Circuit Stats link), the whole row is the target. */
+  .gs-pack-go{cursor:pointer;transition:background .15s}
+  .gs-pack-go:hover{background:rgba(255,255,255,.025)}
+  .gs-pack-eg,.gs-pack-pop-t{
+    text-decoration:underline;text-decoration-style:dotted;
+    text-decoration-color:#44587f;text-underline-offset:3px;
+    transition:color .15s,text-decoration-color .15s;
+  }
+  .gs-pack-pop-t{cursor:pointer}
+  .gs-pack-go:hover .gs-pack-eg,.gs-pack-pop-t:hover{color:#e9eef8;text-decoration-color:#8b9ab5}
+  .gs-pack-go:focus-visible,.gs-pack-pop-t:focus-visible{
+    outline:2px solid rgba(242,168,59,.55);outline-offset:2px;border-radius:4px;
+  }
+  /* The visitor-log pop: proof in place, above the claim it proves. */
+  .gs-pack-row{position:relative}
+  .gs-pack-pop{
+    position:absolute;left:0;bottom:calc(100% + 9px);z-index:6;
+    width:min(300px,calc(100vw - 40px));
+    padding:13px 15px;border-radius:12px;
+    background:#0a1122;border:1px solid #22304f;
+    box-shadow:0 16px 40px rgba(0,0,0,.55);
+    opacity:0;visibility:hidden;transform:translateY(5px);
+    /* Visibility flips instantly on open and only after the fade on close —
+       transitioning it both ways leaves the pop hidden mid-open. */
+    transition:opacity .18s cubic-bezier(.16,1,.3,1),transform .18s cubic-bezier(.16,1,.3,1),visibility 0s linear .18s;
+    pointer-events:none;
+  }
+  .gs-pack-pop-t:hover + .gs-pack-pop,
+  .gs-pack-pop-t:focus-visible + .gs-pack-pop,
+  .gs-pack-pop.on{opacity:1;visibility:visible;transform:none;pointer-events:auto;transition-delay:0s}
+  .gs-pop-h{
+    display:block;margin-bottom:8px;
+    font-family:'IBM Plex Mono',ui-monospace,monospace;
+    font-size:10px;letter-spacing:.12em;color:#8b9ab5;
+  }
+  .gs-pop-r{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+  .gs-pop-org{font-size:13px;font-weight:700;color:#e9eef8;line-height:1.35}
+  .gs-pop-when{
+    font-family:'IBM Plex Mono',ui-monospace,monospace;
+    font-size:10.5px;color:#8fa0c0;white-space:nowrap;
+  }
+  .gs-pop-s{display:block;margin:1px 0 9px;font-size:11.5px;color:#8b9ab5;line-height:1.45}
+  .gs-pop-s:last-child{margin-bottom:0}
+  @media (prefers-reduced-motion: reduce){.gs-pack-pop{transition:none}}
   /* Return states. Same column, same hairline — the page doesn't reshape around
      a person coming back from Stripe. */
   .gs-back{display:flex;flex-direction:column;align-items:flex-start;gap:14px;padding-top:24px;border-top:1px solid #16223c}
@@ -1136,6 +1277,7 @@ const SALE_ON = SEATS_LEFT > 0;
   .gs-bought .gs-h2,
   .gs-bought .gs-price-row,
   .gs-bought .gs-seats,
+  .gs-bought .gs-pack,
   .gs-bought #gs-formwrap,
   .gs-bought .gs-more-btn{display:none}
   .gs-bought .gs-back{border-top:none;padding-top:0}
@@ -1279,11 +1421,9 @@ const SALE_ON = SEATS_LEFT > 0;
   .gs-dash-note{font-size:12.5px;color:#877e69;line-height:1.6;max-width:52ch}
 
   /* ── WHAT'S INCLUDED + ROI ── */
-  .gs-included{max-width:740px;margin:0 auto;padding:clamp(56px,8vw,96px) clamp(20px,5vw,64px) clamp(64px,9vw,110px)}
-  .gs-included .gs-h2{margin-bottom:22px}
-  .gs-checks{display:flex;flex-direction:column;border-top:1px solid #131f38}
-  .gs-check{display:flex;gap:12px;font-size:14.5px;color:#c8d2e8;padding:10px 0;border-bottom:1px solid #131f38}
-  .gs-check span{color:#f2a83b;font-weight:700}
+  /* Now just the drawer's closing door — the checklist moved to .gs-pack in
+     the offer column. */
+  .gs-included{max-width:740px;margin:0 auto;padding:clamp(56px,8vw,96px) clamp(20px,5vw,64px) clamp(64px,9vw,110px);display:flex;justify-content:center}
   /* One hairline, at the top only — with two rows, space separates them better
      than rules did. 22px above it, not more: the form already leaves ~31px
      below the WhatsApp link (its own gap plus the error slot kept reserved so a
@@ -1380,7 +1520,6 @@ const SALE_ON = SEATS_LEFT > 0;
     .gs-mt{font-size:18px}
     .gs-md{font-size:17px}
     .gs-duke-d{font-size:17px}
-    .gs-check{font-size:17px}
     .gs-price-alt{font-size:17px}
     .gs-more-btn{font-size:15px}
     .gs-roi-l{font-size:15px}
