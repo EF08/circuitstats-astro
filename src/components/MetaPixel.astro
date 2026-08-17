@@ -43,9 +43,26 @@ const PIXEL_ID = '1402096628471311';
     // must be visible to Meta's ad optimization, not just the internal funnel.
     // One delegated listener covers every WhatsApp link on every page; capture
     // phase so a handler's stopPropagation() can't hide the tap.
+    //
+    // Every tap is still one Contact — splitting it into separate custom events
+    // would fork the history and leave the aggregate unreadable. Instead each
+    // one carries WHERE it came from, so Ads Manager can build a Custom
+    // Conversion per source (Contact + content_category = "free-eval:whatsapp")
+    // and optimise toward one without losing the other. That matters now the
+    // site-wide header CTA lands on /free-evaluation, whose only action is this
+    // tap: a free film review and "talk first about the $99 site" are about to
+    // arrive in the same bucket, and they are not the same person.
+    //
+    // The label is the link's own data-track — already unique per placement and
+    // already what the internal funnel counts, so the two agree by construction
+    // instead of by a second list somebody has to remember to update.
     document.addEventListener('click', function (e) {
       var a = e.target.closest && e.target.closest('a[href*="wa.me"]');
-      if (a) fbq('track', 'Contact');
+      if (!a) return;
+      fbq('track', 'Contact', {
+        content_category: a.getAttribute('data-track') || 'whatsapp:unlabelled',
+        content_name: location.pathname,
+      });
     }, true);
   })();
   </script>

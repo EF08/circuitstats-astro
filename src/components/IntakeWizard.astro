@@ -471,7 +471,10 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
     // than being pushed to the end: a parent whose clips are on a laptop at
     // home is not blocked, they say "skip for now" and get a private upload
     // link in the confirmation email.
-    var OPTIONAL = { '5': 1, '7': 1, '8': 1, 'film': 1, 'fullgame': 1, 'custom': 1 };
+    // 'stats' is skippable too: a parent who doesn't have his averages to hand
+    // shouldn't be stuck on the one slide that exists because our data let them
+    // down. The site renders without a stat block; a dead end renders nothing.
+    var OPTIONAL = { '5': 1, '7': 1, '8': 1, 'stats': 1, 'film': 1, 'fullgame': 1, 'custom': 1 };
     function optionalAt(n) { return !!OPTIONAL[slideKeyFor(n)]; }
 
     // Funnel + pixel go through the page's own helpers when they exist, so this
@@ -535,16 +538,26 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
     };
 
     // ── validity ─────────────────────────────────────────────────────────────
+    // Gated by slide KEY, never by step number.
+    //
+    // 'stats' is conditional, so on any run that includes it — every player our
+    // data doesn't already carry — each step from 6 onward is shifted by one,
+    // and a number-based rule then validated the wrong question. "His stats"
+    // was being gated on the tagline, which that parent had not reached yet, so
+    // Next could never enable and the run dead-ended there. The slide after it
+    // was gated on strengths for the same reason, and the real strengths slide
+    // was left ungated. Everything else in this file already derives from
+    // slideKeys() precisely to avoid this; validity was the one holdout.
     var EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     function valid(n) {
-      if (n === 1) return !!d.playerName.trim() && EMAIL.test(d.email.trim());
-      if (n === 2) return !!d.classYear && /^\d{4}$/.test(d.birthYear.trim());
-      if (n === 3) return !!d.city.trim() && !!d.region.trim();
-      if (n === 4) return d.position.length > 0 && !!d.height.trim();
-      if (n === 6) return d.tagline.trim().length >= 10;
-      if (n === 9) return d.strengths.length >= STRENGTH_MIN && d.strengths.length <= STRENGTH_MAX;
-      var fi = filmIndex(n);
-      if (fi > -1) {
+      var t = slideKeyFor(n);
+      if (t === '1') return !!d.playerName.trim() && EMAIL.test(d.email.trim());
+      if (t === '2') return !!d.classYear && /^\d{4}$/.test(d.birthYear.trim());
+      if (t === '3') return !!d.city.trim() && !!d.region.trim();
+      if (t === '4') return d.position.length > 0 && !!d.height.trim();
+      if (t === '6') return d.tagline.trim().length >= 10;
+      if (t === '9') return d.strengths.length >= STRENGTH_MIN && d.strengths.length <= STRENGTH_MAX;
+      if (t === 'film') {
         // If the bucket isn't reachable, film cannot be a requirement — the
         // alternative is a parent who has answered nine questions and now
         // cannot move forward or back out with anything saved. The submission
@@ -556,24 +569,20 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
         // then accepting 1 teaches people to ignore the copy.
         // Uploads still in flight don't block: they finish while the parent
         // moves on, and Send is what waits for them.
-        return clipsFor(fi).length >= MIN_CLIPS;
+        return clipsFor(filmIndex(n)).length >= MIN_CLIPS;
       }
-      {
-        var t = slideKeyFor(n);
-        if (t === 'domain') {
-          // Well-formed is non-negotiable — "abcd" used to pass. Registered by
-          // someone else is equally blocking unless they say they're the
-          // someone else, because otherwise this is a site with nowhere to go.
-          if (!DOMAIN_RE.test(d.domain.trim().toLowerCase())) return false;
-          if (domStatus === 'taken' && !d.domainOwned) return false;
-          // 'unknown' passes: the registry not answering is our problem, and
-          // holding a paying customer hostage to a third party's uptime is not
-          // a rule, it is an outage.
-          return true;
-        }
-        return true;   // fullgame, custom, review
+      if (t === 'domain') {
+        // Well-formed is non-negotiable — "abcd" used to pass. Registered by
+        // someone else is equally blocking unless they say they're the
+        // someone else, because otherwise this is a site with nowhere to go.
+        if (!DOMAIN_RE.test(d.domain.trim().toLowerCase())) return false;
+        if (domStatus === 'taken' && !d.domainOwned) return false;
+        // 'unknown' passes: the registry not answering is our problem, and
+        // holding a paying customer hostage to a third party's uptime is not
+        // a rule, it is an outage.
+        return true;
       }
-      return true;
+      return true;   // 5, 7, 8, stats, fullgame, custom, addons, review
     }
     // One label plus one or two TLD segments — name.com and name.co.uk, not
     // a bare word and not somebody's subdomain, which they could not register.
@@ -1459,9 +1468,34 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
         inp.id = 'wz-stat-' + s.k;
         inp.type = 'text'; inp.inputMode = 'decimal'; inp.maxLength = 6;
         inp.autocomplete = 'off';
-        inp.value = s.v;
-        inp.placeholder = /%$/.test(s.k) ? '45.0' : '20.5';
-        inp.addEventListener('input', function () { s.v = inp.value; save(); });
+        // Percentage stats carry their sign in the field. Typing "45" shows
+        // "45%" — the unit is never a thing the parent has to remember to add,
+        // and it can't end up on some rows and not others. Stored without it:
+        // the key already says FG%, so a stored "45%" would read FG% 45%.
+        var pct = /%$/.test(s.k);
+        var num = function (v) { return String(v == null ? '' : v).replace(/[^0-9.]/g, '').slice(0, 5); };
+        if (pct) s.v = num(s.v);   // an older draft may have stored the sign
+        inp.value = pct && s.v ? s.v + '%' : s.v;
+        inp.placeholder = pct ? '45.0' : '20.5';
+        inp.addEventListener('input', function () {
+          if (pct) {
+            var raw = num(inp.value);
+            inp.value = raw ? raw + '%' : '';
+            // Behind the sign, so typing continues where they expect instead of
+            // after a character they never added.
+            try { inp.setSelectionRange(raw.length, raw.length); } catch (e) {}
+            s.v = raw;
+          } else {
+            s.v = inp.value;
+          }
+          save();
+        });
+        // Clicking or tabbing in lands the caret after the digits, not past the
+        // sign — otherwise the first keystroke appears on the wrong side of it.
+        if (pct) inp.addEventListener('focus', function () {
+          var raw = num(inp.value);
+          setTimeout(function () { try { inp.setSelectionRange(raw.length, raw.length); } catch (e) {} }, 0);
+        });
         cell.appendChild(lab); cell.appendChild(inp);
         grid.appendChild(cell);
       });
@@ -1971,6 +2005,18 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
   }
   .wz-inp::placeholder{color:#5d6b8a}
   .wz-inp:focus{border-color:#f2a83b}
+  /* Chrome repaints an autofilled field near-white and ignores `background`
+     entirely — the UA draws its own highlight underneath. A huge inset shadow
+     is the only thing that covers it, and the text colour has to be forced
+     separately or it stays black on the dark field. */
+  .wz-inp:-webkit-autofill,
+  .wz-inp:-webkit-autofill:hover,
+  .wz-inp:-webkit-autofill:focus{
+    -webkit-text-fill-color:#e9eef8;
+    -webkit-box-shadow:0 0 0 1000px #0a1122 inset;
+    box-shadow:0 0 0 1000px #0a1122 inset;
+    caret-color:#f2a83b;
+  }
   .wz-inp-s{max-width:130px}
   .wz-ta{resize:none;line-height:1.45}
   .wz-count{margin-top:8px;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12.5px;color:#6d7c9c;text-align:right}
@@ -2010,16 +2056,44 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
      the grid takes exactly what is left. */
   .wz-slide[data-step="stats"]{display:flex;flex-direction:column}
   .wz-statpick{flex:none}
+  /* minmax(0,1fr), not 1fr: a bare 1fr floors each track at its content's
+     min-content width, and an <input> reports its intrinsic ~20-character
+     width there no matter what min-width the flex item carries. That pinned
+     both tracks at 260px inside a 354px grid and put a horizontal scrollbar in
+     the middle of the slide. */
   .wz-statgrid{
     flex:1;min-height:0;overflow-y:auto;
-    display:grid;grid-template-columns:1fr 1fr;gap:9px 12px;align-content:start;
+    display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:9px 12px;align-content:start;
   }
   .wz-statgrid :global(.wz-statcell){display:flex;align-items:center;gap:9px}
   .wz-statgrid :global(.wz-statlab){
     flex:none;width:42px;font-family:'IBM Plex Mono',ui-monospace,monospace;
     font-size:12.5px;font-weight:600;color:#f2a83b;
   }
-  .wz-statgrid :global(.wz-statinp){padding:9px 10px;font-size:15px}
+  /* Self-contained on purpose — it must NOT lean on .wz-inp.
+     These inputs are built in JS, so they never get Astro's scope attribute
+     and the scoped .wz-inp rule silently misses them: the class was on the
+     element and none of it applied, which is why they rendered as white
+     browser-default boxes with black text next to a dark form. Everything the
+     field looks like is therefore repeated here, inside :global().
+     flex:1 + min-width:0 rather than the .wz-inp width:100%, because the cell
+     is a flex row that also holds a 42px label. 16px for the same reason
+     .wz-inp gives: below it, iOS Safari zooms the page on focus and the wizard
+     loses its own footer. */
+  .wz-statgrid :global(.wz-statinp){
+    width:auto;flex:1;min-width:0;
+    background:#0a1122;border:1px solid #1b2740;border-radius:10px;
+    padding:9px 10px;color:#e9eef8;font-size:16px;
+    font-family:'IBM Plex Mono',ui-monospace,monospace;
+    text-align:center;outline:none;caret-color:#f2a83b;
+    transition:border-color .15s;
+  }
+  .wz-statgrid :global(.wz-statinp::placeholder){color:#5d6b8a}
+  .wz-statgrid :global(.wz-statinp:focus){border-color:#f2a83b}
+  .wz-statgrid :global(.wz-statinp:-webkit-autofill){
+    -webkit-text-fill-color:#e9eef8;
+    -webkit-box-shadow:0 0 0 1000px #0a1122 inset;
+  }
 
   /* ── film ── six slots, 3x2. Countable at a glance, and the empty ones are
      the instruction: nobody needs telling that a dashed square wants a clip.
