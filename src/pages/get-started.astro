@@ -673,33 +673,36 @@ const SALE_ON = SEATS_LEFT > 0;
         var q = 'abri fazliu';
         var qEl = document.getElementById('iph-serp-q');
         var i = 0;
+        // Paced to be WATCHED, not noticed: typing you can follow, then the
+        // results hold long enough to actually read the top card before the
+        // tap arrives. First cut of this ran ~3s total and read as a flicker.
         var typer = setInterval(function () {
           qEl.textContent = q.slice(0, ++i);
           if (i >= q.length) {
             clearInterval(typer);
             document.getElementById('iph-serp-caret').style.display = 'none';
-            setTimeout(results, 280);
+            setTimeout(results, 650);
           }
-        }, 60);
+        }, 115);
         function results() {
           document.getElementById('iph-serp-res').hidden = false;
-          setTimeout(tap, 1100);
+          setTimeout(tap, 2700);
         }
         function tap() {
           document.getElementById('iph-serp-tap').hidden = false;
-          setTimeout(leave, 500);
+          setTimeout(leave, 750);
         }
         function leave() {
           serp.classList.add('iph-serp-out');
           if (omniUrl) omniUrl.textContent = 'abrifazliu.com';
-          setTimeout(function () { serp.remove(); finish(); }, 420);
+          setTimeout(function () { serp.remove(); finish(); }, 560);
         }
       }
       // Observe the phone, not the overlay: a [hidden] element has no box, so
       // an observer on the overlay itself would never fire.
       if (!('IntersectionObserver' in window)) { setTimeout(play, 400); return; }
       var io = new IntersectionObserver(function (entries) {
-        if (entries.some(function (e) { return e.isIntersecting; })) { io.disconnect(); setTimeout(play, 300); }
+        if (entries.some(function (e) { return e.isIntersecting; })) { io.disconnect(); setTimeout(play, 550); }
       }, { threshold: 0.35 });
       io.observe(phone);
     })();
@@ -1161,7 +1164,7 @@ const SALE_ON = SEATS_LEFT > 0;
   .iph-serp{
     position:absolute;inset:0;z-index:2;background:#fff;
     font-family:arial,sans-serif;padding:20px 18px 0;overflow:hidden;
-    transition:opacity .38s ease;
+    transition:opacity .5s ease;
   }
   .iph-serp[hidden]{display:none}
   .iph-serp.iph-serp-out{opacity:0;pointer-events:none}
@@ -1184,8 +1187,8 @@ const SALE_ON = SEATS_LEFT > 0;
   .iph-serp-res[hidden]{display:none}
   .iph-serp-r1,.iph-serp-r2{padding:13px 2px}
   @media (prefers-reduced-motion: no-preference){
-    .iph-serp-r1,.iph-serp-r2{animation:serpIn .35s ease-out both}
-    .iph-serp-r2{animation-delay:.09s}
+    .iph-serp-r1,.iph-serp-r2{animation:serpIn .45s ease-out both}
+    .iph-serp-r2{animation-delay:.14s}
   }
   @keyframes serpIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
   .iph-serp-r1{position:relative}
@@ -1207,7 +1210,7 @@ const SALE_ON = SEATS_LEFT > 0;
     background:rgba(26,13,171,.20);border:1.5px solid rgba(26,13,171,.32);
   }
   .iph-serp-tap[hidden]{display:none}
-  @media (prefers-reduced-motion: no-preference){.iph-serp-tap{animation:serpTap .5s ease-out both}}
+  @media (prefers-reduced-motion: no-preference){.iph-serp-tap{animation:serpTap .65s ease-out both}}
   @keyframes serpTap{from{transform:scale(.4);opacity:0}30%{opacity:1}to{transform:scale(1.15);opacity:0}}
 
   /* Coarse pointers: the shield keeps swipes scrolling the page (the iframe
