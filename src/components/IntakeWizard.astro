@@ -95,7 +95,6 @@ const TAIL = pipeline
       <!-- 1 — the old form, verbatim. Lead fires on Next. -->
       <section class="wz-slide" data-step="1" hidden>
         <h3 class="wz-h">Who are we building for?</h3>
-        <p class="wz-sub">Two things now — the rest can wait.</p>
         <label class="wz-lbl" for="wz-playerName">Player's full name</label>
         <input class="wz-inp" id="wz-playerName" data-field="playerName" type="text" maxlength="120" autocomplete="off" enterkeyhint="next" />
         <label class="wz-lbl" for="wz-email">Your email</label>
@@ -2010,6 +2009,10 @@ const TAIL = pipeline
   .wz-own input{width:18px;height:18px;accent-color:#f2a83b;cursor:pointer;flex:none}
 
   .wz-lbl{display:block;font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#8b9ab5;margin:0 0 7px}
+  /* Slides without a sub line: the sub's bottom margin was what held the
+     heading and the first label apart, so a label straight after the heading
+     carries the same 22px itself. */
+  .wz-h + .wz-lbl{margin-top:22px}
   .wz-lbl + .wz-inp,.wz-lbl + .wz-at{margin-bottom:18px}
   /* The @ sits in the field rather than in the value: it labels the shape of
      the answer without becoming part of it. Gold on focus, so the field the
