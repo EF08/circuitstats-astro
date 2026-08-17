@@ -505,6 +505,7 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
     // ── draft ────────────────────────────────────────────────────────────────
     function save() {
       try { localStorage.setItem(KEY, JSON.stringify({ step: step, d: d, leadFired: leadFired })); } catch (e) {}
+      syncDraft();   // no-op until slide 1 has created the server row
     }
     function load() {
       try {
@@ -1197,10 +1198,15 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
       });
     }
 
-    // The server-side draft is created on demand, at the first film screen, not
-    // when the wizard opens: a row per opened form would be mostly bounces, and
-    // the only thing that genuinely needs a server record is film — the clips
-    // live in R2 under keys nothing else remembers.
+    // The server-side draft is created the moment slide 1 clears — a real name
+    // and a working email address — and not when the wizard opens. Those two
+    // fields ARE the lead, so the row exists from the first point there is
+    // something worth keeping: a parent who types a valid address and then
+    // vanishes is reachable, which is the whole reason to store any of this
+    // early. (It used to wait for the first film screen, on the grounds that
+    // clips were the only thing that truly needed a server record. That traded
+    // away every abandoned email above the film slide, which was the wrong
+    // trade.) An opened-and-bounced form still writes nothing.
     var tokenPromise = null;
     function ensureToken() {
       if (d.intakeToken) return Promise.resolve(d.intakeToken);
@@ -1211,11 +1217,38 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
         // from the player's name, so a draft whose answers haven't landed yet
         // produces intake/untitled-… — and the confirm step then rejects a key
         // it no longer recognises. The upload has to wait for the answers.
-        return api('PATCH', '/intake/' + o.token, { answers: answers() })
-          .catch(function () {})
+        var body = answers();
+        lastSynced = JSON.stringify(body);
+        return api('PATCH', '/intake/' + o.token, { answers: body })
+          .catch(function () { lastSynced = ''; })
           .then(function () { return o.token; });
       }).catch(function (e) { tokenPromise = null; throw e; });
       return tokenPromise;
+    }
+
+    // Server autosave. localStorage is the parent's copy of the draft; this is
+    // ours, and once slide 1 has created the row it has to keep up — an
+    // abandoned draft is only worth following up on if the answers in it are
+    // the ones they actually typed, not the ones they had at slide 1. save()
+    // runs on every keystroke, hence the debounce and the unchanged-payload
+    // check; the request itself is small.
+    //
+    // Never creates a token. No token means nothing on the server to update,
+    // and slide 1 is the one place allowed to make one.
+    var syncTimer = null, lastSynced = '';
+    function syncDraft() {
+      if (!d.intakeToken) return;
+      clearTimeout(syncTimer);
+      syncTimer = setTimeout(function () {
+        var body = answers();
+        var json = JSON.stringify(body);
+        if (json === lastSynced) return;
+        lastSynced = json;
+        // 404s once the draft is submitted — saveAnswers only matches drafts.
+        // Expected, and there is nothing to do about it.
+        api('PATCH', '/intake/' + d.intakeToken, { answers: body })
+          .catch(function () { lastSynced = ''; });
+      }, 1500);
     }
 
     // ── full-game links ──────────────────────────────────────────────────────
@@ -1615,6 +1648,13 @@ const TAIL = ['fullgame', 'domain', 'custom', 'addons', 'review'];
     elSkip.addEventListener('click', function () { go(step + 1); });
     elNext.addEventListener('click', function () {
       if (!valid(step)) return;
+      // Slide 1 cleared means a real name and a working email. Bank it on the
+      // server before anything else: from here on the parent is reachable even
+      // if they close the tab on the next question. Not inside the leadFired
+      // guard below — ensureToken is idempotent, so running it on every pass
+      // through slide 1 is free and doubles as the retry for a first attempt
+      // that failed on a bad connection.
+      if (step === 1) ensureToken().catch(function () {});
       // The lead is real the moment we have a name and a working address —
       // fired here, not at the end, so the ads keep optimising on the same
       // event at the same volume they always did.
