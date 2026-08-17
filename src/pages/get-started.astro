@@ -120,7 +120,9 @@ const SALE_ON = SEATS_LEFT > 0;
                 <div class="iph-serp" id="iph-serp" hidden aria-hidden="true">
                   <div class="iph-serp-logo"><span style="color:#4285F4">G</span><span style="color:#EA4335">o</span><span style="color:#FBBC05">o</span><span style="color:#4285F4">g</span><span style="color:#34A853">l</span><span style="color:#EA4335">e</span></div>
                   <div class="iph-serp-box">
-                    <span class="iph-serp-lens" aria-hidden="true"></span>
+                    {/* One drawn glyph, not a circle plus a positioned handle —
+                        those two never quite touched. */}
+                    <svg class="iph-serp-lens" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="5" fill="none" stroke="#9aa0a6" stroke-width="2"/><line x1="10.8" y1="10.8" x2="14.3" y2="14.3" stroke="#9aa0a6" stroke-width="2" stroke-linecap="round"/></svg>
                     <span class="iph-serp-q" id="iph-serp-q"></span><span class="iph-serp-caret" id="iph-serp-caret"></span>
                   </div>
                   <div class="iph-serp-res" id="iph-serp-res" hidden>
@@ -681,16 +683,16 @@ const SALE_ON = SEATS_LEFT > 0;
           if (i >= q.length) {
             clearInterval(typer);
             document.getElementById('iph-serp-caret').style.display = 'none';
-            setTimeout(results, 900);
+            setTimeout(results, 1260);
           }
-        }, 345);
+        }, 480);
         function results() {
           document.getElementById('iph-serp-res').hidden = false;
-          setTimeout(tap, 2700);
+          setTimeout(tap, 3800);
         }
         function tap() {
           document.getElementById('iph-serp-tap').hidden = false;
-          setTimeout(leave, 750);
+          setTimeout(leave, 1050);
         }
         function leave() {
           serp.classList.add('iph-serp-out');
@@ -1169,18 +1171,17 @@ const SALE_ON = SEATS_LEFT > 0;
   .iph-serp[hidden]{display:none}
   .iph-serp.iph-serp-out{opacity:0;pointer-events:none}
   .iph-serp-logo{font-size:23px;font-weight:700;letter-spacing:-.02em;text-align:center;margin:8px 0 16px}
+  /* No flex gap in the box: gap would also open 11px between the text and
+     the caret, which is exactly the "floating caret" bug — the lens carries
+     its own margin instead, so the caret hugs the last typed character. */
   .iph-serp-box{
-    display:flex;align-items:center;gap:11px;
+    display:flex;align-items:center;
     border:1px solid #dfe1e5;border-radius:23px;padding:12px 17px;
     box-shadow:0 1px 6px rgba(32,33,36,.12);
   }
-  .iph-serp-lens{width:11px;height:11px;border:2px solid #9aa0a6;border-radius:50%;flex:none;position:relative}
-  .iph-serp-lens::after{content:'';position:absolute;width:2px;height:5px;background:#9aa0a6;transform:rotate(-45deg);left:10px;top:9px}
+  .iph-serp-lens{flex:none;margin-right:11px}
   .iph-serp-q{font-size:15.5px;color:#202124;white-space:nowrap}
-  .iph-serp-caret{
-    display:inline-block;width:1.5px;height:17px;background:#1a73e8;
-    vertical-align:text-bottom;margin-left:1px;
-  }
+  .iph-serp-caret{width:1.5px;height:17px;background:#1a73e8;margin-left:1px;flex:none}
   @media (prefers-reduced-motion: no-preference){.iph-serp-caret{animation:serpBlink 1s steps(2) infinite}}
   @keyframes serpBlink{50%{opacity:0}}
   .iph-serp-res{margin-top:20px}
