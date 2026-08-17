@@ -474,6 +474,31 @@ const SITE = 'https://www.circuitstats.com';
         });
       });
 
+      // Lead, on exactly the definition the wizard uses: a real name and a
+      // valid email address, and nothing further. It used to wait for a
+      // successful submit — a much later and much stronger action — so the two
+      // pitch pages were feeding two different meanings into the one signal the
+      // campaigns optimise on. Advanced matching mirrors the wizard too, so a
+      // lead from either page matches the same way.
+      (function () {
+        var EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        var elP = document.getElementById('gs-player');
+        var elE = document.getElementById('gs-email');
+        if (!elP || !elE) return;
+        var leadFired = false;
+        function checkLead() {
+          if (leadFired) return;
+          if (!elP.value.trim() || !EMAIL.test(elE.value.trim())) return;
+          leadFired = true;
+          if (window.fbq) {
+            if (window.META_PIXEL_ID) window.fbq('init', window.META_PIXEL_ID, { em: elE.value.trim().toLowerCase() });
+            window.fbq('track', 'Lead');
+          }
+        }
+        elP.addEventListener('input', checkLead);
+        elE.addEventListener('input', checkLead);
+      })();
+
       form.addEventListener('submit', function (e) {
         e.preventDefault();
         var btn = document.getElementById('gs-submit');
@@ -495,9 +520,9 @@ const SITE = 'https://www.circuitstats.com';
         }).then(function (r) {
           if (!r.ok) throw new Error('status ' + r.status);
           track('get-started:submit-success');
-          // Meta ads conversion: a completed request is the Lead event the ad
-          // campaigns optimize toward. No-op until the pixel is live (MetaPixel.astro).
-          if (window.fbq) window.fbq('track', 'Lead');
+          // No pixel event here. Lead already fired the moment the name and
+          // email were valid (above) — firing again on submit would count the
+          // same person twice and move the definition.
           document.getElementById('gs-formwrap').hidden = true;
           document.getElementById('gs-done').hidden = false;
         }).catch(function (e) {

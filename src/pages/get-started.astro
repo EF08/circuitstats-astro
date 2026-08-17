@@ -799,17 +799,33 @@ const SALE_ON = SEATS_LEFT > 0;
         }
         try { localStorage.removeItem('cs-intake-pending'); } catch (e) {}
         track('get-started:intake-paid');
-        // The money event. Also sent server-side from the webhook, because a
-        // browser returning from a redirect after a long session is exactly
-        // where client-side attribution goes missing — and if they close the
-        // tab on Stripe's screen, this half never fires at all.
+        // The money event — a completed Stripe checkout and nothing else.
         //
-        // eventID is Stripe's session id and the webhook sends the same one, so
-        // Meta collapses the pair into one conversion. Without it the two
-        // halves would double-count every sale.
-        if (window.fbq) {
-          var sid = q.get('sid');
-          window.fbq('track', 'Purchase', { value: 99, currency: 'CAD' }, sid ? { eventID: sid } : undefined);
+        // It used to fire straight off `?paid=1` for a flat CA$99. That trusted
+        // the URL, so anyone who opened /get-started?paid=1 minted a conversion
+        // in the ad account, and it ignored add-ons (up to CA$297, plus any
+        // custom quote, all on the same invoice) so the biggest sales were the
+        // most under-reported. Now the session id goes back to Stripe through
+        // our backend, and the event fires only on its word, for its number.
+        //
+        // No sid means no Purchase. A sale we cannot verify is not a sale we
+        // report.
+        //
+        // eventID is Stripe's session id and the webhook's Conversions API half
+        // sends the same one, so Meta collapses the pair into a single
+        // conversion the day a CAPI token exists. Until then this is the only
+        // half that fires, which is why it has to be right.
+        var sid = q.get('sid');
+        if (window.fbq && sid) {
+          fetch(API + '/intake/paid?sid=' + encodeURIComponent(sid))
+            .then(function (r) { return r.json(); })
+            .then(function (o) {
+              if (!o || !o.paid) return;
+              window.fbq('track', 'Purchase',
+                { value: o.amount, currency: o.currency || 'CAD' },
+                { eventID: sid });
+            })
+            .catch(function () {});
         }
       } else {
         document.getElementById('gs-unpaid').hidden = false;
