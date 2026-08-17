@@ -693,6 +693,10 @@ const SALE_ON = SEATS_LEFT > 0;
       // template default stays abrifazliu.com so a no-JS page (which hides
       // the SERP) never claims to be Google.
       if (omniUrl) omniUrl.textContent = 'google.com';
+      // Also pre-paint: the mobile crop-fade off while white Google is up
+      // (it smeared page-dark over the paper); leave() brings it back.
+      var fit = document.getElementById('iph-fit');
+      if (fit) fit.classList.add('iph-serp-live');
       function play() {
         var q = 'abri fazliu';
         var qEl = document.getElementById('iph-serp-q');
@@ -707,10 +711,12 @@ const SALE_ON = SEATS_LEFT > 0;
             document.getElementById('iph-serp-caret').style.display = 'none';
             setTimeout(results, 550);
           }
-        }, 210);
+        }, 180);
         function results() {
           document.getElementById('iph-serp-res').hidden = false;
-          setTimeout(tap, 1680);
+          // A full two-count with the results on screen before the tap — long
+          // enough to read the top card, the beat the whole act exists for.
+          setTimeout(tap, 2000);
         }
         function tap() {
           document.getElementById('iph-serp-tap').hidden = false;
@@ -719,6 +725,7 @@ const SALE_ON = SEATS_LEFT > 0;
         function leave() {
           serp.classList.add('iph-serp-out');
           if (omniUrl) omniUrl.textContent = 'abrifazliu.com';
+          if (fit) fit.classList.remove('iph-serp-live');
           setTimeout(function () { serp.remove(); finish(); }, 560);
         }
       }
@@ -1118,7 +1125,12 @@ const SALE_ON = SEATS_LEFT > 0;
       content:'';position:absolute;left:0;right:0;bottom:0;height:76px;
       z-index:4;pointer-events:none;
       background:linear-gradient(to bottom,rgba(7,13,26,0),#070d1a 92%);
+      transition:opacity .5s ease;
     }
+    /* While Google is on screen the fade would smear page-dark over white
+       paper, which read as a rendering glitch — the crop cuts clean instead,
+       and the fade eases back in with the cut to the dark site. */
+    .iph-fit.iph-serp-live::after{opacity:0}
   }
   .iph{
     width:402px;height:844px;transform-origin:top center;
