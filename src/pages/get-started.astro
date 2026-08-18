@@ -1434,25 +1434,25 @@ const SALE_ON = SEATS_LEFT > 0;
      outlived the fields. */
   #gs-formwrap{display:flex;flex-direction:column;gap:16px;border-top:1px solid #16223c;padding-top:24px}
   .gs-submit{align-self:stretch}
-  /* The package: dense on purpose — eleven rows between the price and the
-     button must read as one glance-able bill of goods, not a reading task, so
-     rows run tighter and smaller than the drawer version they replaced
-     (13.5px meets the fine-print floor at every width). ✓ and + share one
-     fixed slot so the text edge holds; prices are mono gold like the wizard's
-     add-on slide, so the same figure in checkout reads as already met. */
+  /* The package: eleven rows between the price and the button, one glance-able
+     bill of goods. Sized up 20% on Andy's call (2026-08-18): 16px rows — the
+     checklist is the offer's substance and had been reading as fine print.
+     ✓ and + share one fixed slot so the text edge holds; prices are mono gold
+     like the wizard's add-on slide, so the same figure in checkout reads as
+     already met. */
   .gs-pack{margin-top:24px;border-top:1px solid #131f38}
   .gs-pack-row{
     display:flex;gap:10px;align-items:baseline;
     padding:6.5px 0;border-bottom:1px solid #131f38;
-    font-size:13.5px;line-height:1.45;color:#c8d2e8;
+    font-size:16px;line-height:1.45;color:#c8d2e8;
   }
   .gs-pack-row:last-child{border-bottom:none}
-  .gs-pack-ico{flex:none;width:14px;text-align:center;color:#f2a83b;font-weight:700}
-  .gs-pack-plus{font-size:15px}
+  .gs-pack-ico{flex:none;width:17px;text-align:center;color:#f2a83b;font-weight:700}
+  .gs-pack-plus{font-size:18px}
   .gs-pack-txt{flex:1;min-width:0}
   .gs-pack-p{
     flex:none;font-family:'IBM Plex Mono',ui-monospace,monospace;
-    font-size:12.5px;font-weight:600;color:#f2a83b;font-variant-numeric:tabular-nums;
+    font-size:15px;font-weight:600;color:#f2a83b;font-variant-numeric:tabular-nums;
   }
   .gs-pack-div{
     padding:12px 0 3px;
