@@ -391,7 +391,7 @@ const TAIL = pipeline
           <span class="wz-charge-l">Today</span>
           <span class="wz-charge-v"><s class="wz-charge-was" id="wz-charge-was">US$399</s><span id="wz-charge-v">US$99</span></span>
         </div>}
-        {!pipeline && <p class="wz-charge-n" id="wz-charge-n">then <s class="wz-charge-was">US$39</s> US$9/month to host & keep website updated</p>}
+        {!pipeline && <p class="wz-charge-n" id="wz-charge-n">then <s class="wz-charge-was">US$39</s> US$9/month to host website, keep it updated, and renew domain</p>}
       </section>
 
       <section class="wz-slide wz-slide-done" data-step="done" hidden>
@@ -1349,7 +1349,7 @@ const TAIL = pipeline
       var v = document.getElementById('wz-charge-v');
       if (v) v.textContent = CUR + '99';   // paintBill overwrites with the real total on review
       var n = document.getElementById('wz-charge-n');
-      if (n) n.innerHTML = 'then <s class="wz-charge-was">' + CUR + '39</s> ' + CUR + '9/month to host & keep website updated';
+      if (n) n.innerHTML = 'then <s class="wz-charge-was">' + CUR + '39</s> ' + CUR + '9/month to host website, keep it updated, and renew domain';
     }
     function loadAddons() {
       if (CATALOG) { paintAddons(); return; }
