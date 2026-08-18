@@ -838,6 +838,31 @@ const SITE = 'https://www.circuitstats.com';
             : 'Nobody tapped WhatsApp, email, or call') : '') +
         '</div>';
 
+      // ── 3a0. Did the demo inside the phone land? ──
+      // The act at the very top of the page, above everything the ladder below
+      // measures. Kept out of that ladder on purpose: every rung there is a
+      // fact about position (reaching the price proves the phone above it was
+      // on screen), and watching a demo is a fact about time — someone can
+      // scroll past the phone in two seconds. Folding it in would have credited
+      // a watch-through to everyone who saw the price.
+      var ha = f.heroAct;
+      if (ha) {
+        var haSince = ha.since
+          ? new Date(ha.since).toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric' })
+          : null;
+        html += card('Did the demo inside the phone land?',
+          ha.hasData
+            ? 'The act at the top of the page: the search types itself out, his site comes up first, the tap. It runs about six seconds, and its clock only ticks while the tab is in front <em>and</em> the phone is on screen — so <strong>watched it through</strong> means the whole thing played out in front of them, not that six seconds of wall time went by.'
+            : 'Not measured yet' + (haSince ? ' — this started on ' + haSince : '') + '. Reduced-motion visitors are shown the site with no act at all, so they can only ever reach the first rung.',
+          ha.hasData
+            ? barList([
+                { label: 'The phone reached them', count: ha.reached,        share: 1 },
+                { label: 'Saw him rank first',     count: ha.sawResults,     share: ha.reached ? ha.sawResults / ha.reached : 0 },
+                { label: 'Watched it through',     count: ha.watchedThrough, share: ha.watchThroughRate },
+              ])
+            : '<div class="db-empty">Nobody has reached the phone since this started being measured.</div>');
+      }
+
       // ── 3a. How far down the pitch they scroll ──
       // Section-reach events from /get-started (see its scroll tracker). Same
       // people-not-events counting as the funnel; the backend cascades the
@@ -1026,12 +1051,14 @@ const SITE = 'https://www.circuitstats.com';
           ], a.geo || [], 'No location data.')));
 
       html += card('Where visits come from',
-        'Grouped by kind, counted from <strong>visits only</strong> — clicks between pages of your own site are browsing, not a traffic source, so they are not in this list.',
+        'Grouped by kind, counted from <strong>visits only</strong> — clicks between pages of your own site are browsing, not a traffic source, so they are not in this list. ' +
+        '<strong>Paid</strong> and <strong>Tagged link</strong> come from the tag on the link itself rather than a referrer, which is the only way an ad click is visible at all.',
         barList(groups, { empty: 'No visits in this range.' }),
-        disclosure('Break down by exact site',
+        disclosure('Break down by exact source',
           barList((a.sourceHosts || []).map(function (h) { return { label: h.host, count: h.count }; }),
             { empty: 'No referring sites yet — all visits were direct.' }) +
-          '<div class="db-note" style="margin-top:14px"><strong>Direct</strong> (' + n(a.direct) + ') means no referrer was sent: typed the URL, a bookmark, a link from an app, or a browser that strips referrers.</div>')
+          '<div class="db-note" style="margin-top:14px">Entries with dots are the site the visit came from. Entries without are our own tags on the link — <code>meta-ad</code> and <code>google-ad</code> for ad clicks, the <code>d1-</code>/<code>aau-</code>/<code>prep-</code> tags for outreach emails, otherwise whatever <code>utm_source</code> said. ' +
+          '<strong>Direct</strong> (' + n(a.direct) + ') is what is left: no referrer and no tag — typed the URL, a bookmark, a link from an app, or a browser that strips referrers. Ad clicks used to land here.</div>')
       );
 
       // ── 5. What's pulling the traffic ──
@@ -1161,7 +1188,7 @@ const SITE = 'https://www.circuitstats.com';
             return '<span title="' + esc(r.displayTime || '') + '">' + esc(ago(r.visitedAt)) + '</span>'; } },
         { h: 'Location', v: function (r) { return r.location || '—'; } },
         { h: 'Network', v: function (r) { return r.org || '—'; } },
-        { h: 'Came from', v: function (r) { return sourceOf(r); } },
+        { h: 'Came from', v: function (r) { return r.source || 'Direct'; } },
         { h: 'Pages', v: function (r) { return n(r.views); }, num: true },
         { h: 'Read', v: function (r) { return (r.pages || []).length ? r.pages.join(', ') : '—'; } },
       ], logRows, 'No visitors yet.');
@@ -1172,13 +1199,6 @@ const SITE = 'https://www.circuitstats.com';
       var btn = el('db-lognext');
       if (btn) btn.addEventListener('click', function () { loadLog(false); });
     }
-    // Readable origin for a visitor row: the site they came from, or direct.
-    function sourceOf(r) {
-      if (!r.referrer) return 'Direct';
-      try { return new URL(r.referrer).hostname.replace(/^www\./, '') || 'Direct'; }
-      catch (e) { return 'Direct'; }
-    }
-
     // ── Load ─────────────────────────────────────────────────────────────────
     var inflight = 0;
     async function load() {

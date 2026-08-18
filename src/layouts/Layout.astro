@@ -256,12 +256,33 @@ const navIcons: Record<string, string> = {
   })();
 
   // Fire-and-forget visit tracking (feeds the /dashboard analytics), verbatim from the app.
+  //
+  // Where the visit came from is two fields, not one. `referrer` covers organic
+  // and shared links; `src` is the tag we put on the link ourselves. The tag
+  // used to be ?src= alone, which meant paid traffic — the traffic we pay to
+  // measure — landed as "Direct": Meta's in-app browser sends no referrer at
+  // all, so an ad click and someone typing the URL were the same row. The ad
+  // platforms' own markers fill that in, in the same field, so nothing
+  // downstream needs a second code path to read them.
   (function () {
+    var q = new URLSearchParams(location.search);
+    function src() {
+      var tag = q.get('src');                       // our outreach-email tag wins
+      if (tag) return tag;
+      var utm = q.get('utm_source');
+      if (utm) {
+        var campaign = q.get('utm_campaign');
+        return campaign ? utm + ':' + campaign : utm;
+      }
+      if (q.get('fbclid')) return 'meta-ad';        // Meta click id, no utm set
+      if (q.get('gclid')) return 'google-ad';
+      return null;
+    }
     window.csBeacon('/track', {
       referrer: document.referrer || null,
       userAgent: navigator.userAgent,
       page: location.pathname + location.hash,
-      src: new URLSearchParams(location.search).get('src') || null,
+      src: src(),
       title: trackTitleInit,
     });
   })();

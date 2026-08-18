@@ -674,10 +674,18 @@ const SALE_ON = SEATS_LEFT > 0;
     // the site exactly as before. The scroll proof-of-life below waits for
     // this to finish (cs-serp-done), so the phone tells one story in order
     // instead of two at once.
+    //
+    // Instrumented as its own three-rung funnel at the top of the page, above
+    // the price row where the tracked ladder used to start: phone-seen (the
+    // hero reached them at all) → serp-results (his site ranked first, on
+    // screen) → serp-complete (the act played all the way through). The act
+    // takes ~6.1s, so without the last rung a visitor who left mid-typing and
+    // one who watched the whole thing were the same row.
     (function () {
       var serp = document.getElementById('iph-serp');
       var phone = document.getElementById('iph');
       var omniUrl = document.querySelector('.iph-omni-url');
+      var fit = document.getElementById('iph-fit');
       var done = false;
       function finish() {
         if (done) return;
@@ -686,54 +694,103 @@ const SALE_ON = SEATS_LEFT > 0;
         document.dispatchEvent(new Event('cs-serp-done'));
       }
       var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      if (!serp || !phone || reduce) { if (serp) serp.remove(); finish(); return; }
-      // The omnibox tells the same story: google.com while the SERP is up,
-      // abrifazliu.com from the moment of the tap. Set here, synchronously
-      // before first paint, so the URL matches the screen from frame one; the
-      // template default stays abrifazliu.com so a no-JS page (which hides
-      // the SERP) never claims to be Google.
-      if (omniUrl) omniUrl.textContent = 'google.com';
-      // Also pre-paint: the mobile crop-fade off while white Google is up
-      // (it smeared page-dark over the paper); leave() brings it back.
-      var fit = document.getElementById('iph-fit');
-      if (fit) fit.classList.add('iph-serp-live');
-      function play() {
+      // No act: reduced motion, no phone, or a browser without IntersectionObserver
+      // (which also gets none of this page's other scroll markers, so it stays
+      // consistent rather than earning a second, unmeasurable code path). The
+      // site is shown immediately, exactly as before.
+      var hasIO = 'IntersectionObserver' in window;
+      var act = !!(serp && phone && !reduce && hasIO);
+      if (!act) { if (serp) serp.remove(); finish(); }
+      if (!phone || !hasIO) return;
+
+      // ── One pausable clock ────────────────────────────────────────────────
+      // Steps run off this rather than a setTimeout chain, and it only ticks
+      // while the act is actually being watched — tab in front AND the phone on
+      // screen. That is what lets 'serp-complete' mean "played out in front of
+      // them" instead of "6.1 seconds of wall time elapsed somewhere".
+      var steps = [], at = 0, timer = null, startedAt = 0, left = 0;
+      var watching = false, onScreen = false, seen = false;
+      function step(ms, fn) { steps.push([ms, fn]); }
+      function pump() {
+        if (timer || !watching || at >= steps.length) return;
+        if (!left) left = steps[at][0];
+        startedAt = Date.now();
+        timer = setTimeout(function () {
+          timer = null; left = 0;
+          steps[at++][1]();
+          pump();
+        }, left);
+      }
+      function hold() {
+        if (!timer) return;
+        clearTimeout(timer); timer = null;
+        left = Math.max(1, left - (Date.now() - startedAt));
+      }
+      function sync() {
+        var on = onScreen && document.visibilityState === 'visible';
+        if (on === watching) return;
+        watching = on;
+        if (on) pump(); else hold();
+      }
+
+      if (act) {
+        // Pre-paint, before the clock starts: the omnibox says google.com while
+        // the SERP is up and abrifazliu.com from the moment of the tap, so the
+        // URL matches the screen from frame one. The template default stays
+        // abrifazliu.com so a no-JS page (which hides the SERP) never claims to
+        // be Google. Same reason the mobile crop-fade goes off here — it
+        // smeared page-dark over the white paper.
+        if (omniUrl) omniUrl.textContent = 'google.com';
+        if (fit) fit.classList.add('iph-serp-live');
+
         var q = 'abri fazliu';
         var qEl = document.getElementById('iph-serp-q');
-        var i = 0;
+        var caret = document.getElementById('iph-serp-caret');
         // Paced to be WATCHED, not noticed: typing you can follow, then the
-        // results hold long enough to actually read the top card before the
-        // tap arrives. First cut of this ran ~3s total and read as a flicker.
-        var typer = setInterval(function () {
-          qEl.textContent = q.slice(0, ++i);
-          if (i >= q.length) {
-            clearInterval(typer);
-            document.getElementById('iph-serp-caret').style.display = 'none';
-            setTimeout(results, 550);
-          }
-        }, 180);
-        function results() {
+        // results hold long enough to actually read the top card before the tap
+        // arrives. First cut of this ran ~3s total and read as a flicker.
+        step(550, function () {});
+        for (var i = 1; i <= q.length; i++) {
+          step(180, (function (n) {
+            return function () {
+              qEl.textContent = q.slice(0, n);
+              if (n === q.length) caret.style.display = 'none';
+            };
+          })(i));
+        }
+        step(550, function () {
           document.getElementById('iph-serp-res').hidden = false;
-          // A full two-count with the results on screen before the tap — long
-          // enough to read the top card, the beat the whole act exists for.
-          setTimeout(tap, 2000);
-        }
-        function tap() {
-          document.getElementById('iph-serp-tap').hidden = false;
-          setTimeout(leave, 470);
-        }
-        function leave() {
+          track('get-started:serp-results');
+        });
+        // A full two-count with the results on screen before the tap — long
+        // enough to read the top card, the beat the whole act exists for.
+        step(2000, function () { document.getElementById('iph-serp-tap').hidden = false; });
+        step(470, function () {
           serp.classList.add('iph-serp-out');
           if (omniUrl) omniUrl.textContent = 'abrifazliu.com';
           if (fit) fit.classList.remove('iph-serp-live');
-          setTimeout(function () { serp.remove(); finish(); }, 560);
-        }
+        });
+        step(560, function () {
+          serp.remove();
+          track('get-started:serp-complete');
+          io.disconnect();
+          finish();
+        });
       }
+
       // Observe the phone, not the overlay: a [hidden] element has no box, so
-      // an observer on the overlay itself would never fire.
-      if (!('IntersectionObserver' in window)) { setTimeout(play, 400); return; }
+      // an observer on the overlay itself would never fire. It stays connected
+      // after the first hit — scrolling the phone away has to stop the clock,
+      // not just start it.
+      document.addEventListener('visibilitychange', sync);
       var io = new IntersectionObserver(function (entries) {
-        if (entries.some(function (e) { return e.isIntersecting; })) { io.disconnect(); setTimeout(play, 550); }
+        onScreen = entries.some(function (e) { return e.isIntersecting; });
+        if (onScreen && !seen) {
+          seen = true;
+          track('get-started:phone-seen', reduce ? 'reduced-motion' : null);
+          if (!act) io.disconnect();   // no clock to pause — that was the whole job
+        }
+        sync();
       }, { threshold: 0.35 });
       io.observe(phone);
     })();
