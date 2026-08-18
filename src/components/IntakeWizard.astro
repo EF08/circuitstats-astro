@@ -376,7 +376,11 @@ const TAIL = pipeline
             shove — but it is the offer's own terms and repeating them where
             money changes hands is the honest version of the argument. */}
         {!pipeline && <div class="wz-seats">
-          <div class="wz-seats-top"><span class="wz-seats-r">{seatsLeft} left</span><span class="wz-seats-then">, then CA$399</span></div>
+          {/* Currency is geo-priced (CAD for Canada, USD for everyone else —
+              same numerals). The markup defaults to US$ because unknown IS the
+              USD case; applyCurrency() swaps every label to CA$ the moment the
+              catalogue fetch says the visitor is Canadian. */}
+          <div class="wz-seats-top"><span class="wz-seats-r">{seatsLeft} left</span><span class="wz-seats-then" id="wz-seats-then">, then US$399</span></div>
           <div class="wz-seats-bar" aria-hidden="true">
             {Array.from({ length: seatsTotal }, (_, i) => (
               <span class={i < seatsTaken ? 'wz-seat wz-seat-on' : 'wz-seat'}></span>
@@ -385,9 +389,9 @@ const TAIL = pipeline
         </div>}
         {!pipeline && <div class="wz-charge">
           <span class="wz-charge-l">Today</span>
-          <span class="wz-charge-v"><s class="wz-charge-was" id="wz-charge-was">CA$399</s><span id="wz-charge-v">CA$99</span></span>
+          <span class="wz-charge-v"><s class="wz-charge-was" id="wz-charge-was">US$399</s><span id="wz-charge-v">US$99</span></span>
         </div>}
-        {!pipeline && <p class="wz-charge-n">then <s class="wz-charge-was">CA$39</s> CA$9/month to keep his stats updated</p>}
+        {!pipeline && <p class="wz-charge-n" id="wz-charge-n">then <s class="wz-charge-was">US$39</s> US$9/month to keep his stats updated</p>}
       </section>
 
       <section class="wz-slide wz-slide-done" data-step="done" hidden>
@@ -1330,10 +1334,29 @@ const TAIL = pipeline
     // checkout. Hardcoding it here would let the two drift, and the one that
     // matters is the one the customer isn't looking at.
     var CATALOG = null;
+    // The billing currency's display prefix. US$ until the server says
+    // otherwise: the backend bills USD for every non-Canadian AND every
+    // unresolvable IP, so the unknown state and the USD state are the same
+    // state. The catalogue response carries the currency the checkout will
+    // actually use — same origin, same IP, so the label can't disagree with
+    // the charge.
+    var CUR = 'US$';
+    function applyCurrency() {
+      var then = document.getElementById('wz-seats-then');
+      if (then) then.textContent = ', then ' + CUR + '399';
+      var was = document.getElementById('wz-charge-was');
+      if (was) was.textContent = CUR + '399';
+      var v = document.getElementById('wz-charge-v');
+      if (v) v.textContent = CUR + '99';   // paintBill overwrites with the real total on review
+      var n = document.getElementById('wz-charge-n');
+      if (n) n.innerHTML = 'then <s class="wz-charge-was">' + CUR + '39</s> ' + CUR + '9/month to keep his stats updated';
+    }
     function loadAddons() {
       if (CATALOG) { paintAddons(); return; }
       api('GET', '/intake/addons').then(function (o) {
         CATALOG = o.addons || [];
+        CUR = o.currency === 'cad' ? 'CA$' : 'US$';
+        applyCurrency();
         paintAddons();
         // The bill and the review list both name add-ons, and both may already
         // have rendered without them — the catalogue arriving is exactly when
@@ -1342,7 +1365,7 @@ const TAIL = pipeline
       }).catch(function () { CATALOG = []; paintAddons(); });
     }
     function money(cents) {
-      return 'CA$' + (cents % 100 === 0 ? (cents / 100) : (cents / 100).toFixed(2));
+      return CUR + (cents % 100 === 0 ? (cents / 100) : (cents / 100).toFixed(2));
     }
     function paintAddons() {
       var host = document.getElementById('wz-addons');
@@ -1448,7 +1471,7 @@ const TAIL = pipeline
           // before and after.
           if (i === 0) {
             var s = document.createElement('s');
-            s.className = 'wz-bill-was'; s.textContent = 'CA$399';
+            s.className = 'wz-bill-was'; s.textContent = CUR + '399';
             v.appendChild(s);
           }
           v.appendChild(document.createTextNode(money(l[1])));

@@ -13,7 +13,7 @@ Professional player recruiting websites. List price is **$399 to build, then $39
 
 **The launch offer is one constant.** `SEATS_TAKEN` in `src/pages/get-started.astro` drives the price, the struck-through figures, the seat bar and the heading's second line. Set it to `SEATS_TOTAL` and the whole offer folds on the next build — the page quotes $399 again with nothing else to undo. Scarcity is by count, not by clock: there is no deadline that can silently expire on a page nobody rebuilt.
 
-**Currency is CAD.** Stripe charges CA$99 (CA$90 setup + the first CA$9 month on one invoice), then CA$9/mo. The page says "$99" unqualified and most traffic is American — a known, deliberate gap, not a bug to fix without asking.
+**Currency is geo-priced (2026-08-18).** Same numerals, two currencies: Canadian visitors are billed CAD (CA$90 setup + first CA$9 month on one invoice, then CA$9/mo), everyone else — including unresolvable IPs — USD (US$90 + US$9, twin Stripe prices on the same products). The backend resolves the country from the request IP (`visitorCurrency()` in `apps/circuitboard/routes.js`); the wizard's labels follow the `currency` field on `GET /intake/addons` and default to US$. The marketing page still says "$99" unqualified — now literally true in both markets.
 
 **No free trial, ever.** A trial subscription falls under the card networks' trial rules: a mandatory pre-charge reminder, and Stripe appending `* TRIAL OVER` to the statement descriptor, which overwrites everything past the 10th character and mangles `PLAYER WEBSITE`. See `scripts/create-player-website-link.js` in the backend.
 
