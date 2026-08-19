@@ -402,10 +402,10 @@ const TAIL = pipeline
             with their actual domain filled in at finish()). The non-pipeline
             copy shows only on the Stripe-failed-to-open fallback — an UNPAID
             visitor, who must not be promised a live site. */}
+        {/* The domain slide can't be skipped (not in OPTIONAL, and Next blocks
+            until it validates), so "your new site" below is unreachable in
+            practice — finish() overwrites it with d.domain. */}
         {pipeline
-          {/* The domain slide can't be skipped (not in OPTIONAL, and Next
-              blocks until it validates), so the default text below is
-              unreachable in practice — finish() overwrites it with d.domain. */}
           ? <p class="wz-sub">Check <b id="wz-done-site">your new site</b> by tomorrow! Any questions? <a class="wz-done-wa" href="https://wa.me/16476079935" target="_blank" rel="noopener">WhatsApp us</a>.</p>
           : <p class="wz-sub">We'll reply within a few hours with next steps. Your site is usually live within days.</p>}
       </section>
