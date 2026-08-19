@@ -103,7 +103,7 @@ const TAIL = pipeline
 
       <!-- 2 -->
       <section class="wz-slide" data-step="2" hidden>
-        <h3 class="wz-h">What year does he graduate?</h3>
+        <h3 class="wz-h">What year do you graduate?</h3>
         <div class="wz-bubbles" id="wz-classYear" data-field="classYear" data-single role="radiogroup" aria-label="Graduation year">
           {GRAD_YEARS.map(y => (
             <button class="wz-bub" type="button" role="radio" aria-checked="false" data-val={String(y)}>{y}</button>
@@ -115,7 +115,7 @@ const TAIL = pipeline
 
       <!-- 3 -->
       <section class="wz-slide" data-step="3" hidden>
-        <h3 class="wz-h">Where's he from?</h3>
+        <h3 class="wz-h">Where are you from?</h3>
         <label class="wz-lbl" for="wz-city">City</label>
         <input class="wz-inp" id="wz-city" data-field="city" type="text" maxlength="80" autocomplete="address-level2" />
         <label class="wz-lbl" for="wz-region">State / Province</label>
@@ -125,7 +125,7 @@ const TAIL = pipeline
       <!-- 4 — three short inputs share a row so the slide still fits a 568px
            phone; wingspan and weight are optional and say so. -->
       <section class="wz-slide" data-step="4" hidden>
-        <h3 class="wz-h">His measurables</h3>
+        <h3 class="wz-h">Your measurables</h3>
         {/* Multi-select: most of these kids are listed at two spots, and a
             combo guard who has to choose between PG and SG has been made to
             describe himself worse than the truth. No cap — five selected is
@@ -155,9 +155,9 @@ const TAIL = pipeline
       <!-- 5 — the one step no competitor can offer. A match wires the site's
            stat tiles and national ranks straight from our data. -->
       <section class="wz-slide" data-step="5" hidden>
-        <h3 class="wz-h">Find him on Circuit Stats</h3>
-        <p class="wz-sub">His verified stats and national rankings fill in on their own.</p>
-        <input class="wz-inp" id="wz-csq" type="text" maxlength="60" placeholder="Start typing his name" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="wz-cslist" aria-label="Search players" />
+        <h3 class="wz-h">Find yourself on Circuit Stats</h3>
+        <p class="wz-sub">Your verified stats and national rankings fill in on their own.</p>
+        <input class="wz-inp" id="wz-csq" type="text" maxlength="60" placeholder="Start typing your name" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="wz-cslist" aria-label="Search players" />
         <div class="wz-results" id="wz-cslist" role="listbox" aria-label="Matching players"></div>
         <div class="wz-picked" id="wz-cspicked" hidden>
           <div>
@@ -172,10 +172,10 @@ const TAIL = pipeline
           for must never be asked to type them again — and one we don't hold
           shouldn't be left with an empty stat block on his site. */}
       <section class="wz-slide" data-step="stats" hidden>
-        <h3 class="wz-h">His stats</h3>
-        <p class="wz-sub">He's not in our data yet, so add his best numbers here. Season averages.</p>
+        <h3 class="wz-h">Your stats</h3>
+        <p class="wz-sub">You're not in our data yet, so add your best numbers here. Season averages.</p>
         <label class="wz-lbl" for="wz-statleague">League or event</label>
-        <input class="wz-inp" id="wz-statleague" data-field="statLeague" type="text" maxlength="60" placeholder="e.g. UAA U15, or his club league" autocomplete="off" />
+        <input class="wz-inp" id="wz-statleague" data-field="statLeague" type="text" maxlength="60" placeholder="e.g. UAA U15, or your club league" autocomplete="off" />
         <div class="wz-bubbles wz-statpick" id="wz-statpick" role="group" aria-label="Stats">
           {STAT_KEYS.map(k => (
             <button class="wz-bub wz-bub-s" type="button" aria-pressed="false" data-val={k}>{k}</button>
@@ -187,7 +187,7 @@ const TAIL = pipeline
       <!-- 6 — the strongest thing on Abri's page, so the real example is on
            screen rather than described. -->
       <section class="wz-slide" data-step="6" hidden>
-        <h3 class="wz-h">Describe his game in one line</h3>
+        <h3 class="wz-h">Describe your game in one line</h3>
         <p class="wz-sub">The first thing a coach reads. Comparisons work well.</p>
         <textarea class="wz-inp wz-ta" id="wz-tagline" data-field="tagline" rows="3" maxlength={TAGLINE_MAX} placeholder="Luka Doncic with elite defense, a +45% three ball, and great off-ball instincts"></textarea>
         <div class="wz-count"><span id="wz-tagline-n">0</span>/{TAGLINE_MAX}</div>
@@ -195,8 +195,8 @@ const TAIL = pipeline
 
       <!-- 7 -->
       <section class="wz-slide" data-step="7" hidden>
-        <h3 class="wz-h">Where can they follow him?</h3>
-        <p class="wz-sub">Optional — skip if he doesn't post.</p>
+        <h3 class="wz-h">Where can they follow you?</h3>
+        <p class="wz-sub">Optional — skip if you don't post.</p>
         {/* The @ is furniture, not something to type. Making it a required
             keystroke would only mean some handles arrive with it and some
             without; showing it says "handle, not a URL" and the field cleans up
@@ -227,10 +227,10 @@ const TAIL = pipeline
 
       <!-- 9 -->
       <section class="wz-slide" data-step="9" hidden>
-        <h3 class="wz-h">Pick his strengths</h3>
+        <h3 class="wz-h">Pick your strengths</h3>
         <p class="wz-sub">Choose {STRENGTH_MIN}–{STRENGTH_MAX}. {FILM_ENABLED
           ? 'Each one becomes a film section on the site.'
-          : "Each becomes a section on his site — we'll ask for the clips by email."}</p>
+          : "Each becomes a section on your site — we'll ask for the clips by email."}</p>
         <div class="wz-bubbles" id="wz-strengths" data-field="strengths" data-max={STRENGTH_MAX} role="group" aria-label="Strengths">
           {STRENGTHS.map(s => (
             <button class="wz-bub" type="button" aria-pressed="false" data-val={s}>{s}</button>
@@ -304,7 +304,7 @@ const TAIL = pipeline
       <!-- Domain. Prefilled from his name, because the answer is almost always
            his name and typing it twice is a tax. -->
       <section class="wz-slide" data-step="domain" hidden>
-        <h3 class="wz-h">His web address</h3>
+        <h3 class="wz-h">Your web address</h3>
         <p class="wz-sub">We register it in your name and set it up. Change it if you'd rather have something else.</p>
         <label class="wz-lbl" for="wz-domain">Domain</label>
         {/* Checked live against RDAP. The verdict goes IN the field, where the
@@ -334,7 +334,7 @@ const TAIL = pipeline
         <p class="wz-sub">{pipeline
           ? "Anything at all — a page you want, a look you have in mind, something we should know. If it's a lot of extra work it might cost extra — we'll confirm with you first."
           : "Everything you've filled in is covered by the price. This is for anything beyond it."}</p>
-        <textarea class="wz-inp wz-ta" id="wz-custom" data-field="custom" rows="4" maxlength="900" placeholder="e.g. a page for his academics, a different colour scheme, a section for club history"></textarea>
+        <textarea class="wz-inp wz-ta" id="wz-custom" data-field="custom" rows="4" maxlength="900" placeholder="e.g. a page for your academics, a different colour scheme, a section for club history"></textarea>
         {/* Priced live rather than left hanging. The old copy told them
             something extra might cost extra and then made them wait days to
             find out how much — this answers it before they've left the slide.
@@ -397,7 +397,7 @@ const TAIL = pipeline
       <section class="wz-slide wz-slide-done" data-step="done" hidden>
         <div class="wz-done-ico">✓</div>
         <h3 class="wz-h">Got it.</h3>
-        <p class="wz-sub">We'll reply within a few hours with next steps. His site is usually live within days.</p>
+        <p class="wz-sub">We'll reply within a few hours with next steps. Your site is usually live within days.</p>
       </section>
     </div>
 
@@ -1135,7 +1135,7 @@ const TAIL = pipeline
         if (/storage_unavailable|status_503/.test(msg)) {
           filmDown = true;
           track('get-started:intake-film-unavailable');
-          elErr.textContent = "Film upload isn't available right now — carry on and we'll ask for his clips by email.";
+          elErr.textContent = "Film upload isn't available right now — carry on and we'll ask for your clips by email.";
         } else {
           elErr.textContent = msg === 'unreadable'
             ? "That file didn't look like a video we can read."
@@ -1188,7 +1188,7 @@ const TAIL = pipeline
         if (/storage_unavailable|status_503/.test(msg)) {
           filmDown = true;
           track('get-started:intake-film-unavailable');
-          elErr.textContent = "Film upload isn't available right now — carry on and we'll ask for his clips by email.";
+          elErr.textContent = "Film upload isn't available right now — carry on and we'll ask for your clips by email.";
         } else {
           elErr.textContent = /too_large/.test(msg)
             ? 'That clip is too large. A shorter or lower-resolution version will work.'
