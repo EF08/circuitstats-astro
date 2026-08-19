@@ -734,308 +734,12 @@ const SITE = 'https://www.circuitstats.com';
 
     // ── Render ───────────────────────────────────────────────────────────────
     function render(data) {
-      var a = data.audience, f = data.funnel;
-      var rangeWord = (a.range && a.range.allTime) ? 'since launch' : 'last ' + days + ' days';
+      var a = data.audience;
       var html = '';
-
-      // ── 1. The verdict: leads, and the plain-English state of the funnel ──
-      var leadN = f.leads.count;
-      var conv = f.conversion.rate;
-      var verdict, sub;
-      if (leadN === 0) {
-        var reached = (f.stages[3] || {}).people || 0;
-        if (reached === 0) {
-          verdict = '<span class="lo">Nobody even reached the offer page.</span> Of ' + n(f.stages[0].people) +
-            ' visitors, none opened /get-started.';
-        } else {
-          verdict = n(reached) + ' ' + (reached === 1 ? 'person' : 'people') + ' read the pitch and <span class="lo">none requested a website</span>.';
-        }
-        // Name the step the data actually blames, rather than assuming it's the
-        // pitch page — the biggest leak is usually further up, and a hardcoded
-        // conclusion here would contradict the funnel directly beneath it.
-        sub = f.leak
-          ? 'Biggest leak: <strong>' + esc(f.leak.label) + '</strong> lost ' + n(f.leak.dropped) +
-            ' people. Fix that step before spending anything on more traffic.'
-          : 'Not enough traffic yet to say where it is failing.';
-      } else {
-        verdict = '<strong>' + n(leadN) + ' ' + (leadN === 1 ? 'lead' : 'leads') + '</strong> from ' +
-          n(f.stages[0].people) + ' visitors — a ' + pct(conv, 2) + ' conversion rate.';
-        sub = f.leak
-          ? 'Biggest leak: <strong>' + esc(f.leak.label) + '</strong> lost ' + n(f.leak.dropped) + ' people.'
-          : 'No single dominant drop-off.';
-      }
-      html += '<div class="db-verdict">' +
-        '<div><div class="db-hero-n">' + n(leadN) + '</div>' +
-        '<div class="db-hero-l">website ' + (leadN === 1 ? 'request' : 'requests') + ' · ' + rangeWord + '</div></div>' +
-        '<div><div class="db-verdict-txt">' + verdict + '</div>' +
-        '<div class="db-verdict-sub">' + sub + '</div></div></div>';
-
-      // ── 2. Funnel ──
-      var leadsDelta = delta(f.leads.delta, true);
-      html += card(
-        'Where the money is leaking',
-        'Every step from landing on the site to asking for a website. Counted in <strong>people</strong>, not clicks — so each row is a human who reached that step.',
-        funnelHtml(f),
-        disclosure('What these steps mean, and how they\'re counted',
-          '<div class="db-note">' +
-          '<p style="margin-bottom:10px">Each stage counts <strong>unique people</strong> (by IP) who reached it in the selected range, and counts anyone who got further as having reached every step before it. That is why the funnel only ever narrows.</p>' +
-          '<p style="margin-bottom:10px"><strong>"Clicked the offer" is partly inferred.</strong> ' + n(f.ctaClicks) + ' ' +
-          (f.ctaClicks === 1 ? 'person was' : 'people were') + ' actually recorded clicking the button; ' + n(f.reachedDirectly) +
-          ' more reached the pitch page some other way (a shared link, a bookmark, or the URL directly) and are counted at that step too. If you want the button\'s true click-through rate, use the recorded number.</p>' +
-          '<p style="margin-bottom:10px"><strong>IP is a stand-in for a person.</strong> A family sharing one home connection reads as one person; a phone switching towers can read as several. Treat these as close, not exact.</p>' +
-          '<p><strong>Form abandonment:</strong> ' + (f.form.starts > 0
-            ? n(f.form.starts) + ' started filling the form, ' + n(f.form.completed) + ' finished — ' +
-              pct(f.form.abandonRate, 0) + ' abandoned. ' + n(f.form.attempts) + ' submit presses, ' +
-              n(f.form.errors) + ' failed with an error.'
-            : 'Form-start tracking is new, so there is no abandonment data yet. Once visitors start touching the form, this will show how many fill fields in and leave without submitting.') + '</p>' +
-          '</div>')
-      );
-
-      // ── 3. The offer page in particular ──
-      var pitchReaders = (f.stages[3] || {}).people || 0;
-      // Form-start tracking shipped with this dashboard, so before any visitor
-      // has touched the form there is genuinely no data — which is a different
-      // statement from "nobody started the form", and the tile must not print
-      // a confident 0% for it.
-      var formStartNote = f.form.starts > 0
-        ? pct(pitchReaders ? f.form.starts / pitchReaders : 0, 0) + ' of pitch readers'
-        : 'No form-starts recorded yet';
-      // Time on page has no data before the dwell beacon shipped, and "no data"
-      // must never render as a confident 0s — that would read as "everyone
-      // bounced instantly", which is the opposite of not knowing.
-      var dw = f.dwell || null;
-      var timeTile = kpi('Median time on pitch',
-        dw && dw.hasData ? dur(dw.medianSeconds) : '—',
-        '',
-        dw && dw.hasData
-          ? 'Half stayed longer, half less · ' + n(dw.bounced) + ' of ' + n(dw.people) +
-            ' left inside 5s · typical depth ' + dw.medianScrollPct + '%'
-          : 'Time tracking is new — this fills in with the next visitor.');
-      // Abandonment: the backend has computed this since the form-start event
-      // shipped and nothing has ever displayed it.
-      var abandonTile = kpi('Abandoned the form',
-        f.form.starts > 0 ? n(f.form.abandoned) : '—',
-        '',
-        f.form.starts > 0
-          ? pct(f.form.abandonRate, 0) + ' of everyone who touched a field left without submitting'
-          : 'No form-starts recorded yet');
-      html += '<div class="db-kpis">' +
-        kpi('Read the pitch', n(pitchReaders), '', 'Landed on /get-started and saw the price') +
-        timeTile +
-        kpi('Started the form', n(f.form.starts), '', formStartNote) +
-        abandonTile +
-        kpi('Requested a site', n(leadN), leadsDelta, '') +
-        kpi('Viewed the example', n(f.example.people), '',
-          f.example.people
-            ? pct(f.example.ofPitchReaders, 0) + ' of pitch readers clicked through to abrifazliu.com' +
-              (f.example.converted ? ' · ' + n(f.example.converted) + ' of them converted' : '')
-            : 'Nobody clicked through to abrifazliu.com') +
-        (f.contact ? kpi('Reached out directly', n(f.contact.people), '',
-          f.contact.people
-            ? [f.contact.whatsapp ? n(f.contact.whatsapp) + ' WhatsApp' : '',
-               f.contact.email ? n(f.contact.email) + ' email' : '',
-               f.contact.call ? n(f.contact.call) + ' call' : ''].filter(Boolean).join(' · ')
-            : 'Nobody tapped WhatsApp, email, or call') : '') +
-        '</div>';
-
-      // ── 3a0. Did the demo inside the phone land? ──
-      // The act at the very top of the page, above everything the ladder below
-      // measures. Kept out of that ladder on purpose: every rung there is a
-      // fact about position (reaching the price proves the phone above it was
-      // on screen), and watching a demo is a fact about time — someone can
-      // scroll past the phone in two seconds. Folding it in would have credited
-      // a watch-through to everyone who saw the price.
-      var ha = f.heroAct;
-      if (ha) {
-        var haSince = ha.since
-          ? new Date(ha.since).toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric' })
-          : null;
-        html += card('Did the demo inside the phone land?',
-          ha.hasData
-            ? 'The act at the top of the page: the search types itself out, his site comes up first, the tap. It runs about six seconds, and its clock only ticks while the tab is in front <em>and</em> the phone is on screen — so <strong>watched it through</strong> means the whole thing played out in front of them, not that six seconds of wall time went by.'
-            : 'Not measured yet' + (haSince ? ' — this started on ' + haSince : '') + '. Reduced-motion visitors are shown the site with no act at all, so they can only ever reach the first rung.',
-          ha.hasData
-            ? barList([
-                { label: 'The phone reached them', count: ha.reached,        share: 1 },
-                { label: 'Saw him rank first',     count: ha.sawResults,     share: ha.reached ? ha.sawResults / ha.reached : 0 },
-                { label: 'Watched it through',     count: ha.watchedThrough, share: ha.watchThroughRate },
-              ])
-            : '<div class="db-empty">Nobody has reached the phone since this started being measured.</div>');
-      }
-
-      // ── 3a. How far down the pitch they scroll ──
-      // Section-reach events from /get-started (see its scroll tracker). Same
-      // people-not-events counting as the funnel; the backend cascades the
-      // sets so the ladder only ever narrows.
-      var sd = f.scrollDepth;
-      if (sd) {
-        var sdOpened = sd.steps.length ? sd.steps[0].people : 0;
-        var sdSince = sd.since
-          ? new Date(sd.since).toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric' })
-          : null;
-        html += card('How far down the pitch people get',
-          sd.hasData
-            ? 'The <strong>phone-first /get-started</strong> only' + (sdSince ? ', live since ' + sdSince : '') +
-              ', in that page\'s own reading order: the price and form are at the top, and the whole argument sits behind <em>I want more info first</em>. ' +
-              'The drop from <strong>Saw the price &amp; form</strong> to <strong>Opened the full pitch</strong> is the one to watch — everything below it only exists for people who asked.'
-            : 'No traffic to the phone-first page in this range yet.',
-          barList(sd.steps.map(function (s) {
-            return { label: s.label, count: s.people, share: sdOpened ? s.people / sdOpened : 0 };
-          }), { empty: 'Nobody opened the pitch page in this range.' }),
-          disclosure('Why this only covers one page',
-            '<div class="db-note"><p>The three landing experiences read in different directions — on the long-form pages the form is at the <em>bottom</em>, on this one it is the first thing you see. Ranking them on one ladder made a visitor who never scrolled at all look like they had read to the end. Use <strong>Landing pages, compared</strong> below for the cross-version view.</p></div>'));
-      }
-
-      // ── 3a1. What they actually looked at ──
-      // Seconds on screen per section. A scroll marker fires the same whether a
-      // block was flicked past or studied; this is the difference between them,
-      // and it is the closest first-party answer to "what are their eyes on"
-      // without putting a session-replay script on every page.
-      if (dw && dw.attention && dw.attention.length) {
-        html += card('What they actually looked at',
-          'Median seconds each block spent on screen, counting only while the tab was in front. <strong>People</strong> is how many had that block on screen at all — the sections behind the reveal can only ever count people who opened it.',
-          '<div class="db-bars">' + dw.attention.map(function (a) {
-            var max = dw.attention.reduce(function (m, x) { return Math.max(m, x.medianSeconds); }, 0) || 1;
-            var w = Math.max(1.5, (a.medianSeconds / max) * 100);
-            return '<div class="db-bar-row">' +
-              '<div class="db-bar-l" title="' + esc(a.label) + '">' + esc(a.label) + '</div>' +
-              '<div class="db-bar-t"><div class="db-bar-f" data-w="' + w.toFixed(2) + '"></div></div>' +
-              '<div class="db-bar-v">' + esc(dur(a.medianSeconds)) + '<small>' + n(a.people) + ' ppl</small></div>' +
-              '</div>';
-          }).join('') + '</div>');
-      }
-
-      // ── 3a1b. Where the form loses them ──
-      // Two required fields. "Started the form" alone couldn't say whether
-      // someone typed a name and an email and hesitated, or brushed a field on
-      // the way past — and those want opposite fixes.
-      if (f.form && f.form.fields && f.form.starts > 0) {
-        var ffTop = f.form.fields[0].people || 1;
-        html += card('Where the form loses them',
-          'People who got at least this far into the request form.',
-          barList(f.form.fields.map(function (s) {
-            return { label: s.label, count: s.people, share: s.people / ffTop };
-          }), { empty: 'Nobody has touched the form in this range.' }));
-      }
-
-      // ── 3a2. Landing pages, separately ──
-      // The three pitch experiences never blend: v2 phone-first /get-started,
-      // the /get-started-info copy, and pre-cutover v1 history.
-      if (f.landingPages) {
-        html += card('Landing pages, compared',
-          'Each column counts unique people on that page in this range. "Opened drawer" is the new page\'s <em>I want more info first</em> — its version of reading the pitch. <strong>Median time</strong> is the honest test of which page holds someone.',
-          table([
-            { h: 'Page', v: function (r) { return r.label; } },
-            { h: 'People', v: function (r) { return n(r.people); }, num: true },
-            { h: 'Median time', v: function (r) { return r.medianSeconds ? dur(r.medianSeconds) : '—'; }, num: true },
-            { h: 'Opened drawer', v: function (r) { return r.key === 'v2' ? n(r.drawerOpens) : '—'; }, num: true },
-            { h: 'Money section', v: function (r) { return n(r.scroll.money); }, num: true },
-            { h: 'Live example', v: function (r) { return n(r.scroll.example); }, num: true },
-            { h: 'Dashboard pitch', v: function (r) { return n(r.scroll.dashboard); }, num: true },
-            { h: "What's included", v: function (r) { return r.key === 'v2' ? n(r.scroll.included) : '—'; }, num: true },
-            { h: 'Started form', v: function (r) { return n(r.formStarts); }, num: true },
-            { h: 'Contacted', v: function (r) { return n(r.contact); }, num: true },
-            { h: 'Leads', v: function (r) { return n(r.leads); }, num: true },
-          ], f.landingPages, 'No pitch-page traffic in this range.'));
-      }
-
-      // ── 3b. Who actually clicked, and who they were ──
-      // "How many real people clicked Get D1 offers now on Trey Johnson's page"
-      // — answerable because the click listener records the page it fired on.
-      html += section('The offer', 'who clicked, and who they were');
-      html += card('Offer clicks by player page',
-        'Real people only — crawlers and your own visits are already removed. <strong>Get D1 offers</strong> goes to the pitch; <strong>See live example</strong> goes to abrifazliu.com. Abri\'s own pages carry a scouting card instead of the pitch — its clicks count under See live example.',
-        table([
-          { h: 'Player page', v: function (r) { return r.title || r.page; } },
-          { h: 'Get D1 offers', v: function (r) { return r.getOffers ? n(r.getOffers) : '—'; }, num: true },
-          { h: 'See live example', v: function (r) { return r.liveExample ? n(r.liveExample) : '—'; }, num: true },
-        ], f.offerClicks || [], 'Nobody has clicked either button in this range.'));
-
-      // The answer to "are those pitch readers bots, humans, or me?" — one row
-      // per person, with the location and network that identify them.
-      var readers = f.pitchReaders || [];
-      html += card('Who read the pitch',
-        readers.length
-          ? n(readers.length) + ' real ' + (readers.length === 1 ? 'person' : 'people') + ' reached a pitch page · newest first · Page: new = phone-first /get-started, old = pre-Aug-12 long form, info = /get-started-info'
-          : 'Nobody reached a pitch page in this range',
-        table([
-          { h: 'Location', v: function (r) { return r.location || 'Unknown'; } },
-          { h: 'Network', v: function (r) { return r.org || '—'; } },
-          { h: 'Device', v: function (r) { return r.mobile ? 'Mobile' : 'Desktop'; } },
-          { h: 'Came from', v: function (r) { return r.cameFromPlayerPage ? 'A player page' : (r.referrer ? 'Elsewhere' : 'Direct'); } },
-          { h: 'Page', v: function (r) { return r.lp || '—'; } },
-          { h: 'Visits', v: function (r) { return n(r.visits); }, num: true },
-          // null = this visit predates the dwell beacon, which is a different
-          // statement from "left instantly" and must not render as 0s.
-          { h: 'Time', raw: true, v: function (r) {
-              if (r.seconds == null) return '<span style="color:var(--text-3)">—</span>';
-              var slow = r.seconds >= 30;
-              return '<span style="color:' + (slow ? 'var(--good)' : r.seconds < 5 ? 'var(--text-3)' : 'inherit') + '">' +
-                esc(dur(r.seconds)) + '</span>' +
-                (r.maxScrollPct != null ? '<span style="color:var(--text-3)"> · ' + r.maxScrollPct + '%</span>' : '');
-            } },
-          { h: 'Scrolled to', raw: true, v: function (r) {
-              // 'untracked' = visited before the scroll tracker existed; depth
-              // was never measured. 'top' = measured, never left the opening
-              // screen. The backend draws that line, not this column — and it
-              // ranks depth against the page this person actually saw, since
-              // the form is the bottom of the old page and the top of the new.
-              if (r.furthest === 'untracked') return '<span style="color:var(--text-3)">Before tracking</span>';
-              return esc({ pricing: 'Price & form', included: "What's included",
-                           dashboard: 'Dashboard pitch', example: 'Live example',
-                           money: 'Money section', top: 'Top only' }[r.furthest] || '—');
-            } },
-          { h: 'Form', raw: true, v: function (r) {
-              if (r.furthestField === 'submitted') return '<strong style="color:var(--good)">submitted</strong>';
-              var lbl = { notes: 'typed notes', email: 'typed email', player: 'typed name',
-                          touched: 'touched a field' }[r.furthestField];
-              // Filled fields in and left — the row you most want to be able to see.
-              return lbl ? '<span style="color:var(--bad)">' + esc(lbl) + ', left</span>'
-                         : '<span style="color:var(--text-3)">—</span>';
-            } },
-          { h: 'Then', v: function (r) {
-              var acts = [];
-              if (r.openedDrawer) acts.push('opened the pitch');
-              if (r.clickedExample) acts.push('saw the example');
-              if (r.tappedWhatsApp) acts.push('tapped WhatsApp');
-              if (r.tappedEmail) acts.push('tapped email');
-              if (r.tappedCall) acts.push('tapped call');
-              if (r.submitted) acts.push('REQUESTED');
-              return acts.length ? acts.join(', ') : '—';
-            } },
-          { h: 'Last seen', raw: true, v: function (r) {
-              return '<span title="' + esc(r.displayTime || '') + '">' + esc(ago(r.lastSeen)) + '</span>'; } },
-        ], readers, 'No one yet.'),
-        disclosure('How do I know these are real people?',
-          '<div class="db-note">' +
-          '<p style="margin-bottom:10px">Three filters run before anyone appears here. <strong>Network:</strong> datacenter, cloud, and big-tech corporate addresses are dropped — including Meta&rsquo;s (&ldquo;Facebook, Inc.&rdquo;), whose ad-review crawlers fetch /get-started with a normal browser user agent every time an ad is created or edited. <strong>Browser:</strong> anything announcing itself as a crawler is dropped — Applebot runs from Apple&rsquo;s own network and its visits look like a person on a Mac until you read the user agent. <strong>Location:</strong> your own visits (North York) are dropped.</p>' +
-          '<p style="margin-bottom:10px">Each row is one address, so the same person on the same connection is one row no matter how many times they came back — the visit count tells you that. Two people in the same house share a row; one person switching from wifi to mobile data becomes two.</p>' +
-          '<p><strong>&ldquo;Before tracking&rdquo;</strong> in Scrolled to means the visit happened before scroll tracking went live' +
-          (sd && sd.since ? ' (' + new Date(sd.since).toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric' }) + ')' : '') +
-          ' — how far they read was never measured. <strong>&ldquo;Top only&rdquo;</strong> means they were measured and never scrolled past the opening screen.</p>' +
-          '</div>'));
-
-      // ── 4. Audience ──
-      html += section('Audience', 'who is actually showing up');
-      var conf = f.confirmed || { people: 0, of: 0 };
-      // Naming: the "Visits" tile is the audience block's `arrivals` (sessions
-      // that started from outside the site); "Page views" is `pageviews` (every
-      // load). The backend keeps the old key names — this is a display relabel.
-      html += '<div class="db-kpis">' +
-        kpi('People', compact(a.people), delta(a.delta.people, true), 'Bots and your own visits excluded.') +
-        kpi('Confirmed human', compact(conf.people), '',
-          'Of those, the ones who clicked something or read more than one page — a floor you can trust.') +
-        kpi('Visits', compact(a.arrivals), delta(a.delta.arrivals, true), 'A session — one time someone showed up from outside the site.') +
-        kpi('Page views', compact(a.pageviews), delta(a.delta.pageviews, true), 'Every page load, including clicking around inside the site.') +
-        kpi('Pages per visit', (a.engagement.pagesPerArrival || 0).toFixed(1), '', 'How deep people browse once they arrive.') +
-        '</div>';
 
       html += card('Traffic over time', 'Visits is the number to watch — page views rise just from people clicking around.',
         trendChart(a.byDay));
 
-      var groups = (a.sourceGroups || []).map(function (g) {
-        return { label: g.group, count: g.count, share: g.share };
-      });
       html += card('Where visitors are from',
         (a.geo || []).length + ' countries · hover a bubble for the cities inside it',
         geoMap(a.geo) +
@@ -1050,101 +754,16 @@ const SITE = 'https://www.circuitstats.com';
             { h: 'Cities', v: function (g) { return g.cities.map(function (c) { return c.city + ' (' + c.people + ')'; }).join(', ') || '—'; } },
           ], a.geo || [], 'No location data.')));
 
-      html += card('Where visits come from',
-        'Grouped by kind, counted from <strong>visits only</strong> — clicks between pages of your own site are browsing, not a traffic source, so they are not in this list. ' +
-        '<strong>Paid</strong> and <strong>Tagged link</strong> come from the tag on the link itself rather than a referrer, which is the only way an ad click is visible at all.',
-        barList(groups, { empty: 'No visits in this range.' }),
-        disclosure('Break down by exact source',
-          barList((a.sourceHosts || []).map(function (h) { return { label: h.host, count: h.count }; }),
-            { empty: 'No referring sites yet — all visits were direct.' }) +
-          '<div class="db-note" style="margin-top:14px">Entries with dots are the site the visit came from. Entries without are our own tags on the link — <code>meta-ad</code> and <code>google-ad</code> for ad clicks, the <code>d1-</code>/<code>aau-</code>/<code>prep-</code> tags for outreach emails, otherwise whatever <code>utm_source</code> said. ' +
-          '<strong>Direct</strong> (' + n(a.direct) + ') is what is left: no referrer and no tag — typed the URL, a bookmark, a link from an app, or a browser that strips referrers. Ad clicks used to land here.</div>')
-      );
-
-      // ── 5. What's pulling the traffic ──
-      // The headline list is every page; the per-type breakdowns (teams,
-      // comparisons, shares) sit behind disclosures — real detail, but not
-      // what you open the dashboard to find out.
-      var c = data.content || {};
-      var pl = c.player || { views: 0, top: [] }, tm = c.team || { views: 0, top: [] };
-      var cm = c.compare || { views: 0, top: [], topPlayers: [] }, sh = c.shares || { total: 0, top: [], recent: [] };
-      function pageBars(rows) {
-        return barList((rows || []).map(function (r) {
-          return { label: r.title || r.page, count: r.count };
-        }), { empty: 'Nothing in this range.' });
-      }
-
-      html += section('Content', 'what people are looking at');
-      html += card('Most-viewed pages', 'Player pages are the ones that carry the offer.',
-        barList((a.topPages || []).slice(0, 10).map(function (p) {
-          return { label: p.title || p.page, count: p.count };
-        }), { empty: 'No page views in this range.' }),
-        disclosure('Break down by page type',
-          '<div class="db-note" style="margin-bottom:14px">' +
-            n(pl.views) + ' player-page views from ' + n(pl.people) + ' people · ' +
-            n(tm.views) + ' team-page views · ' + n(cm.views) + ' comparisons</div>' +
-          '<div style="font-size:11.5px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">Players</div>' +
-          pageBars(pl.top) +
-          '<div style="font-size:11.5px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.4px;margin:18px 0 8px">Teams</div>' +
-          pageBars(tm.top) +
-          '<div style="font-size:11.5px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.4px;margin:18px 0 8px">Most-compared players</div>' +
-          barList((cm.topPlayers || []).map(function (r) { return { label: r.name, count: r.count }; }),
-            { empty: 'No comparisons in this range.' }) +
-          '<div class="db-note" style="margin-top:8px">A view of “A vs B” counts once for each player, so these add up to about twice the comparison views.</div>'));
-
-      html += card('Shares', n(sh.total) + ' ' + (sh.total === 1 ? 'share' : 'shares') + ' ' + rangeWord,
-        pageBars(sh.top),
-        disclosure('Recent shares',
-          table([
-            { h: 'When', raw: true, v: function (r) {
-              return '<span title="' + esc(r.displayTime || '') + '">' + esc(ago(r.sharedAt)) + '</span>'; } },
-            { h: 'Page', v: function (r) { return r.title || r.page || '—'; } },
-            { h: 'How', v: function (r) { return r.method === 'native' ? 'Share sheet' : 'Copied link'; } },
-          ], sh.recent, 'No shares in this range.')));
-
-      // ── 6. Leads ──
-      html += section('Leads', 'the actual people who asked');
-      html += '<div class="db-leads">' + card('Website requests', n(f.leads.count) + ' ' + rangeWord,
-        table([
-          { h: 'Player', v: function (r) { return r.playerName || '—'; } },
-          { h: 'Contact', v: function (r) { return r.parentName || '—'; } },
-          { h: 'Email', v: function (r) { return r.email || '—'; } },
-          { h: 'Phone', v: function (r) { return r.phone || '—'; } },
-          { h: 'When', raw: true, v: function (r) {
-              return '<span title="' + esc(r.createdAt ? new Date(r.createdAt).toLocaleString() : '') + '">' + esc(ago(r.createdAt)) + '</span>'; } },
-        ], f.leads.recent, 'No requests in this range yet.')) + '</div>';
-
-      // ── 7. Visitor log — filled in by its own paged request after render ──
+      // ── Visitor log — filled in by its own paged request after render ──
+      // One row per visit, plus the columns the old "Who read the pitch" table
+      // had. Those facts are per PERSON (that table was one row per address),
+      // so a returning visitor repeats them on each of their rows.
       html += section('Visitors', 'every real visit, newest first');
       html += '<div class="db-leads"><div class="db-card">' +
         '<div class="db-card-h"><div class="db-card-t">Visitor log</div>' +
         '<div class="db-card-s" id="db-logsub">Loading…</div></div>' +
         '<div class="db-card-b"><div id="db-logbody"></div>' +
         '<div id="db-logmore" style="text-align:center;margin-top:14px"></div></div></div></div>';
-
-      // ── 8. Data quality — always available, never in a headline ──
-      html += card('How these numbers are counted', null,
-        '<div class="db-pills">' +
-          '<span class="db-pill">' + n(a.excluded.bots) + ' bot page views excluded</span>' +
-          '<span class="db-pill">' + n(a.excluded.owner) + ' of your own visits excluded</span>' +
-          '<span class="db-pill">' + n(a.engagement.internalPageviews) + ' internal page-to-page clicks</span>' +
-        '</div>' +
-        '<div class="db-note">Everything above this card counts humans only. Bots are still recorded in the database — they are just never shown in a headline number.</div>',
-        disclosure('The full definitions',
-          '<div class="db-note">' +
-          '<p style="margin-bottom:10px"><strong>Bots</strong> are caught two ways. <em>Network:</em> datacenter, cloud, and big-tech corporate providers (AWS, Google Cloud, Azure, Cloudflare, Meta/&ldquo;Facebook, Inc.&rdquo;). <em>Browser:</em> anything announcing itself as a crawler in its user agent — Applebot, Googlebot, headless Chrome and the rest. Both checks are needed: Applebot runs from Apple&rsquo;s own network so only its user agent gives it away, while Meta&rsquo;s ad-review crawlers browse with a normal Chrome user agent so only their network does.</p>' +
-          '<p style="margin-bottom:10px"><strong>This can only ever be a ceiling.</strong> A crawler that sends an ordinary Chrome user agent from a home broadband address is indistinguishable from a person at this level. That is why <strong>Confirmed human</strong> exists beside it: it counts only visitors who clicked something or read more than one page, which crawlers essentially never do. The true number sits between the two.</p>' +
-          '<p style="margin-bottom:10px"><strong>Your own visits</strong> are excluded by address and subnet, not city. Your ISP moves you around inside a block and geolocation resolves the same house to different cities on different days — matching on &ldquo;North York&rdquo; alone let one of your own clicks through as a customer. Local development counts as yours too: a visit recorded from <code>::1</code> or a LAN address was served by your own dev server, and since those addresses have no geolocation at all, nothing else here can catch them — the wizard build put 167 such visits and 3 &ldquo;leads&rdquo; into this page as one very engaged stranger.</p>' +
-          '<p style="margin-bottom:10px"><strong>Proven yours</strong> (' + n((a.excluded.ownerProven || []).length) + ') — these addresses were seen geolocating to North York, or are loopback/LAN addresses, which only a machine on your own network can have: <code>' +
-          esc((a.excluded.ownerProven || []).join(', ') || 'none') + '</code></p>' +
-          '<p style="margin-bottom:10px"><strong>Inferred</strong> (' + n((a.excluded.ownerInferred || []).length) + ') — excluded only because they share an ISP block with a proven address: <code>' +
-          esc((a.excluded.ownerInferred || []).join(', ') || 'none') + '</code>. This is inference, not proof: a /24 is 256 addresses and on a large ISP it can cover more than one household. It is on because the alternative lets your own traffic back in every time your ISP reassigns you, which distorts the numbers more. Set <code>OWNER_SUBNET_MATCH=off</code> for exact addresses only, or add addresses by hand with <code>OWNER_IPS</code>.</p>' +
-          '<p style="margin-bottom:10px"><strong>Internal page-to-page clicks</strong> are page views whose referrer was circuitstats.com itself. They count toward page views but never toward visits, and are never listed as a traffic source — that was making browsing look like a source of traffic.</p>' +
-          '<p style="margin-bottom:10px"><strong>Time on page</strong> counts only seconds the tab was actually in front — a page abandoned in a background tab stops the clock rather than reporting an hour of reading. It is measured by a beacon sent when the tab is hidden or closed, so a visit that predates the beacon shows <em>&mdash;</em> (never measured), which is a different statement from 0s. The same beacon carries how far down the page they got and how long each block was on screen; <strong>What they actually looked at</strong> is built from that, because a section scrolling past and a section being read are the same event to a scroll marker.</p>' +
-          '<p style="margin-bottom:10px"><strong>Reading depth is ranked per page.</strong> The request form is the <em>bottom</em> of the long-form pages and the <em>top</em> of the phone-first one, so &ldquo;how far did they get&rdquo; is scored against the page each person actually saw. Scoring everyone on one ladder — which is what happened until now — reported a phone-first visitor who never scrolled as having read to the end.</p>' +
-          '<p><strong>Visits vs page views:</strong> one person reading eight player pages is 1 person, 1 visit and 8 page views. A “visit” is a session that started from outside the site; a “page view” is any single load. Leading with the 8 would overstate reach and make every conversion rate look ~8x worse than it is — so Visits is the headline, not the raw page-view count.</p>' +
-          '</div>')
-      );
 
       el('db-content').innerHTML = html;
       el('db-content').classList.remove('db-loading');
@@ -1188,9 +807,58 @@ const SITE = 'https://www.circuitstats.com';
             return '<span title="' + esc(r.displayTime || '') + '">' + esc(ago(r.visitedAt)) + '</span>'; } },
         { h: 'Location', v: function (r) { return r.location || '—'; } },
         { h: 'Network', v: function (r) { return r.org || '—'; } },
+        { h: 'Device', v: function (r) { return r.mobile ? 'Mobile' : 'Desktop'; } },
         { h: 'Came from', v: function (r) { return r.source || 'Direct'; } },
         { h: 'Pages', v: function (r) { return n(r.views); }, num: true },
         { h: 'Read', v: function (r) { return (r.pages || []).length ? r.pages.join(', ') : '—'; } },
+        // The old "Who read the pitch" columns. r.pitch is null for visitors who
+        // never reached a pitch page, and its facts are per person — a returning
+        // visitor shows the same pitch facts on each row.
+        { h: 'Pitch page', v: function (r) {
+            if (!r.pitch) return '—';
+            return r.pitch.lp.split('+').map(function (k) {
+              return { new: 'phone-first', old: 'old long form', info: 'info page' }[k] || k;
+            }).join(' + ');
+          } },
+        { h: 'Time', raw: true, v: function (r) {
+            var p = r.pitch;
+            if (!p) return '<span style="color:var(--text-3)">—</span>';
+            // null = predates the dwell beacon — "not measured", never 0s.
+            if (p.seconds == null) return '<span style="color:var(--text-3)">—</span>';
+            var slow = p.seconds >= 30;
+            return '<span style="color:' + (slow ? 'var(--good)' : p.seconds < 5 ? 'var(--text-3)' : 'inherit') + '">' +
+              esc(dur(p.seconds)) + '</span>' +
+              (p.maxScrollPct != null ? '<span style="color:var(--text-3)"> · ' + p.maxScrollPct + '%</span>' : '');
+          } },
+        { h: 'Scrolled to', raw: true, v: function (r) {
+            if (!r.pitch) return '<span style="color:var(--text-3)">—</span>';
+            if (r.pitch.furthest === 'untracked') return '<span style="color:var(--text-3)">Before tracking</span>';
+            return esc({ pricing: 'Price & form', included: "What's included",
+                         dashboard: 'Dashboard pitch', example: 'Live example',
+                         money: 'Money section', top: 'Top only' }[r.pitch.furthest] || '—');
+          } },
+        { h: 'Form', raw: true, v: function (r) {
+            var p = r.pitch;
+            if (!p) return '<span style="color:var(--text-3)">—</span>';
+            if (p.furthestField === 'submitted') return '<strong style="color:var(--good)">submitted</strong>';
+            var lbl = { notes: 'typed notes', email: 'typed email', player: 'typed name',
+                        touched: 'touched a field' }[p.furthestField];
+            // Filled fields in and left — the row you most want to be able to see.
+            return lbl ? '<span style="color:var(--bad)">' + esc(lbl) + ', left</span>'
+                       : '<span style="color:var(--text-3)">—</span>';
+          } },
+        { h: 'Then', v: function (r) {
+            var p = r.pitch;
+            if (!p) return '—';
+            var acts = [];
+            if (p.openedDrawer) acts.push('opened the pitch');
+            if (p.clickedExample) acts.push('saw the example');
+            if (p.tappedWhatsApp) acts.push('tapped WhatsApp');
+            if (p.tappedEmail) acts.push('tapped email');
+            if (p.tappedCall) acts.push('tapped call');
+            if (p.submitted) acts.push('REQUESTED');
+            return acts.length ? acts.join(', ') : '—';
+          } },
       ], logRows, 'No visitors yet.');
       var more = el('db-logmore');
       more.innerHTML = hasMore
@@ -1216,7 +884,7 @@ const SITE = 'https://www.circuitstats.com';
       else content.textContent = 'Loading…';
 
       try {
-        var res = await fetch(API + '/dashboard/overview?days=' + days, {
+        var res = await fetch(API + '/dashboard/overview?days=' + days + '&lite=1', {
           headers: { Authorization: 'Bearer ' + token },
         });
         if (mine !== inflight) return;             // a newer range won the race
