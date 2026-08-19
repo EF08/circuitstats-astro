@@ -397,7 +397,14 @@ const TAIL = pipeline
       <section class="wz-slide wz-slide-done" data-step="done" hidden>
         <div class="wz-done-ico">✓</div>
         <h3 class="wz-h">Got it.</h3>
-        <p class="wz-sub">We'll reply within a few hours with next steps. Your site is usually live within days.</p>
+        {/* Two endings on purpose. Pipeline filed a complete brief and Andy is
+            already talking to them, so it promises the site ("by tomorrow",
+            with their actual domain filled in at finish()). The non-pipeline
+            copy shows only on the Stripe-failed-to-open fallback — an UNPAID
+            visitor, who must not be promised a live site. */}
+        {pipeline
+          ? <p class="wz-sub">Check <b id="wz-done-site">back</b> by tomorrow! Any questions? <a class="wz-done-wa" href="https://wa.me/16476079935" target="_blank" rel="noopener">WhatsApp us</a>.</p>
+          : <p class="wz-sub">We'll reply within a few hours with next steps. Your site is usually live within days.</p>}
       </section>
     </div>
 
@@ -1903,6 +1910,10 @@ const TAIL = pipeline
     }
 
     function finish() {
+      // Name the site they just described, if the pipeline done-slide is the
+      // one rendered and a domain was chosen; "back" stays as the fallback.
+      var site = document.getElementById('wz-done-site');
+      if (site && d.domain && d.domain.trim()) site.textContent = d.domain.trim();
       var done = doneStep();
       clearDraft();
       step = done;
@@ -2443,6 +2454,8 @@ const TAIL = pipeline
 
   /* ── sent ── */
   .wz-slide-done{display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding-top:20px}
+  .wz-done-wa{color:#f2a83b;font-weight:600;text-decoration:underline;text-underline-offset:3px}
+  .wz-done-wa:hover{color:#f6b757}
   .wz-done-ico{
     width:48px;height:48px;border-radius:50%;margin-bottom:14px;
     display:flex;align-items:center;justify-content:center;
