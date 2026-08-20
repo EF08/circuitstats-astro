@@ -778,9 +778,19 @@ const SITE = 'https://www.circuitstats.com';
     // page is 25 real visits rather than 25 rows of which some are hidden.
     // Always all-time (a log, not a range metric), so the range filter above
     // doesn't apply here.
-    var logOffset = 0, logRows = [];
+    //
+    // Two guards keep a row from ever rendering twice (seen live Aug 19 2026:
+    // the whole log doubled). A generation counter: render() calls loadLog(true)
+    // on every range switch, and two in-flight page-1 fetches used to BOTH
+    // append their 25 rows. And a per-row key set: offset paging over a live
+    // collection re-serves the tail of the previous page when new visits arrive
+    // between "Next 25" clicks, and a double-tap fetches the same offset twice.
+    var logOffset = 0, logRows = [], logGen = 0, logKeys = {}, logBusy = false;
     function loadLog(reset) {
-      if (reset) { logOffset = 0; logRows = []; }
+      if (logBusy && !reset) return;
+      if (reset) { logOffset = 0; logRows = []; logKeys = {}; logGen++; }
+      var gen = logGen;
+      logBusy = true;
       var more = el('db-logmore');
       if (more) more.innerHTML = '<span class="db-note">Loading…</span>';
       fetch(API + '/dashboard/visitors?offset=' + logOffset + '&limit=25', {
@@ -788,13 +798,23 @@ const SITE = 'https://www.circuitstats.com';
       })
         .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
         .then(function (d) {
-          logRows = logRows.concat(d.visitors);
+          if (gen !== logGen) return;               // a newer reset won the race
+          logBusy = false;
+          for (var i = 0; i < d.visitors.length; i++) {
+            var row = d.visitors[i];
+            var k = row.visitedAt + '|' + (row.source || '') + '|' + (row.location || '');
+            if (logKeys[k]) continue;
+            logKeys[k] = 1;
+            logRows.push(row);
+          }
           logOffset += d.visitors.length;
           var sub = el('db-logsub');
           if (sub) sub.textContent = 'Showing ' + logRows.length + ' of ' + n(d.total) + ' real visits';
           renderLog(d.hasMore);
         })
         .catch(function (err) {
+          if (gen !== logGen) return;
+          logBusy = false;
           if (el('db-logmore')) el('db-logmore').innerHTML = '<span class="db-note">Could not load: ' + esc(err.message) + '</span>';
         });
     }
