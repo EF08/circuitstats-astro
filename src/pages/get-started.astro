@@ -494,7 +494,8 @@ const SALE_ON = SEATS_LEFT > 0;
         fetch(API + '/track-click', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           keepalive: true,
-          body: JSON.stringify({ label: label, detail: detail || null, page: location.pathname }),
+          body: JSON.stringify({ label: label, detail: detail || null, page: location.pathname,
+                                 ownerToken: window.csOwnerToken ? window.csOwnerToken() : null }),
         }).catch(function () {});
       } catch (e) {}
     }

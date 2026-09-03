@@ -244,9 +244,31 @@ const navIcons: Record<string, string> = {
     var dev = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
     var API = dev ? 'http://localhost:4000/a1a2-command-center' : '/a1a2-command-center';
     var sameOrigin = !dev;
+    // Owner identification, and the ONLY one the backend has since 2026-09-03:
+    // no city rule, no learned address list, no /24 widening. /dashboard is the
+    // same origin as this page, so a signed-in browser holds its JWT here and
+    // can hand it back — proof of the DEVICE.
+    //
+    // The backend narrows that token to config.shared.OWNER_EMAILS before
+    // believing it, because this same JWT is issued to paying customers and to
+    // free-access testers: holding one proves you are signed in, not that you
+    // are us. Not signed in? The visit counts — which is the honest answer, and
+    // the reason this replaced geography: the old rule deleted every real
+    // visitor who happened to live in Andy's city (the GTA is the customer
+    // base) and missed him entirely whenever he was on a phone.
+    window.csOwnerToken = function () {
+      try { return localStorage.getItem('cb_token') || null; } catch (e) { return null; }
+    };
+    // Attached centrally so every beacon carries it — visit, click, dwell and
+    // share alike. A click the backend cannot tie to a token is a stranger's
+    // click now, so no call site can afford to forget it.
     window.csBeacon = function (path, body) {
       var url = API + path, json;
-      try { json = JSON.stringify(body); } catch (e) { return; }
+      try {
+        body = body || {};
+        body.ownerToken = window.csOwnerToken();
+        json = JSON.stringify(body);
+      } catch (e) { return; }
       try {
         if (sameOrigin && navigator.sendBeacon
           && navigator.sendBeacon(url, new Blob([json], { type: 'application/json' }))) return;

@@ -402,7 +402,8 @@ const SITE = 'https://www.circuitstats.com';
         fetch(API + '/track-click', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           keepalive: true,
-          body: JSON.stringify({ label: label, detail: detail || null, page: location.pathname }),
+          body: JSON.stringify({ label: label, detail: detail || null, page: location.pathname,
+                                 ownerToken: window.csOwnerToken ? window.csOwnerToken() : null }),
         }).catch(function () {});
       } catch (e) {}
     }
