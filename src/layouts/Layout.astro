@@ -305,7 +305,31 @@ const navIcons: Record<string, string> = {
       if (q.get('gclid')) return 'google-ad';
       return null;
     }
+
+    // The visit id. A VISIT is a session, not a page load: one arrival, then the
+    // pages they open next, a reload, a return out of Stripe. Every load in that
+    // stretch carries this id so the backend folds them into one visit.
+    //
+    // The referrer cannot answer it — a typed URL, a bookmark, a reload and an
+    // in-app-browser ad tap all arrive with document.referrer empty, and that is
+    // most of the paid traffic. Sliding 30-minute window (the analytics
+    // standard); storage blocked returns null and the backend uses the referrer.
+    function csSid() {
+      var KEY = 'cs_sid', TTL = 30 * 60 * 1000, now = Date.now();
+      try {
+        var raw = localStorage.getItem(KEY);
+        var s = raw ? JSON.parse(raw) : null;
+        if (!s || !s.id || now - s.t >= TTL) {
+          s = { id: 's' + now.toString(36) + Math.random().toString(36).slice(2, 10) };
+        }
+        s.t = now;
+        localStorage.setItem(KEY, JSON.stringify(s));
+        return s.id;
+      } catch (e) { return null; }
+    }
+
     window.csBeacon('/track', {
+      sid: csSid(),
       referrer: document.referrer || null,
       userAgent: navigator.userAgent,
       page: location.pathname + location.hash,
