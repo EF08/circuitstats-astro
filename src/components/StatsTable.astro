@@ -170,14 +170,6 @@ const shown = rjActive ? total : Math.min(INITIAL_ROWS, total);
       var effLimit = rjActive ? total : Math.min(limit, total);
       var visible = matched.slice(0, effLimit);
 
-      // The expensive part isn't computing the order (cheap array ops above) —
-      // it's touching/repositioning DOM nodes. On a ~2900-row scope, reordering
-      // *everything* on every sort/search call (even off-DOM in a fragment)
-      // still means the browser has to re-layout/repaint a subtree that size.
-      // So: only ever physically reposition the rows that are actually going
-      // to be visible (bounded by the page size, not the dataset), and just
-      // flip display:none on anything else that needs hiding — no reordering
-      // for rows nobody can see yet.
       var visibleSet = new Set(visible);
       if (prevVisible === null) {
         // First run only: the server-rendered page shows every row, so this

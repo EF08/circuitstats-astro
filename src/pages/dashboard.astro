@@ -154,7 +154,6 @@ const SITE = 'https://www.circuitstats.com';
   }
   .db-drop.is-leak { color: var(--bad); font-weight: 700; }
 
-
   /* ── Geography ─────────────────────────────────────────────────────────── */
   .geo-wrap { position: relative; width: 100%; }
   .geo-wrap svg { display: block; width: 100%; height: auto; overflow: visible; }
@@ -773,18 +772,6 @@ const SITE = 'https://www.circuitstats.com';
       loadLog(true);
     }
 
-    // ── Visitor log, paged 25 at a time ──────────────────────────────────────
-    // Bots and your own visits are removed server-side *before* paging, so every
-    // page is 25 real visits rather than 25 rows of which some are hidden.
-    // Always all-time (a log, not a range metric), so the range filter above
-    // doesn't apply here.
-    //
-    // Two guards keep a row from ever rendering twice (seen live Aug 19 2026:
-    // the whole log doubled). A generation counter: render() calls loadLog(true)
-    // on every range switch, and two in-flight page-1 fetches used to BOTH
-    // append their 25 rows. And a per-row key set: offset paging over a live
-    // collection re-serves the tail of the previous page when new visits arrive
-    // between "Next 25" clicks, and a double-tap fetches the same offset twice.
     var logOffset = 0, logRows = [], logGen = 0, logKeys = {}, logBusy = false;
     function loadLog(reset) {
       if (logBusy && !reset) return;

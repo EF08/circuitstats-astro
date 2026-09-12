@@ -23,8 +23,7 @@
 // mis-tap.
 const GRAD_YEARS = [2026, 2027, 2028, 2029, 2030, 2031, 2032, 2033];
 const POSITIONS = ['PG', 'SG', 'SF', 'PF', 'C'];
-// The nine presets Andy specified, in his order. "Add your own" is a real
-// escape hatch, not decoration — the preset list can't anticipate every game.
+
 const STRENGTHS = [
   'Athleticism', 'Size', 'High IQ', '3PT shooting', 'Handle',
   'Defense', 'Strength', 'Footwork', 'Control & balance',
@@ -42,21 +41,7 @@ const TAGLINE_MAX = 140;
 // are left.
 const { seatsTotal = 50, seatsTaken = 0, pipeline = false } = Astro.props;
 const seatsLeft = Math.max(0, seatsTotal - seatsTaken);
-// PIPELINE MODE (/intake): the same wizard as an info-recapture form for
-// prospects Andy is already talking to. Same slides, same film uploads, same
-// brief filed and emailed — but no pricing anywhere, no add-ons slide, no
-// quote, and no Stripe: submit ends at the thank-you. The host page carries
-// its share of the contract: it must NOT define window.csTrack and must use
-// Layout's noPixel, which is what silences every funnel label and pixel event
-// here (each call is already guarded). Submissions carry source:'pipeline' so
-// no funnel or dashboard number counts them.
-// Live since Aug 16 2026, once r2-smoke.js round-tripped a real object through
-// the abrifazliu bucket (clips are namespaced under intake/, so upload target
-// and delivery target are one place).
-//
-// Set back to false and the run collapses to nine questions plus the four
-// below, film collected by email instead — the wizard needs no bucket to work
-// end to end, which is what made shipping it before R2 possible.
+
 const FILM_ENABLED = true;
 // Everything after the film block. Named rather than numbered because their
 // step numbers depend on how many strengths the parent picked.
@@ -335,11 +320,9 @@ const TAIL = pipeline
           ? "Anything at all — a page you want, a look you have in mind, something we should know. If it's a lot of extra work it might cost extra — we'll confirm with you first."
           : "Everything you've filled in is covered by the price. This is for anything beyond it."}</p>
         <textarea class="wz-inp wz-ta" id="wz-custom" data-field="custom" rows="4" maxlength="900" placeholder="e.g. a page for your academics, a different colour scheme, a section for club history"></textarea>
-        {/* Priced live rather than left hanging. The old copy told them
-            something extra might cost extra and then made them wait days to
-            find out how much — this answers it before they've left the slide.
-            Pipeline mode captures the text but never prices it: money talk
-            belongs to the conversation Andy is already having. */}
+        {
+
+}
         <div class="wz-quote" id="wz-quote" role="status" hidden></div>
         {!pipeline && <div class="wz-warn" id="wz-warn">
           <strong>Bigger custom work is quoted separately.</strong>
@@ -397,11 +380,9 @@ const TAIL = pipeline
       <section class="wz-slide wz-slide-done" data-step="done" hidden>
         <div class="wz-done-ico">✓</div>
         <h3 class="wz-h">Got it.</h3>
-        {/* Two endings on purpose. Pipeline filed a complete brief and Andy is
-            already talking to them, so it promises the site ("by tomorrow",
-            with their actual domain filled in at finish()). The non-pipeline
-            copy shows only on the Stripe-failed-to-open fallback — an UNPAID
-            visitor, who must not be promised a live site. */}
+        {
+
+}
         {/* The domain slide can't be skipped (not in OPTIONAL, and Next blocks
             until it validates), so "your new site" below is unreachable in
             practice — finish() overwrites it with d.domain. */}
@@ -605,9 +586,7 @@ const TAIL = pipeline
         return clipsFor(filmIndex(n)).length >= MIN_CLIPS;
       }
       if (t === 'domain') {
-        // Well-formed is non-negotiable — "abcd" used to pass. Registered by
-        // someone else is equally blocking unless they say they're the
-        // someone else, because otherwise this is a site with nowhere to go.
+
         if (!DOMAIN_RE.test(d.domain.trim().toLowerCase())) return false;
         if (domStatus === 'taken' && !d.domainOwned) return false;
         // 'unknown' passes: the registry not answering is our problem, and
@@ -1239,15 +1218,6 @@ const TAIL = pipeline
       });
     }
 
-    // The server-side draft is created the moment slide 1 clears — a real name
-    // and a working email address — and not when the wizard opens. Those two
-    // fields ARE the lead, so the row exists from the first point there is
-    // something worth keeping: a parent who types a valid address and then
-    // vanishes is reachable, which is the whole reason to store any of this
-    // early. (It used to wait for the first film screen, on the grounds that
-    // clips were the only thing that truly needed a server record. That traded
-    // away every abandoned email above the film slide, which was the wrong
-    // trade.) An opened-and-bounced form still writes nothing.
     var tokenPromise = null;
     function ensureToken() {
       if (d.intakeToken) return Promise.resolve(d.intakeToken);
@@ -1427,7 +1397,7 @@ const TAIL = pipeline
       el.textContent = q.reason || "We'll price this and confirm with you before doing anything.";
     }
     function queueQuote() {
-      if (PIPELINE) return;   // the text is captured; pricing it belongs to Andy's conversation
+      if (PIPELINE) return;
       clearTimeout(quoteTimer);
       var text = d.custom.trim();
       if (!text) { d.quote = null; lastQuoted = ''; paintQuote(null); save(); return; }
@@ -1729,13 +1699,6 @@ const TAIL = pipeline
       });
     }
 
-    // ── nav ──────────────────────────────────────────────────────────────────
-    // Moves a slide, never a history entry. It used to call history.back(),
-    // which only works if this session walked forward through every slide —
-    // resume a draft at slide 11 and the wizard has exactly ONE entry, so one
-    // Back popped past it and closed the whole thing. The hardware/browser back
-    // button still unwinds real history via popstate below; this button is
-    // about the form, and the form always has a previous slide.
     elBack.addEventListener('click', function () { if (step > 1) go(step - 1); });
     elSkip.addEventListener('click', function () { go(step + 1); });
     elNext.addEventListener('click', function () {
@@ -1771,8 +1734,6 @@ const TAIL = pipeline
       go(step + 1);
     });
 
-    // The shape the server draft stores. Kept separate from the email summary
-    // below: one is data for the build, the other is prose for Andy's inbox.
     function answers() {
       return {
         playerName: d.playerName, email: d.email, classYear: d.classYear, birthYear: d.birthYear,
@@ -1868,9 +1829,7 @@ const TAIL = pipeline
         if (!r.ok) throw new Error('status ' + r.status);
         track('get-started:intake-complete');
         if (window.fbq) window.fbq('trackCustom', 'CompleteRegistration');
-        // The brief is filed and Andy has been emailed. Whatever happens at
-        // Stripe from here, this submission is not lost — which is the entire
-        // reason payment comes after this call rather than before it.
+
         var sb = document.getElementById('gs-sticky');
         if (sb) { sb.dataset.done = '1'; sb.classList.remove('on'); }
         // Pipeline mode ends here: the brief is the deliverable, there is no
@@ -1903,10 +1862,7 @@ const TAIL = pipeline
           location.href = o.url;
         })
         .catch(function () {
-          // Checkout is the one step that is allowed to fail softly. The brief
-          // is already in — so land on the thank-you rather than an error, and
-          // let Andy take payment in the reply. A parent who has just spent
-          // fifteen minutes should not be shown a dead end.
+
           track('get-started:intake-checkout-error');
           finish();
         });

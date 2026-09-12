@@ -28,9 +28,7 @@ export interface Props {
   hideNav?: boolean;         // drop the bottom nav (conversion pages: no exits off the page)
   hideHeader?: boolean;      // drop the site header too (page ships its own nav, e.g. /get-started)
   noPixel?: boolean;         // omit MetaPixel entirely (not even PageView) — for
-                             // non-funnel pages like /intake, where any pixel
-                             // event would feed ad optimization traffic that
-                             // was never bought (see CLAUDE.md pixel section)
+
 }
 const { title, description = '', subLabel, pillLabel, pageBase, activeTab, canonical, robots, trackTitle, hideNav = false, hideHeader = false, noPixel = false } = Astro.props;
 
@@ -244,18 +242,7 @@ const navIcons: Record<string, string> = {
     var dev = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
     var API = dev ? 'http://localhost:4000/a1a2-command-center' : '/a1a2-command-center';
     var sameOrigin = !dev;
-    // Owner identification, and the ONLY one the backend has since 2026-09-03:
-    // no city rule, no learned address list, no /24 widening. /dashboard is the
-    // same origin as this page, so a signed-in browser holds its JWT here and
-    // can hand it back — proof of the DEVICE.
-    //
-    // The backend narrows that token to config.shared.OWNER_EMAILS before
-    // believing it, because this same JWT is issued to paying customers and to
-    // free-access testers: holding one proves you are signed in, not that you
-    // are us. Not signed in? The visit counts — which is the honest answer, and
-    // the reason this replaced geography: the old rule deleted every real
-    // visitor who happened to live in Andy's city (the GTA is the customer
-    // base) and missed him entirely whenever he was on a phone.
+
     window.csOwnerToken = function () {
       try { return localStorage.getItem('cb_token') || null; } catch (e) { return null; }
     };
@@ -282,15 +269,6 @@ const navIcons: Record<string, string> = {
     };
   })();
 
-  // Fire-and-forget visit tracking (feeds the /dashboard analytics), verbatim from the app.
-  //
-  // Where the visit came from is two fields, not one. `referrer` covers organic
-  // and shared links; `src` is the tag we put on the link ourselves. The tag
-  // used to be ?src= alone, which meant paid traffic — the traffic we pay to
-  // measure — landed as "Direct": Meta's in-app browser sends no referrer at
-  // all, so an ad click and someone typing the URL were the same row. The ad
-  // platforms' own markers fill that in, in the same field, so nothing
-  // downstream needs a second code path to read them.
   (function () {
     var q = new URLSearchParams(location.search);
     function src() {
@@ -306,14 +284,6 @@ const navIcons: Record<string, string> = {
       return null;
     }
 
-    // The visit id. A VISIT is a session, not a page load: one arrival, then the
-    // pages they open next, a reload, a return out of Stripe. Every load in that
-    // stretch carries this id so the backend folds them into one visit.
-    //
-    // The referrer cannot answer it — a typed URL, a bookmark, a reload and an
-    // in-app-browser ad tap all arrive with document.referrer empty, and that is
-    // most of the paid traffic. Sliding 30-minute window (the analytics
-    // standard); storage blocked returns null and the backend uses the referrer.
     function csSid() {
       var KEY = 'cs_sid', TTL = 30 * 60 * 1000, now = Date.now();
       try {
@@ -487,11 +457,7 @@ const navIcons: Record<string, string> = {
       });
     }
     btn.addEventListener('click', function () {
-      // Share the URL and NOTHING else — no title, no text. Passing a title makes
-      // iOS Messages (and some other targets) build their own card out of that
-      // string instead of fetching the page's OG tags, which is why sharing via
-      // this button used to give a plain text-only preview while pasting the same
-      // URL from the address bar gave the rich one. url-only == pasted URL.
+
       var shareData = { url: location.href };
       if (navigator.share) {
         navigator.share(shareData).then(function () { trackShare('native'); }).catch(function () {});

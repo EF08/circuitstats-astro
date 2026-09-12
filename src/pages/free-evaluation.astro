@@ -1,16 +1,5 @@
 ---
-// /free-evaluation — where the site-wide header CTA lands (Aug 2026).
-//
-// The header used to open /get-started, which asks for $99 on the first screen.
-// This is the step before that: a free film review, asked for in the one place
-// these parents already live. It exists to start a WhatsApp conversation and
-// nothing else, so there is exactly one action on the page — no form, no
-// account, no second CTA to split the tap. The pitch happens in the chat.
-//
-// Deliberately one screen with nothing below the fold: there is no scroll to
-// measure and no reason to build one. Meta's `Contact` event fires off the
-// wa.me tap through the site-wide listener in MetaPixel.astro, and the internal
-// funnel picks it up from data-track — neither needs wiring here.
+
 import Layout from '../layouts/Layout.astro';
 import { EVAL_SEATS_LEFT } from '../lib/evalSeats.js';
 const SITE = 'https://www.circuitstats.com';

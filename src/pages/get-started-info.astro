@@ -1,13 +1,5 @@
 ---
-// get-started.astro — conversion landing for player websites, the destination
-// of the "Get D1 offers now" hero CTA. Implements the Claude Design redesign
-// ("Player Websites Sales Page"): own sticky nav (site header hidden) → hero →
-// what's-on-the-line money section → live Google-search demo + the real
-// abrifazliu.com embedded in a browser frame (interactive) →
-// private-dashboard section → pricing + request form. Prefills
-// player/team/league from query params (?p=&t=&l=) and POSTs to the
-// circuitboard backend (/website-request), which stores the lead and emails
-// Andy.
+
 import Layout from '../layouts/Layout.astro';
 import { liveLabel } from '../lib/liveLabel.js';
 const SITE = 'https://www.circuitstats.com';
@@ -475,12 +467,6 @@ const SITE = 'https://www.circuitstats.com';
         });
       });
 
-      // Lead, on exactly the definition the wizard uses: a real name and a
-      // valid email address, and nothing further. It used to wait for a
-      // successful submit — a much later and much stronger action — so the two
-      // pitch pages were feeding two different meanings into the one signal the
-      // campaigns optimise on. Advanced matching mirrors the wizard too, so a
-      // lead from either page matches the same way.
       (function () {
         var EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         var elP = document.getElementById('gs-player');
@@ -853,13 +839,6 @@ const SITE = 'https://www.circuitstats.com';
   .gs-foot-contact a:hover{color:#f7ba60}
   .gs-foot-sources{font-size:12.5px;color:#5a6884}
 
-  /* ── DESKTOP TYPE FLOORS ── the large-size compression now lives in the base
-     clamp() values; this block only enforces the floors on big screens. Mobile
-     keeps the design's original sizes.
-     THE RULE (Andy, applies to every site): on desktop, reading/content text
-     is never below 17px — the size of .gs-dash-p ("Every site includes a
-     private dashboard…"). Fine print (disclaimers, footnotes) floors at
-     13.5px. Only styled small-caps labels/eyebrows may go smaller. */
   @media (min-width:1024px){
     /* body/content floor: 17px */
     .gs-ghost{font-size:17px}                      /* was 15px */

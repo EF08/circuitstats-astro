@@ -106,22 +106,13 @@ const SALE_ON = SEATS_LEFT > 0;
                 </a>
               </div>
               <div class="iph-view">
-                {/* Snapshot of the real site shows instantly; the live iframe
-                    fades in over it once loaded (on weak cellular the screen
-                    used to sit black). */}
+                {
+
+}
                 <img class="iph-preview" id="iph-preview" src="/abri-phone-preview.webp" alt="" aria-hidden="true" />
-                {/* THE SERP ACT — the hero asks "when a coach googles your
-                    name, what comes up?"; the phone answers in order: the
-                    search, his site as the top result, the tap, the site.
-                    Server-rendered VISIBLE so the phone's first paint is
-                    Google — it used to start hidden until the visibility
-                    observer fired, which showed the site for a beat and then
-                    cut backwards to the search. No-JS hides it via the
-                    noscript below (site only, as before); reduced-motion
-                    removes it synchronously before first paint. Removed for
-                    good after one run. z-index 2: over the site, under the
-                    touch shield, so a real tap still opens abrifazliu.com at
-                    any moment. */}
+                {
+
+}
                 <noscript><style>.iph-serp{display:none}</style></noscript>
                 <div class="iph-serp" id="iph-serp" aria-hidden="true">
                   <div class="iph-serp-logo"><span style="color:#4285F4">G</span><span style="color:#EA4335">o</span><span style="color:#FBBC05">o</span><span style="color:#4285F4">g</span><span style="color:#34A853">l</span><span style="color:#EA4335">e</span></div>
@@ -190,11 +181,9 @@ const SALE_ON = SEATS_LEFT > 0;
              below them, same order as the cost-vs-prize block further down, so
              the page reads one way throughout. */
           <div class="gs-seats">
-            {/* The count and what happens after it are one thought, so they're
-                one line. Gold stops at "left" and the consequence goes slate —
-                the colour break does the work a second row used to.
-                Right-aligned: the line ends at the bar's right edge, over the
-                unclaimed marks it's counting. */}
+            {
+
+}
             <div class="gs-seats-top">
               <span class="gs-seats-r">{SEATS_LEFT} left</span><span class="gs-seats-then">, then $399</span>
             </div>
@@ -436,11 +425,6 @@ const SALE_ON = SEATS_LEFT > 0;
         </div>
       </section>
 
-      <!-- CLOSING CTA. The included checklist that used to live here moved up
-           into the offer column (Aug 17 2026) so it argues before the ask, not
-           behind the drawer 3-in-152 visitors open. The section itself stays:
-           #info-included anchors the 'included' dwell key and the
-           scroll-included marker, and the drawer still ends with a door. -->
       <section class="gs-included" id="info-included">
         <a class="gs-btn gs-btn-lg gs-back-btn" href="#get" data-track="get-started:info-cta">Get your website today</a>
       </section>
@@ -477,14 +461,6 @@ const SALE_ON = SEATS_LEFT > 0;
     var API = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
       ? 'http://localhost:4000/a1a2-command-center' : '/a1a2-command-center';
 
-    // Funnel instrumentation, shared by the scroll tracker, the more-info
-    // reveal and the form. Labels must stay in sync with
-    // a1a2-command-center/apps/circuitboard/funnel.js.
-    //
-    // Routed through Layout's csBeacon (sendBeacon) so an event fired on the
-    // way out — a WhatsApp tap, a submit, the last section reached — survives
-    // the page being torn down. Layout's script runs after this one in document
-    // order, so csBeacon is resolved at call time, never at definition time.
     function track(label, detail) {
       if (window.csBeacon) {
         window.csBeacon('/track-click', { label: label, detail: detail || null, page: location.pathname });
@@ -669,19 +645,6 @@ const SALE_ON = SEATS_LEFT > 0;
       }
     })();
 
-    // THE SERP ACT — plays the hero's question forward inside the phone: the
-    // coach googles him, his site comes up first, the tap, the site. Runs once
-    // when the phone becomes visible; reduced motion and no-JS go straight to
-    // the site exactly as before. The scroll proof-of-life below waits for
-    // this to finish (cs-serp-done), so the phone tells one story in order
-    // instead of two at once.
-    //
-    // Instrumented as its own three-rung funnel at the top of the page, above
-    // the price row where the tracked ladder used to start: phone-seen (the
-    // hero reached them at all) → serp-results (his site ranked first, on
-    // screen) → serp-complete (the act played all the way through). The act
-    // takes ~6.1s, so without the last rung a visitor who left mid-typing and
-    // one who watched the whole thing were the same row.
     (function () {
       var serp = document.getElementById('iph-serp');
       var phone = document.getElementById('iph');
@@ -830,12 +793,7 @@ const SALE_ON = SEATS_LEFT > 0;
           omni.classList.remove('iph-nudge-on');
           setTimeout(function () { tip.remove(); }, 420);
         }
-        // The nudge stays until they do the thing it asks for. It used to clear
-        // on any click, on the first scroll, and on window blur (which fires
-        // just from tapping into the iframe, or switching tabs) — so most
-        // visitors lost the only instruction telling them the phone is a real
-        // site they can open. Now only the two links that actually open
-        // abrifazliu.com retire it.
+
         document.addEventListener('click', function (e) {
           if (e.target.closest && e.target.closest('.iph-omni, .iph-touch')) dismiss();
         }, true);
@@ -873,30 +831,6 @@ const SALE_ON = SEATS_LEFT > 0;
       io.observe(frame);
     })();
 
-    // "Saw the price" — the one fact this page exists to establish, so it gets
-    // its own observer watching the price line itself rather than the block
-    // around it.
-    //
-    // It used to ride the section observer below, anchored to #get with that
-    // observer's -30% bottom margin. On desktop those are the same event; on
-    // mobile they are not, and mobile is the traffic. Measured on the real
-    // stacked layout (390x664): the $399 row sits at y=816 with the page at
-    // rest, so it crosses the fold at 152px of scroll and is fully readable at
-    // 221px — but #get only cleared the -30% margin at 311px. Anyone who
-    // scrolled into that 152-311px band read the price, decided against it,
-    // and left a record identical to someone who never moved a pixel. The
-    // dwell section above (key 'price') has the same anchor, so how long the
-    // price was on screen is measured against the same thing the marker fires
-    // on.
-    //
-    // Threshold, not rootMargin: the whole 69px row has to be in view, which
-    // is a claim worth making ("the price and the $39/month line were both
-    // legible"). 0.9 rather than 1.0 because fractional layout pixels can keep
-    // a full-visibility threshold from ever firing.
-    //
-    // NOTE the definition of get-started:scroll-pricing changed here (Aug 12
-    // 2026) and it now fires for strictly more people than before. Counts step
-    // up at that date for a reason that isn't the page performing better.
     (function () {
       if (!('IntersectionObserver' in window)) return;
       var price = document.querySelector('.gs-price-row');
@@ -1050,22 +984,7 @@ const SALE_ON = SEATS_LEFT > 0;
         }
         try { localStorage.removeItem('cs-intake-pending'); } catch (e) {}
         track('get-started:intake-paid');
-        // The money event — a completed Stripe checkout and nothing else.
-        //
-        // It used to fire straight off `?paid=1` for a flat CA$99. That trusted
-        // the URL, so anyone who opened /get-started?paid=1 minted a conversion
-        // in the ad account, and it ignored add-ons (up to CA$297, plus any
-        // custom quote, all on the same invoice) so the biggest sales were the
-        // most under-reported. Now the session id goes back to Stripe through
-        // our backend, and the event fires only on its word, for its number.
-        //
-        // No sid means no Purchase. A sale we cannot verify is not a sale we
-        // report.
-        //
-        // eventID is Stripe's session id and the webhook's Conversions API half
-        // sends the same one, so Meta collapses the pair into a single
-        // conversion the day a CAPI token exists. Until then this is the only
-        // half that fires, which is why it has to be right.
+
         var sid = q.get('sid');
         if (window.fbq && sid) {
           fetch(API + '/intake/paid?sid=' + encodeURIComponent(sid))
@@ -1430,17 +1349,10 @@ const SALE_ON = SEATS_LEFT > 0;
   .gs-seats-bar{display:flex;gap:2px;height:13px}
   .gs-seat{flex:1 1 0;min-width:0;border-radius:2px;background:#22334f}
   .gs-seat-on{background:#f2a83b}
-  /* The hairline the form used to carry, now on the wrapper that replaced it —
-     it separates the price statement above from the way in below, and that job
-     outlived the fields. */
+
   #gs-formwrap{display:flex;flex-direction:column;gap:16px;border-top:1px solid #16223c;padding-top:24px}
   .gs-submit{align-self:stretch}
-  /* The package: eleven rows between the price and the button, one glance-able
-     bill of goods. Sized up 20% on Andy's call (2026-08-18): 16px rows — the
-     checklist is the offer's substance and had been reading as fine print.
-     ✓ and + share one fixed slot so the text edge holds; prices are mono gold
-     like the wizard's add-on slide, so the same figure in checkout reads as
-     already met. */
+
   .gs-pack{margin-top:24px;border-top:1px solid #131f38}
   .gs-pack-row{
     display:flex;gap:10px;align-items:baseline;
@@ -1529,8 +1441,7 @@ const SALE_ON = SEATS_LEFT > 0;
   .gs-bought #gs-formwrap,
   .gs-bought .gs-more-btn{display:none}
   .gs-bought .gs-back{border-top:none;padding-top:0}
-  /* These parents live in WhatsApp — the talk-first path is a real secondary
-     button under Submit (48px target) on every screen size. */
+
   .gs-wa-link{
     align-self:stretch;display:flex;align-items:center;justify-content:center;
     min-height:48px;padding:12px;border:1px solid #22304f;border-radius:10px;

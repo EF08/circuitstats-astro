@@ -1,24 +1,5 @@
 ---
-// intake.astro — the pipeline intake link (Aug 2026).
-//
-// A URL Andy sends by hand to a prospect he is ALREADY talking to (WhatsApp,
-// phone, in person): the same wizard as /get-started, minus everything
-// transactional — no pricing, no add-ons slide, no quote, no Stripe. The brief
-// still files to website_intakes + website_requests and still emails Andy,
-// carrying source:'pipeline' so no funnel or dashboard number counts it (the
-// backend filters it out of getFunnelStats, /dashboard/leads and
-// awaitingPayment).
-//
-// TRACKING SILENCE IS STRUCTURAL, NOT POLICED: this page never defines
-// window.csTrack, so every funnel track() inside the wizard is a no-op by its
-// own guard; noPixel omits MetaPixel entirely, so every fbq() call is a no-op
-// the same way. Do not add either helper here — the quiet is the feature.
-// (Layout's generic click logger still writes 'button:*' rows with
-// page=/intake; no funnel reader consumes those.)
-//
-// noindex: this is a hand-delivered link, not a destination. There is nothing
-// here for a stranger — no pitch, no price — and a search engine surfacing a
-// bare form would only confuse the funnel's story.
+
 import Layout from '../layouts/Layout.astro';
 import IntakeWizard from '../components/IntakeWizard.astro';
 ---
