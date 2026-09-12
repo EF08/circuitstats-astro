@@ -84,3 +84,7 @@ Consult these guides before working on related tasks:
 - [Adding or managing content](https://docs.astro.build/en/guides/content-collections/)
 - [Adding styles or using Tailwind](https://docs.astro.build/en/guides/styling/)
 - [Supporting multiple languages](https://docs.astro.build/en/guides/internationalization/)
+
+## Versioned instructions, private deployment
+
+Commit shared project instructions (AGENTS.md, CLAUDE.md, and shared scoped rules) with the relevant code changes so Git carries them across devices. Do not commit secrets, personal local overrides, or machine-specific configuration. Keep instructions outside public/static asset directories and exclude them from production output, including nested copies and public source maps. Run the deployment-boundary check after building and verify direct instruction URLs do not serve their contents after deployment. Repository access is separate from website access: public Git repositories expose committed instructions.
